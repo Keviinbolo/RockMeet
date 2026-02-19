@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/login.dart';
-import 'package:myapp/paginas/RegistroPage.dart';
+import 'package:myapp/config/Theme/app_theme.dart';
+import 'package:myapp/paginas/login.dart';
 import 'package:myapp/paginas/pantalla_splash.dart';
 
 
@@ -16,12 +16,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'RockMeet',
       debugShowCheckedModeBanner: false, 
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
      
-      home: RegistroScreen(),
+      home: AnimatedSplashScreen(nextScreen: const LoginPage()),
     );
   }
 }
