@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'login.dart'; // 1. IMPORTANTE: Importamos tu archivo aquí
-import 'package:myapp/paginas/RegistroPage.dart';
+import 'login.dart'; 
+
 
 void main() {
   runApp(const MyApp());
@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const RegistroPage(),
+      home: const RegistroPage(), // 2. Cambia MyHomePage por RegistroPage
     );
   }
 }
