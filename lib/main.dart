@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/login.dart';
+import 'package:myapp/paginas/RegistroPage.dart';
 import 'package:myapp/paginas/pantalla_splash.dart';
 
 
@@ -20,7 +21,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
      
-      home: AnimatedSplashScreen(nextScreen: const LoginPage()),
+      home: RegistroScreen(),
     );
   }
 }

@@ -1,57 +1,120 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:myapp/config/Theme/colors.dart';
-import 'package:myapp/config/Theme/text_styles.dart';
 
-class RegistroPage extends StatefulWidget {
-  const RegistroPage({Key? key}) : super(key: key);
-
-  @override
-  _RegistroPageState createState() => _RegistroPageState();
+void main() {
+  runApp(const MyApp());
 }
 
-class _RegistroPageState extends State<RegistroPage> {
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Registro',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.purple,
+        fontFamily: 'Roboto',
+      ),
+      home: const RegistroScreen(),
+    );
+  }
+}
+
+class RegistroScreen extends StatefulWidget {
+  const RegistroScreen({super.key});
+
+  @override
+  State<RegistroScreen> createState() => _RegistroScreenState();
+}
+
+class _RegistroScreenState extends State<RegistroScreen> {
   final _formKey = GlobalKey<FormState>();
+  
+  // Controladores para los campos de texto
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _courseController = TextEditingController();
+  final _tutorCodeController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  // Estados
   bool _showPassword = false;
   bool _showConfirmPassword = false;
   bool _acceptedTerms = false;
-  
-  final Map<String, String> _formData = {
-    'name': '',
-    'email': '',
-    'password': '',
-    'confirmPassword': ''
-  };
+  String? _ageError;
+
+  @override
+  void dispose() {
+    // Liberar los controladores
+    _nameController.dispose();
+    _emailController.dispose();
+    _ageController.dispose();
+    _courseController.dispose();
+    _tutorCodeController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   void _handleSubmit() {
-    if (_formKey.currentState!.validate() && _acceptedTerms) {
-      _formKey.currentState!.save();
-      print('Registro: $_formData');
-      // Aquí iría la lógica de registro
+    // Validar edad mínima de 18 años
+    final age = int.tryParse(_ageController.text) ?? 0;
+    if (age < 18) {
+      setState(() {
+        _ageError = 'Debes ser mayor de 18 años para crear una cuenta';
+      });
+      return;
     }
+
+    // Validar contraseñas
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Las contraseñas no coinciden'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Aquí iría la lógica de registro
+    print('Registro:');
+    print('Nombre: ${_nameController.text}');
+    print('Email: ${_emailController.text}');
+    print('Edad: ${_ageController.text}');
+    print('Curso: ${_courseController.text}');
+    print('Código tutor: ${_tutorCodeController.text}');
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Registro exitoso'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.purple.shade50,
-              Colors.blue.shade50,
-            ],
+            colors: [Color(0xFFF3E5F5), Color(0xFFE3F2FD)],
           ),
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: SizedBox(
-                width: double.infinity,
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 400),
                 child: Column(
                   children: [
                     // Logo/Header
@@ -59,7 +122,50 @@ class _RegistroPageState extends State<RegistroPage> {
                     const SizedBox(height: 32),
                     
                     // Form Card
-                    _buildFormCard(),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(24),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            _buildNameField(),
+                            const SizedBox(height: 20),
+                            _buildEmailField(),
+                            const SizedBox(height: 20),
+                            _buildAgeField(),
+                            const SizedBox(height: 20),
+                            _buildCourseField(),
+                            const SizedBox(height: 20),
+                            _buildTutorCodeField(),
+                            const SizedBox(height: 20),
+                            _buildPasswordField(),
+                            const SizedBox(height: 20),
+                            _buildConfirmPasswordField(),
+                            const SizedBox(height: 16),
+                            _buildTermsCheckbox(),
+                            const SizedBox(height: 24),
+                            _buildSubmitButton(),
+                            const SizedBox(height: 24),
+                            _buildLoginLink(),
+                            const SizedBox(height: 16),
+                            _buildDivider(),
+                            const SizedBox(height: 16),
+                            _buildSocialButtons(),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -80,268 +186,418 @@ class _RegistroPageState extends State<RegistroPage> {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.dark, AppColors.secondaryDark],//logo
+              colors: [Color(0xFF9C27B0), Color(0xFF2196F3)],
             ),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Icon( // Icono de usuario
-            Icons.person_outline,
-            size: 32,
+          child: const Icon(
+            Icons.person,
             color: Colors.white,
+            size: 32,
           ),
         ),
         const SizedBox(height: 16),
-        Text(
+        const Text(
           'Crear Cuenta',
-          style: AppTextStyles.h1,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1F2937),
+          ),
         ),
         const SizedBox(height: 8),
-        Text(
+        const Text(
           'Completa tus datos para registrarte',
-          style: AppTextStyles.bodySmall,
+          style: TextStyle(
+            fontSize: 14,
+            color: Color(0xFF6B7280),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildFormCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+  Widget _buildNameField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Nombre completo',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
           ),
-        ],
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Nombre completo
-            _buildTextField(
-              label: 'Nombre completo',
-              icon: Icons.person_outline,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextFormField(
+            controller: _nameController,
+            decoration: InputDecoration(
               hintText: 'Tu nombre',
-              onSaved: (value) => _formData['name'] = value ?? '',
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Por favor ingresa tu nombre';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-
-            // Email
-            _buildTextField(
-              label: 'Correo electrónico',
-              icon: Icons.email_outlined,
-              hintText: 'tu@email.com',
-              keyboardType: TextInputType.emailAddress,
-              onSaved: (value) => _formData['email'] = value ?? '',
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Por favor ingresa tu email';
-                }
-                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                  return 'Ingresa un email válido';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-
-            // Contraseña
-            _buildPasswordField(
-              label: 'Contraseña',
-              hintText: 'Mínimo 8 caracteres',
-              isPassword: true,
-              showPassword: _showPassword,
-              onTogglePassword: () {
-                setState(() {
-                  _showPassword = !_showPassword;
-                });
-              },
-              onSaved: (value) => _formData['password'] = value ?? '',
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Por favor ingresa tu contraseña';
-                }
-                if (value.length < 8) {
-                  return 'La contraseña debe tener al menos 8 caracteres';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-
-            // Confirmar contraseña
-            _buildPasswordField(
-              label: 'Confirmar contraseña',
-              hintText: 'Repite tu contraseña',
-              isPassword: true,
-              showPassword: _showConfirmPassword,
-              onTogglePassword: () {
-                setState(() {
-                  _showConfirmPassword = !_showConfirmPassword;
-                });
-              },
-              onSaved: (value) => _formData['confirmPassword'] = value ?? '',
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Por favor confirma tu contraseña';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-
-            // Términos y condiciones
-            _buildTermsCheckbox(),
-            const SizedBox(height: 24),
-
-            // Botón de registro
-            _buildRegisterButton(),
-            const SizedBox(height: 24),
-
-            // Ya tienes cuenta
-            _buildLoginLink(),
-            const SizedBox(height: 24),
-
-            // Divider
-            _buildDivider(),
-            const SizedBox(height: 24),
-
-            // Social login
-            _buildSocialButtons(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required String label,
-    required IconData icon,
-    required String hintText,
-    TextInputType? keyboardType,
-    required FormFieldSetter<String> onSaved,
-    required FormFieldValidator<String> validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          onSaved: onSaved,
-          validator: validator,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hintText,
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.purple, width: 2),
-            ),
-            prefixIcon: Icon(
-              icon,
-              color: Colors.grey.shade400,
-              size: 20,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 16,
-              horizontal: 16,
-            ),
-          ),
-          style: const TextStyle(fontSize: 16),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPasswordField({
-    required String label,
-    required String hintText,
-    required bool isPassword,
-    required bool showPassword,
-    required VoidCallback onTogglePassword,
-    required FormFieldSetter<String> onSaved,
-    required FormFieldValidator<String> validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          onSaved: onSaved,
-          validator: validator,
-          obscureText: isPassword && !showPassword,
-          decoration: InputDecoration(
-            hintText: hintText,
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.purple, width: 2),
-            ),
-            prefixIcon: Icon(
-              Icons.lock_outline,
-              color: Colors.grey.shade400,
-              size: 20,
-            ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                showPassword ? Icons.visibility_off : Icons.visibility,
-                color: Colors.grey.shade400,
+              prefixIcon: const Icon(
+                Icons.person,
+                color: Color(0xFF9CA3AF),
                 size: 20,
               ),
-              onPressed: onTogglePassword,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 16,
-              horizontal: 16,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Este campo es requerido';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmailField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Correo electrónico',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              hintText: 'tu@email.com',
+              prefixIcon: const Icon(
+                Icons.email,
+                color: Color(0xFF9CA3AF),
+                size: 20,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Este campo es requerido';
+              }
+              if (!value.contains('@')) {
+                return 'Ingresa un email válido';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAgeField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Edad',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextFormField(
+            controller: _ageController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+            ],
+            decoration: InputDecoration(
+              hintText: 'Tu edad',
+              prefixIcon: const Icon(
+                Icons.calendar_today,
+                color: Color(0xFF9CA3AF),
+                size: 20,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _ageError = null;
+              });
+            },
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Este campo es requerido';
+              }
+              return null;
+            },
+          ),
+        ),
+        if (_ageError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              _ageError!,
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+              ),
             ),
           ),
-          style: const TextStyle(fontSize: 16),
+      ],
+    );
+  }
+
+  Widget _buildCourseField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Curso',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextFormField(
+            controller: _courseController,
+            decoration: InputDecoration(
+              hintText: 'Ej: FP, Bachillerato...',
+              prefixIcon: const Icon(
+                Icons.school,
+                color: Color(0xFF9CA3AF),
+                size: 20,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Este campo es requerido';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTutorCodeField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Código de tutor',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextFormField(
+            controller: _tutorCodeController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            decoration: InputDecoration(
+              hintText: 'Código de 6 dígitos',
+              prefixIcon: const Icon(
+                Icons.vpn_key,
+                color: Color(0xFF9CA3AF),
+                size: 20,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Este campo es requerido';
+              }
+              if (value.length != 6) {
+                return 'El código debe tener 6 dígitos';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Contraseña',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextFormField(
+            controller: _passwordController,
+            obscureText: !_showPassword,
+            decoration: InputDecoration(
+              hintText: 'Mínimo 8 caracteres',
+              prefixIcon: const Icon(
+                Icons.lock,
+                color: Color(0xFF9CA3AF),
+                size: 20,
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _showPassword ? Icons.visibility_off : Icons.visibility,
+                  color: const Color(0xFF9CA3AF),
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _showPassword = !_showPassword;
+                  });
+                },
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Este campo es requerido';
+              }
+              if (value.length < 8) {
+                return 'La contraseña debe tener mínimo 8 caracteres';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfirmPasswordField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Confirmar contraseña',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextFormField(
+            controller: _confirmPasswordController,
+            obscureText: !_showConfirmPassword,
+            decoration: InputDecoration(
+              hintText: 'Repite tu contraseña',
+              prefixIcon: const Icon(
+                Icons.lock,
+                color: Color(0xFF9CA3AF),
+                size: 20,
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _showConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                  color: const Color(0xFF9CA3AF),
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _showConfirmPassword = !_showConfirmPassword;
+                  });
+                },
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Este campo es requerido';
+              }
+              if (value != _passwordController.text) {
+                return 'Las contraseñas no coinciden';
+              }
+              return null;
+            },
+          ),
         ),
       ],
     );
@@ -351,57 +607,51 @@ class _RegistroPageState extends State<RegistroPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 24,
-          height: 24,
-          child: Checkbox(
-            value: _acceptedTerms,
-            onChanged: (value) {
-              setState(() {
-                _acceptedTerms = value ?? false;
-              });
-            },
-            activeColor: Colors.purple,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-            ),
-            side: BorderSide(color: Colors.grey.shade300),
+        Checkbox(
+          value: _acceptedTerms,
+          onChanged: (value) {
+            setState(() {
+              _acceptedTerms = value ?? false;
+            });
+          },
+          activeColor: const Color(0xFF9C27B0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
           ),
         ),
-        const SizedBox(width: 12),
         Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _acceptedTerms = !_acceptedTerms;
-              });
-            },
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                  height: 1.4,
-                ),
-                children: [
-                  const TextSpan(text: 'Acepto los '),
-                  TextSpan(
-                    text: 'Términos y Condiciones',
-                    style: const TextStyle(
-                      color: Colors.purple,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                  const TextSpan(text: ' y la '),
-                  TextSpan(
-                    text: 'Política de Privacidad',
-                    style: const TextStyle(
-                      color: Colors.purple,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ],
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
               ),
+              children: [
+                const TextSpan(text: 'Acepto los '),
+                TextSpan(
+                  text: 'Términos y Condiciones',
+                  style: const TextStyle(
+                    color: Color(0xFF9C27B0),
+                    decoration: TextDecoration.underline,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      // Navegar a términos
+                    },
+                ),
+                const TextSpan(text: ' y la '),
+                TextSpan(
+                  text: 'Política de Privacidad',
+                  style: const TextStyle(
+                    color: Color(0xFF9C27B0),
+                    decoration: TextDecoration.underline,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      // Navegar a privacidad
+                    },
+                ),
+              ],
             ),
           ),
         ),
@@ -409,40 +659,35 @@ class _RegistroPageState extends State<RegistroPage> {
     );
   }
 
-  Widget _buildRegisterButton() {
-    return GestureDetector(
-      onTap: _handleSubmit,
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [Colors.purple, Colors.blue],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.purple.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: _handleSubmit,
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _handleSubmit,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            splashColor: Colors.white.withOpacity(0.2),
+          ),
+        ),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF9C27B0), Color(0xFF2196F3)],
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
             child: const Center(
               child: Text(
                 'Crear cuenta',
                 style: TextStyle(
-                  color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -453,56 +698,46 @@ class _RegistroPageState extends State<RegistroPage> {
   }
 
   Widget _buildLoginLink() {
-    return Center(
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          '¿Ya tienes cuenta? ',
+          style: TextStyle(
+            color: Color(0xFF6B7280),
           ),
-          children: [
-            const TextSpan(text: '¿Ya tienes cuenta? '),
-            WidgetSpan(
-              child: GestureDetector(
-                onTap: () {
-                  // Navegar a pantalla de login
-                  Navigator.pushNamed(context, '/login');
-                },
-                child: const Text(
-                  'Inicia sesión',
-                  style: TextStyle(
-                    color: Colors.purple,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
-      ),
+        GestureDetector(
+          onTap: () {
+            // Navegar a login
+          },
+          child: const Text(
+            'Inicia sesión',
+            style: TextStyle(
+              color: Color(0xFF9C27B0),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildDivider() {
-    return Stack(
+    return Row(
       children: [
-        const Divider(
-          color: Colors.grey,
-          thickness: 1,
-        ),
-        Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            color: Colors.white,
-            child: const Text(
-              'O regístrate con',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
+        const Expanded(child: Divider(color: Color(0xFFE5E7EB))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'O regístrate con',
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 12,
             ),
           ),
         ),
+        const Expanded(child: Divider(color: Color(0xFFE5E7EB))),
       ],
     );
   }
@@ -512,100 +747,71 @@ class _RegistroPageState extends State<RegistroPage> {
       children: [
         Expanded(
           child: _buildSocialButton(
-            icon: _buildGoogleIcon(),
-            text: 'Google',
-            onPressed: () {
-              // Lógica para Google
-            },
+            'Google',
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.network(
+                  'https://www.google.com/favicon.ico',
+                  width: 20,
+                  height: 20,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(Icons.g_mobiledata, size: 24);
+                  },
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Google',
+                  style: TextStyle(color: Color(0xFF374151)),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _buildSocialButton(
-            icon: _buildFacebookIcon(),
-            text: 'Facebook',
-            onPressed: () {
-              // Lógica para Facebook
-            },
+            'Facebook',
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.facebook,
+                  color: Color(0xFF1877F2),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Facebook',
+                  style: TextStyle(color: Color(0xFF374151)),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSocialButton({
-    required Widget icon,
-    required String text,
-    required VoidCallback onPressed,
-  }) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        side: BorderSide(color: Colors.grey.shade200),
-        backgroundColor: Colors.transparent,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          icon,
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGoogleIcon() {
+  Widget _buildSocialButton(String label, {required Widget child}) {
     return Container(
-      width: 20,
-      height: 20,
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/google_logo.png'), // Asegúrate de tener este asset
-          fit: BoxFit.contain,
-        ),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
-
-  Widget _buildFacebookIcon() {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/facebook_logo.png'), // Asegúrate de tener este asset
-          fit: BoxFit.contain,
+      child: TextButton(
+        onPressed: () {
+          // Lógica de login social
+        },
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          backgroundColor: Colors.transparent,
+          foregroundColor: const Color(0xFF374151),
         ),
+        child: child,
       ),
     );
   }
 }
 
-// Alternativa si no tienes los assets de los logos
-Widget _buildGoogleIconAlternative() {
-  return const Icon(
-    Icons.g_mobiledata,
-    size: 24,
-    color: Color(0xFF4285F4),
-  );
-}
-
-Widget _buildFacebookIconAlternative() {
-  return const Icon(
-    Icons.facebook,
-    size: 24,
-    color: Color(0xFF1877F2),
-  );
-}
+// Necesario para el recognizer en el texto enriquecido
