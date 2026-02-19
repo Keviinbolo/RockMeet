@@ -66,9 +66,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Las contraseñas no coinciden'),
-          backgroundColor: AppColors.error,
+        SnackBar(
+          content: const Text('Las contraseñas no coinciden'),
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
       return;
@@ -82,22 +82,27 @@ class _RegistroScreenState extends State<RegistroScreen> {
     print('Código tutor: ${_tutorCodeController.text}');
     
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Registro exitoso'),
-        backgroundColor: AppColors.primary,
+      SnackBar(
+        content: const Text('Registro exitoso'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFF3E5F5), Color(0xFFE3F2FD)],
+            colors: [
+              theme.colorScheme.secondary.withOpacity(0.2),
+              theme.colorScheme.primary.withOpacity(0.2),
+            ],
           ),
         ),
         child: SafeArea(
@@ -108,12 +113,12 @@ class _RegistroScreenState extends State<RegistroScreen> {
                 constraints: const BoxConstraints(maxWidth: 400),
                 child: Column(
                   children: [
-                    _buildHeader(),
+                    _buildHeader(theme),
                     const SizedBox(height: 32),
                     
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
@@ -142,13 +147,13 @@ class _RegistroScreenState extends State<RegistroScreen> {
                             const SizedBox(height: 20),
                             _buildConfirmPasswordField(),
                             const SizedBox(height: 16),
-                            _buildTermsCheckbox(),
+                            _buildTermsCheckbox(theme),
                             const SizedBox(height: 24),
-                            _buildSubmitButton(),
+                            _buildSubmitButton(theme),
                             const SizedBox(height: 24),
-                            _buildLoginLink(),
+                            _buildLoginLink(theme),
                             const SizedBox(height: 16),
-                            _buildDivider(),
+                            _buildDivider(theme),
                             const SizedBox(height: 16),
                             _buildSocialButtons(),
                           ],
@@ -165,41 +170,39 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ThemeData theme) {
     return Column(
       children: [
         Container(
           width: 64,
           height: 64,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF9C27B0), Color(0xFF2196F3)],
+              colors: [
+                theme.colorScheme.secondary,
+                theme.colorScheme.primary,
+              ],
             ),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.person,
-            color: AppColors.white,
+            color: theme.colorScheme.onPrimary,
             size: 32,
           ),
         ),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'Crear Cuenta',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1F2937),
-          ),
+          style: theme.textTheme.headlineLarge,
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Completa tus datos para registrarte',
-          style: TextStyle(
-            fontSize: 14,
-            color: Color(0xFF6B7280),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
         ),
       ],
@@ -241,12 +244,14 @@ class _RegistroScreenState extends State<RegistroScreen> {
   }
 
   Widget _buildAgeField() {
+    final theme = Theme.of(context);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Edad',
-          style: AppTextStyles.label,
+          style: theme.textTheme.labelMedium,
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -274,8 +279,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               _ageError!,
-              style: const TextStyle(
-                color: AppColors.error,
+              style: TextStyle(
+                color: theme.colorScheme.error,
                 fontSize: 12,
               ),
             ),
@@ -323,10 +328,12 @@ class _RegistroScreenState extends State<RegistroScreen> {
   }
 
   Widget _buildPasswordField() {
+    final theme = Theme.of(context);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Contraseña', style: AppTextStyles.label),
+        Text('Contraseña', style: theme.textTheme.labelMedium),
         const SizedBox(height: 8),
         TextFormField(
           controller: _passwordController,
@@ -361,10 +368,12 @@ class _RegistroScreenState extends State<RegistroScreen> {
   }
 
   Widget _buildConfirmPasswordField() {
+    final theme = Theme.of(context);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Confirmar contraseña', style: AppTextStyles.label),
+        Text('Confirmar contraseña', style: theme.textTheme.labelMedium),
         const SizedBox(height: 8),
         TextFormField(
           controller: _confirmPasswordController,
@@ -398,7 +407,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 
-  Widget _buildTermsCheckbox() {
+  Widget _buildTermsCheckbox(ThemeData theme) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -409,7 +418,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
               _acceptedTerms = value ?? false;
             });
           },
-          activeColor: AppColors.primary,
+          activeColor: theme.colorScheme.primary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(4),
           ),
@@ -417,15 +426,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textSecondary,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
               children: [
                 const TextSpan(text: 'Acepto los '),
                 TextSpan(
                   text: 'Términos y Condiciones',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.primary,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
                     decoration: TextDecoration.underline,
                   ),
                   recognizer: TapGestureRecognizer()
@@ -434,8 +443,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
                 const TextSpan(text: ' y la '),
                 TextSpan(
                   text: 'Política de Privacidad',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.primary,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
                     decoration: TextDecoration.underline,
                   ),
                   recognizer: TapGestureRecognizer()
@@ -449,56 +458,50 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 
-  Widget _buildSubmitButton() {
+  Widget _buildSubmitButton(ThemeData theme) {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _handleSubmit,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
+      child: GestureDetector(
+        onTap: _handleSubmit,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                theme.colorScheme.secondary,
+                theme.colorScheme.primary,
+              ],
+            ),
             borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        child: Ink(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF9C27B0), Color(0xFF2196F3)],
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Text(
+            'Crear cuenta',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onPrimary,
             ),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text(
-              'Crear cuenta',
-              style: AppTextStyles.buttonMedium.copyWith(
-                color: AppColors.textOnPrimary,
-              ),
-            ),
+            textAlign: TextAlign.center,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildLoginLink() {
+  Widget _buildLoginLink(ThemeData theme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           '¿Ya tienes cuenta? ',
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
         ),
         GestureDetector(
           onTap: () {},
           child: Text(
             'Inicia sesión',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.primary,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.primary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -507,20 +510,28 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 
-  Widget _buildDivider() {
+  Widget _buildDivider(ThemeData theme) {
     return Row(
       children: [
-        const Expanded(child: Divider(color: AppColors.lightGray)),
+        Expanded(
+          child: Divider(
+            color: theme.colorScheme.outline.withOpacity(0.3),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             'O regístrate con',
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textSecondary,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
         ),
-        const Expanded(child: Divider(color: AppColors.lightGray)),
+        Expanded(
+          child: Divider(
+            color: theme.colorScheme.outline.withOpacity(0.3),
+          ),
+        ),
       ],
     );
   }
@@ -555,10 +566,12 @@ class _RegistroScreenState extends State<RegistroScreen> {
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
+    final theme = Theme.of(context);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.label),
+        Text(label, style: theme.textTheme.labelMedium),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,

@@ -16,8 +16,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'RockMeet',
       debugShowCheckedModeBanner: false, 
-      initialRoute: AppRoutes.home,
       theme: AppTheme.lightTheme,
+      initialRoute: AppRoutes.home,
       onGenerateRoute: AppRoutes.generateRoute,
     );
   }
