@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:myapp/paginas/RegistroPage.dart';
 
 // Importa tu RegistroPage aquí (ajusta la ruta según tu proyecto)
 // import 'registro_page.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -50,15 +51,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // FUNCIÓN QUE TE HE PEDIDO - PARA NAVEGAR A REGISTROPAGE
-  void _navegarARegistroPage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const RegistroPage(), // Asegúrate de crear esta clase
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +77,7 @@ class _LoginPageState extends State<LoginPage> {
 
                   // Título
                   Text(
-                    'Bienvenido',
+                    'Bienvenido a RockMeet',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.grey[800],
@@ -135,7 +128,7 @@ class _LoginPageState extends State<LoginPage> {
                     obscureText: !_isPasswordVisible,
                     decoration: InputDecoration(
                       labelText: 'Contraseña',
-                      hintText: '••••••••',
+                      hintText: '*',
                       prefixIcon: const Icon(Icons.lock_outlined),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -266,7 +259,14 @@ class _LoginPageState extends State<LoginPage> {
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                       TextButton(
-                        onPressed: _navegarARegistroPage, // FUNCIÓN AÑADIDA AQUÍ
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegistroPage(),
+                            ),
+                          );
+                        },
                         child: const Text(
                           'Regístrate',
                           style: TextStyle(fontWeight: FontWeight.bold),
@@ -285,18 +285,3 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 // EJEMPLO BÁSICO DE REGISTROPAGE - CREA ESTA CLASE EN OTRO ARCHIVO
-class RegistroPage extends StatelessWidget {
-  const RegistroPage({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Registro'),
-      ),
-      body: const Center(
-        child: Text('Página de Registro'),
-      ),
-    );
-  }
-}

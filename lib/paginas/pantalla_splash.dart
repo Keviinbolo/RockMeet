@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 
-class AnimatedSplashScreen extends StatefulWidget {
-  const AnimatedSplashScreen({Key? key}) : super(key: key);
 
+class AnimatedSplashScreen extends StatefulWidget {
+   const AnimatedSplashScreen({Key? key, required this.nextScreen}) : super(key: key);
+  final Widget nextScreen;
   @override
   _AnimatedSplashScreenState createState() => _AnimatedSplashScreenState();
 }
@@ -42,27 +43,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_circle, size: 100, color: Colors.green),
-                  SizedBox(height: 20),
-                  Text(
-                    '¡Bienvenido!',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
+        MaterialPageRoute(builder: (context) => widget.nextScreen), // Aquí deberías reemplazar con tu pantalla de login
       );
     });
   }
@@ -92,7 +73,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Tu logo aquí
+              // Aquí va el Logo
               Container(
                 width: 150,
                 height: 150,
@@ -108,7 +89,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
               ),
               const SizedBox(height: 20),
               const Text(
-                'MI APLICACIÓN',
+                'RockMeet',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
