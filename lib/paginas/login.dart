@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/paginas/RegistroPage.dart';
+import 'package:myapp/paginas/registro_page.dart';
 
-// Importa tu RegistroPage aquí (ajusta la ruta según tu proyecto)
-// import 'registro_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,38 +23,10 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // FUNCIÓN PARA MANEJAR EL LOGIN
-  Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Simular llamada a API
-      await Future.delayed(const Duration(seconds: 2));
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      // Aquí iría tu lógica de autenticación
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login exitoso'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    }
-  }
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -67,47 +37,30 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo o icono
-                  Icon(
+                  const Icon(
                     Icons.lock_outline,
                     size: 80,
-                    color: Theme.of(context).primaryColor,
                   ),
                   const SizedBox(height: 20),
 
-                  // Título
-                  Text(
+                  const Text(
                     'Bienvenido a RockMeet',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                        ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                  const Text(
                     'Inicia sesión para continuar',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
 
-                  // Campo de Email
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Email',
                       hintText: 'ejemplo@correo.com',
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
+                      prefixIcon: Icon(Icons.email_outlined),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -122,7 +75,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Campo de Contraseña
                   TextFormField(
                     controller: _passwordController,
                     obscureText: !_isPasswordVisible,
@@ -142,11 +94,6 @@ class _LoginPageState extends State<LoginPage> {
                           });
                         },
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -160,117 +107,79 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Olvidé mi contraseña
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {
-                        // Navegar a recuperación de contraseña
-                      },
+                      onPressed: () {},
                       child: const Text('¿Olvidaste tu contraseña?'),
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Botón de Login
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 2,
-                    ),
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            if (_formKey.currentState!.validate()) {
+                              setState(() {
+                                _isLoading = true;
+                              });
+                              Future.delayed(const Duration(seconds: 2), () {
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              });
+                            }
+                          },
                     child: _isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text(
-                            'Iniciar Sesión',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        : const Text('Iniciar Sesión'),
                   ),
                   const SizedBox(height: 24),
 
-                  // Divisor
-                  Row(
+                  const Row(
                     children: [
-                      Expanded(child: Divider(color: Colors.grey[400])),
+                      Expanded(child: Divider()),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'O',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text('O'),
                       ),
-                      Expanded(child: Divider(color: Colors.grey[400])),
+                      Expanded(child: Divider()),
                     ],
                   ),
                   const SizedBox(height: 24),
 
-                  // Botones de redes sociales
                   OutlinedButton.icon(
-                    onPressed: () {
-                      // Login con Google
-                    },
+                    onPressed: () {},
                     icon: const Icon(Icons.g_mobiledata, size: 30),
                     label: const Text('Continuar con Google'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      backgroundColor: Colors.white,
-                    ),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
-                    onPressed: () {
-                      // Login con Facebook
-                    },
-                    icon: const Icon(Icons.facebook, color: Colors.blue),
+                    onPressed: () {},
+                    icon: const Icon(Icons.facebook),
                     label: const Text('Continuar con Facebook'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      backgroundColor: Colors.white,
-                    ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Registro - CON LA FUNCIÓN AÑADIDA
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        '¿No tienes cuenta? ',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
+                      const Text('¿No tienes cuenta? '),
                       TextButton(
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const RegistroScreen(),
+                              builder: (context) => const RegistroPage(),
                             ),
                           );
                         },
-                        child: const Text(
-                          'Regístrate',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        child: const Text('Regístrate'),
                       ),
                     ],
                   ),
@@ -283,5 +192,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-
-// EJEMPLO BÁSICO DE REGISTROPAGE - CREA ESTA CLASE EN OTRO ARCHIVO
