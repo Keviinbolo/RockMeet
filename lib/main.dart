@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:myapp/config/Routes/approutes.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/paginas/login.dart';
-import 'package:myapp/paginas/pantalla_splash.dart';
+
 
 
 void main() {
@@ -16,9 +16,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'RockMeet',
       debugShowCheckedModeBanner: false, 
+      initialRoute: AppRoutes.home,
       theme: AppTheme.lightTheme,
-     
-      home: AnimatedSplashScreen(nextScreen: const LoginPage()),
+      onGenerateRoute: AppRoutes.generateRoute,
     );
   }
 }
