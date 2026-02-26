@@ -4,22 +4,6 @@ import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:myapp/paginas/Perfil.dart';
 import 'package:myapp/paginas/ajustes.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'RockMeet',
-      theme: ThemeData.dark(),
-      home: const HomePage(),
-    );
-  }
-}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,45 +12,37 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
-  bool _isProfileFlipped = false;
-  late AnimationController _flipController;
+  int _selectedNavIndex = 0;
 
   final List<Profile> profiles = [
     Profile(
-      name: "Sofia",
-      age: 24,
-      photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1080",
-      interests: ["Senderismo", "Fotografía", "Rock", "Viajes", "Aventura"],
-      bio: "Amante de la aventura 🏔️. Me encanta el senderismo y la fotografía de paisajes.",
+      id: 1, 
+      name: "Sofia", 
+      age: 24, 
+      photos: [
+        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1080",
+        "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1080",
+        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1080",
+      ], 
+      bio: "Amante de la aventura 🏔️"
     ),
     Profile(
-      name: "Carlos",
-      age: 27,
-      photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1080",
-      interests: ["Gimnasio", "Cocina", "Ciclismo"],
-      bio: "Siempre con la maleta lista para una nueva ruta.",
+      id: 2, 
+      name: "Carlos", 
+      age: 27, 
+      photos: [
+        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1080",
+        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1080",
+      ], 
+      bio: "Fotógrafo y viajero ✈️"
     ),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _flipController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-  }
-
-  void _toggleFlip() {
-    if (_isProfileFlipped) {
-      _flipController.reverse();
-    } else {
-      _flipController.forward();
-    }
+  void _nextProfile() {
     setState(() {
-      _isProfileFlipped = !_isProfileFlipped;
+      currentIndex = (currentIndex + 1) % profiles.length;
     });
   }
 
@@ -92,85 +68,54 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
-      body: Stack(
+    );
+  }
+
+  Widget _buildExplore() {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
         children: [
-          Center(
+          Expanded(
             child: SwipeableCard(
               key: ValueKey(currentIndex),
               profile: profiles[currentIndex],
-              isFlipped: _isProfileFlipped,
-              flipController: _flipController,
-              onFlip: _toggleFlip,
-              onNext: () {
-                _flipController.reset();
-                setState(() {
-                  currentIndex = (currentIndex + 1) % profiles.length;
-                  _isProfileFlipped = false;
-                });
-              },
+              onSwipeLeft: _nextProfile,
+              onSwipeRight: _nextProfile,
+              onSwipeUp: _nextProfile,
             ),
           ),
-          if (!_isProfileFlipped)
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _actionIcon(Icons.close, Colors.red),
-                  _actionIcon(Icons.favorite, Colors.green),
-                ],
-              ),
-            ),
+          const SizedBox(height: 20),
+          _buildActionButtons(),
         ],
       ),
     );
   }
 
-  Widget _actionIcon(IconData icon, Color color) {
-    return GestureDetector(
-      onTap: () {
-        if (icon == Icons.close) {
-          setState(() {
-            currentIndex = (currentIndex + 1) % profiles.length;
-            _isProfileFlipped = false;
-            _flipController.reset();
-          });
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: color.withOpacity(0.5), width: 2),
-        ),
-        child: Icon(icon, color: color, size: 30),
-      ),
+  Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        IconButton(onPressed: _nextProfile, icon: const Icon(Icons.close, color: AppColors.error, size: 35)),
+        ElevatedButton(onPressed: _nextProfile, child: const Text("GROUP")),
+        IconButton(onPressed: _nextProfile, icon: const Icon(Icons.favorite, color: AppColors.success, size: 35)),
+      ],
     );
-  }
-
-  @override
-  void dispose() {
-    _flipController.dispose();
-    super.dispose();
   }
 }
 
 class SwipeableCard extends StatefulWidget {
   final Profile profile;
-  final bool isFlipped;
-  final AnimationController flipController;
-  final VoidCallback onFlip;
-  final VoidCallback onNext;
+  final VoidCallback onSwipeLeft;
+  final VoidCallback onSwipeRight;
+  final VoidCallback onSwipeUp;
 
   const SwipeableCard({
     super.key,
     required this.profile,
-    required this.isFlipped,
-    required this.flipController,
-    required this.onFlip,
-    required this.onNext,
+    required this.onSwipeLeft,
+    required this.onSwipeRight,
+    required this.onSwipeUp,
   });
 
   @override
@@ -179,193 +124,127 @@ class SwipeableCard extends StatefulWidget {
 
 class _SwipeableCardState extends State<SwipeableCard> {
   Offset _position = Offset.zero;
+  bool _isDragging = false;
+  int _currentImageIndex = 0;
+  final PageController _pageController = PageController();
+
+  void _prevImage() {
+    if (_currentImageIndex > 0) {
+      _pageController.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+    }
+  }
+
+  void _nextImage() {
+    if (_currentImageIndex < widget.profile.photos.length - 1) {
+      _pageController.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    double angle = (_position.dx / 20) * (math.pi / 180);
+
     return GestureDetector(
-      onPanUpdate: (details) {
-        setState(() {
-          _position += details.delta;
-        });
-      },
+      onPanStart: (_) => setState(() => _isDragging = true),
+      onPanUpdate: (details) => setState(() => _position += details.delta),
       onPanEnd: (details) {
-        // Detectar deslizamiento hacia abajo para voltear
-        if (_position.dy > 80) {
-          widget.onFlip();
-        }
-        // Detectar deslizamiento horizontal para siguiente perfil
-        else if (_position.dx.abs() > 100 && !widget.isFlipped) {
-          widget.onNext();
-        }
-        
-        // Resetear posición
-        setState(() {
-          _position = Offset.zero;
-        });
+        setState(() => _isDragging = false);
+        if (_position.dx < -150) widget.onSwipeLeft();
+        else if (_position.dx > 150) widget.onSwipeRight();
+        else if (_position.dy < -150) widget.onSwipeUp();
+        else setState(() => _position = Offset.zero);
       },
-      child: AnimatedBuilder(
-        animation: widget.flipController,
-        builder: (context, child) {
-          final angle = widget.flipController.value * math.pi;
-          
-          return Transform(
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.004)
-              ..translate(_position.dx, _position.dy)
-              ..rotateY(angle),
-            alignment: Alignment.center,
-            child: angle < math.pi / 2 ? _buildFront() : _buildBack(),
-          );
-        },
+      child: AnimatedContainer(
+        duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        transform: Matrix4.identity()
+          ..translate(_position.dx, _position.dy)
+          ..rotateZ(angle),
+        child: _buildCardContent(),
       ),
     );
   }
 
-  Widget _buildFront() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.85,
-        height: MediaQuery.of(context).size.height * 0.65,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: NetworkImage(widget.profile.photo),
-            fit: BoxFit.cover,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 15,
-              spreadRadius: 2,
+  Widget _buildCardContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(25.0),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Carrusel de imágenes
+                PageView.builder(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(), // Desactivamos scroll manual para usar los clics
+                  itemCount: widget.profile.photos.length,
+                  onPageChanged: (index) => setState(() => _currentImageIndex = index),
+                  itemBuilder: (context, index) => Image.network(widget.profile.photos[index], fit: BoxFit.cover),
+                ),
+                // Zonas de clic (Lados)
+                Row(
+                  children: [
+                    Expanded(child: GestureDetector(onTap: _prevImage, child: Container(color: Colors.transparent))),
+                    Expanded(child: GestureDetector(onTap: _nextImage, child: Container(color: Colors.transparent))),
+                  ],
+                ),
+                // Indicadores (Barras superiores)
+                Positioned(
+                  top: 15, left: 10, right: 10,
+                  child: Row(
+                    children: List.generate(widget.profile.photos.length, (index) {
+                      return Expanded(
+                        child: Container(
+                          height: 4, margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: BoxDecoration(
+                            color: _currentImageIndex == index ? Colors.white : Colors.white.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                // Overlays de acción (Aparecen al arrastrar)
+                if (_position.dx > 50) _buildOverlayText("LIKE", AppColors.success, Alignment.topLeft),
+                if (_position.dx < -50) _buildOverlayText("NOPE", AppColors.error, Alignment.topRight),
+                if (_position.dy < -50 && _position.dx.abs() < 50) _buildOverlayText("GROUP", AppColors.secondary, Alignment.bottomCenter),
+              ],
             ),
-          ],
+          ),
         ),
+        const SizedBox(height: 15),
+        Text("${widget.profile.name}, ${widget.profile.age}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        Text(widget.profile.bio, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+      ],
+    );
+  }
+
+  Widget _buildOverlayText(String text, Color color, Alignment alignment) {
+    return Align(
+      alignment: alignment,
+      child: IgnorePointer( // Importante para que no bloquee los clics de las fotos
         child: Container(
+          margin: const EdgeInsets.all(40),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
-            ),
+            border: Border.all(color: color, width: 4),
+            borderRadius: BorderRadius.circular(10),
           ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "${widget.profile.name}, ${widget.profile.age}",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  "⬇️ Desliza abajo",
-                  style: TextStyle(color: Colors.white70),
-                ),
-              ),
-            ],
-          ),
+          child: Text(text, style: TextStyle(color: color, fontSize: 32, fontWeight: FontWeight.bold)),
         ),
       ),
     );
-  }
-
-  Widget _buildBack() {
-    return Container(
-      width: MediaQuery.of(context).size.width * 0.85,
-      height: MediaQuery.of(context).size.height * 0.65,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Text(
-              widget.profile.name,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.purple.shade400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            "INTERESES",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 15),
-          Expanded(
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: widget.profile.interests.map((interest) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: Colors.purple.withOpacity(0.3)),
-                  ),
-                  child: Text(
-                    interest,
-                    style: const TextStyle(
-                      color: Colors.purple,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }
 
 class Profile {
+  final int id;
   final String name;
   final int age;
-  final String photo;
-  final List<String> interests;
+  final List<String> photos;
   final String bio;
-
-  Profile({
-    required this.name,
-    required this.age,
-    required this.photo,
-    required this.interests,
-    required this.bio,
-  });
+  Profile({required this.id, required this.name, required this.age, required this.photos, required this.bio});
 }
