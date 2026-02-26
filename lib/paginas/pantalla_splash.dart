@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-
-
+import 'package:myapp/config/Theme/app_theme.dart';
+import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:myapp/config/Theme/constants/text_styles.dart';
+import 'package:myapp/core/widgets/validation_state_widget.dart';
 
 class AnimatedSplashScreen extends StatefulWidget {
-   const AnimatedSplashScreen({Key? key, required this.nextScreen}) : super(key: key);
+  const AnimatedSplashScreen({Key? key, required this.nextScreen})
+    : super(key: key);
   final Widget nextScreen;
   @override
   _AnimatedSplashScreenState createState() => _AnimatedSplashScreenState();
@@ -15,10 +18,13 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   late Animation<double> _opacityAnimation;
   late Animation<double> _scaleAnimation;
 
+  ValidationState _validationState = ValidationState.loading;
+  String _errorMessage = '';
+
   @override
   void initState() {
     super.initState();
-    
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -39,13 +45,29 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     );
 
     _controller.forward();
+    //Simulación de validación (reemplazaremos luego esto con la lógica real)
+    _initializeApp();
+  }
 
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => widget.nextScreen), // Aquí deberías reemplazar con tu pantalla de login
-      );
+  void _initializeApp() {
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _validationState = ValidationState.success);
+
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => widget.nextScreen),
+          );
+        });
+      }
     });
+  }
+
+  void _retryInitialization() {
+    setState(() {
+      _validationState = ValidationState.loading;
+    });
+    _initializeApp();
   }
 
   @override
@@ -57,49 +79,53 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue,
-      body: Center(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return Opacity(
-              opacity: _opacityAnimation.value,
-              child: Transform.scale(
-                scale: _scaleAnimation.value,
-                child: child,
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          Center(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _opacityAnimation.value,
+                  child: Transform.scale(
+                    scale: _scaleAnimation.value,
+                    child: child,
+                  ),
+                );
+              },
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Aquí va el Logo
+                  Container(
+                    width: 150,
+                    height: 150,
+                    decoration: AppTheme.primaryGradientBox,
+                    child: const Icon(Icons.apps_sharp, size: 80, color: Colors.white),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'RockMeet',
+                    style: AppTextStyles.headlineLarge,
+                  ),
+                ],
               ),
-            );
-          },
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Aquí va el Logo
-              Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.apps,
-                  size: 80,
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'RockMeet',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 2.0,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          if (_validationState != ValidationState.idle)
+            Positioned(
+              bottom: 60,
+              left: 0,
+              right: 0,
+              child: ValidationStateWidget(
+                state: _validationState,
+                errorMessage: _errorMessage.isEmpty ? "Error al cargar la app" : _errorMessage,
+                successMessage: "¡Bienvenido a RockMeet!",
+                onRetry: _retryInitialization,
+              ),
+            ),
+        ],
       ),
     );
   }
