@@ -4,19 +4,19 @@ import 'package:myapp/paginas/pantalla_splash.dart';
 import 'package:myapp/paginas/registro_page.dart';
 
 class AppRoutes {
-  static const String home = '/home';
+  static const String splash = '/splash';
   static const String login = '/login';
   static const String register = '/register';
   
   static Map<String, String> get routes => {
-    home: '/home',
+    splash: '/splash',
     login: '/login',
     register: '/register',
   };
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case home:
+      case splash:
         return MaterialPageRoute(
           builder: (_) => const AnimatedSplashScreen(
             nextScreen: LoginPage(),
