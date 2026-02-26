@@ -2,21 +2,13 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../config/Theme/app_theme.dart';
-import '../core/constants/colors.dart';
-import '../core/constants/text_styles.dart';
 
 class RegistroPage extends StatelessWidget {
   const RegistroPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Registro',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const RegistroScreen(),
-    );
+    return const RegistroScreen();
   }
 }
 
@@ -497,7 +489,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
           ),
         ),
         GestureDetector(
-          onTap: () {},
+          onTap: () {
+            Navigator.pushNamed(context, '/login');
+          },
           child: Text(
             'Inicia sesión',
             style: theme.textTheme.bodyMedium?.copyWith(

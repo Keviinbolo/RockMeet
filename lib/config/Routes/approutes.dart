@@ -1,10 +1,9 @@
-
 import 'package:flutter/material.dart';
 import 'package:myapp/paginas/login.dart';
 import 'package:myapp/paginas/pantalla_splash.dart';
 import 'package:myapp/paginas/registro_page.dart';
 
-class AppRoutes  {
+class AppRoutes {
   static const String home = '/home';
   static const String login = '/login';
   static const String register = '/register';
@@ -18,11 +17,15 @@ class AppRoutes  {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case home:
-        return MaterialPageRoute(builder: (_) =>  AnimatedSplashScreen(nextScreen: const LoginPage()));
+        return MaterialPageRoute(
+          builder: (_) => const AnimatedSplashScreen(
+            nextScreen: LoginPage(),
+          ),
+        );
       case login:
         return MaterialPageRoute(builder: (_) => const LoginPage());
       case register:
-        return MaterialPageRoute(builder: (_) => const RegistroPage());
+        return MaterialPageRoute(builder: (_) => const RegistroScreen());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
@@ -31,5 +34,4 @@ class AppRoutes  {
         );
     }
   }
-  
 }
