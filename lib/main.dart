@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:myapp/config/Routes/approutes.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
 
 
 
 void main() {
+  setUrlStrategy(PathUrlStrategy());
   runApp(const MyApp());
 }
 
@@ -16,8 +18,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'RockMeet',
       debugShowCheckedModeBanner: false, 
-      initialRoute: AppRoutes.home,
       theme: AppTheme.lightTheme,
+      initialRoute: AppRoutes.home,
       onGenerateRoute: AppRoutes.generateRoute,
     );
   }

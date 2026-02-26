@@ -172,12 +172,7 @@ class _LoginPageState extends State<LoginPage> {
                       const Text('¿No tienes cuenta? '),
                       TextButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RegistroPage(),
-                            ),
-                          );
+                          Navigator.pushNamed(context, '/register');
                         },
                         child: const Text('Regístrate'),
                       ),
