@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myapp/paginas/ajustes.dart';
 import 'package:myapp/paginas/home_page.dart';
 import 'package:myapp/paginas/login.dart';
 import 'package:myapp/paginas/pantalla_splash.dart';
@@ -11,25 +12,24 @@ class AppRoutes {
   static const String login = '/login';
   static const String register = '/register';
   static const String home = '/home';
-  
+  static const String ajustes = '/settings';
+
   static Map<String, String> get routes => {
     splash: '/splash',
     login: '/login',
     register: '/register',
     prueba: '/prueba',
     home: '/home',
-
+    ajustes: '/settings',
   };
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
         return MaterialPageRoute(
-          builder: (_) => const AnimatedSplashScreen(
-            nextScreen: LoginPage(),
-          ),
+          builder: (_) => const AnimatedSplashScreen(nextScreen: LoginPage()),
         );
-        case prueba:
+      case prueba:
         return MaterialPageRoute(builder: (_) => const ValidationDemoPage());
       case login:
         return MaterialPageRoute(builder: (_) => const LoginPage());
@@ -37,6 +37,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const RegistroScreen());
       case home:
         return MaterialPageRoute(builder: (_) => const HomePage());
+      case ajustes:
+        return MaterialPageRoute(builder: (_) => const SettingsPage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

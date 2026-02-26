@@ -160,22 +160,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Mi Perfil'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              // Acción para ajustes
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Ajustes')),
-              );
-            },
-          ),
-        ],
-      ),
+      
       body: Stack(
         children: [
           Center(
