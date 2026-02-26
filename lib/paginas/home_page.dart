@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:myapp/paginas/Perfil.dart';
+import 'package:myapp/paginas/ajustes.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -48,7 +49,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("RockMeet"), centerTitle: true),
+      appBar: AppBar(title: const Text("RockMeet"), centerTitle: true, actions: [
+        IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage())), icon: const Icon(Icons.settings))
+      ],),
       body: _selectedNavIndex == 0
           ? _buildExplore()
           : _selectedNavIndex == 3
