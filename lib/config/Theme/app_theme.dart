@@ -4,7 +4,67 @@ import 'package:myapp/config/Theme/constants/colors.dart';
 
 
 class AppTheme {
-  // Light Theme
+  // ===== DECORACIONES PREDETERMINADAS =====
+  
+  static BoxDecoration get primaryGradientBox => BoxDecoration(
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: AppColors.gradientPrimary,
+    ),
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: AppColors.primary.withOpacity(0.6),
+        blurRadius: 20,
+        spreadRadius: 5,
+      ),
+    ],
+  );
+
+  static BoxDecoration get secondaryGradientBox => BoxDecoration(
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: AppColors.gradientSecondary,
+    ),
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: AppColors.secondary.withOpacity(0.6),
+        blurRadius: 20,
+        spreadRadius: 5,
+      ),
+    ],
+  );
+
+  static BoxDecoration get cardBox => BoxDecoration(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(color: AppColors.border, width: 1.5),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.3),
+        blurRadius: 8,
+        spreadRadius: 2,
+      ),
+    ],
+  );
+
+  static BoxDecoration get accentBox => BoxDecoration(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(color: AppColors.primary, width: 2),
+    boxShadow: [
+      BoxShadow(
+        color: AppColors.primary.withOpacity(0.3),
+        blurRadius: 12,
+        spreadRadius: 2,
+      ),
+    ],
+  );
+
+  // ===== LIGHT THEME =====
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
@@ -100,7 +160,7 @@ class AppTheme {
     ),
   );
 
-  // Dark Theme (RECOMENDADO PARA ROCKMEET)
+  // ===== DARK THEME =====
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,

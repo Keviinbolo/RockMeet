@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:myapp/config/Theme/constants/text_styles.dart';
+
+
 enum ValidationState { idle, loading, error, success }
 
 class ValidationStateWidget extends StatelessWidget {
@@ -33,18 +37,20 @@ class ValidationStateWidget extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 60,
             height: 60,
             child: CircularProgressIndicator(
               strokeWidth: 4,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
           const SizedBox(height: 20),
           Text(
             'Cargando...',
-            style: Theme.of(context).textTheme.bodyLarge,
+            style: AppTextStyles.bodyLarge.copyWith(
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -59,12 +65,13 @@ class ValidationStateWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.red.shade50,
+              color: AppColors.error.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.error, width: 2),
             ),
             child: Icon(
               Icons.error_outline,
-              color: Colors.red.shade700,
+              color: AppColors.error,
               size: 60,
             ),
           ),
@@ -72,8 +79,8 @@ class ValidationStateWidget extends StatelessWidget {
           Text(
             errorMessage ?? 'Algo salió mal',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.red.shade700,
+            style: AppTextStyles.headlineSmall.copyWith(
+              color: AppColors.error,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -84,7 +91,7 @@ class ValidationStateWidget extends StatelessWidget {
               icon: const Icon(Icons.refresh),
               label: const Text('Reintentar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
+                backgroundColor: AppColors.error,
               ),
             ),
         ],
@@ -100,12 +107,13 @@ class ValidationStateWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.green.shade50,
+              color: AppColors.success.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.success, width: 2),
             ),
             child: Icon(
               Icons.check_circle_outline,
-              color: Colors.green.shade700,
+              color: AppColors.success,
               size: 60,
             ),
           ),
@@ -113,8 +121,8 @@ class ValidationStateWidget extends StatelessWidget {
           Text(
             successMessage ?? '¡Éxito!',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.green.shade700,
+            style: AppTextStyles.headlineSmall.copyWith(
+              color: AppColors.success,
               fontWeight: FontWeight.w600,
             ),
           ),

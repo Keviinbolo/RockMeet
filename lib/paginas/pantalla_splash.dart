@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:myapp/config/Theme/app_theme.dart';
+import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:myapp/config/Theme/constants/text_styles.dart';
 import 'package:myapp/core/widgets/validation_state_widget.dart';
 
 class AnimatedSplashScreen extends StatefulWidget {
@@ -76,7 +79,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue,
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           Center(
@@ -98,13 +101,13 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                   Container(
                     width: 150,
                     height: 150,
-                   
-                    child: const Icon(Icons.apps_sharp, size: 80, color: Colors.blue),
+                    decoration: AppTheme.primaryGradientBox,
+                    child: const Icon(Icons.apps_sharp, size: 80, color: Colors.white),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     'RockMeet',
-                  
+                    style: AppTextStyles.headlineLarge,
                   ),
                 ],
               ),
