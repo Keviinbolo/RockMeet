@@ -1,0 +1,440 @@
+import 'package:flutter/material.dart';
+
+// Datos del usuario
+const String avatarUrl =
+    'https://images.unsplash.com/photo-1543689604-6fe8dbcd1f59?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMHN0dWRlbnQlMjBwb3J0cmFpdCUyMGhhcHB5fGVufDF8fHx8MTc3MjEyMDc0MHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral';
+
+const List<String> profileImages = [
+  'https://images.unsplash.com/photo-1584819332026-ac894ac5c26e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMHlvdW5nJTIwcGVyc29uJTIwb3V0ZG9vcnxlbnwxfHx8fDE3NzIxMjA5NzF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+  'https://images.unsplash.com/photo-1744869985867-d23cc60e3625?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwbGlmZXN0eWxlJTIwY2FzdWFsfGVufDF8fHx8MTc3MjEyMDk3MXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+  'https://images.unsplash.com/photo-1768725845828-a74119dc4f34?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBob2JieSUyMGFjdGl2aXR5fGVufDF8fHx8MTc3MjEyMDk3MXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+  'https://images.unsplash.com/photo-1623790679957-5a20f98faef6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMGFkdWx0JTIwdHJhdmVsfGVufDF8fHx8MTc3MjEyMDk3Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+  'https://images.unsplash.com/photo-1709287253135-865c92751871?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMG5hdHVyZSUyMG91dGRvb3JzfGVufDF8fHx8MTc3MjEyMDk3Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+];
+
+const Map<String, String> userData = {
+  'name': 'Jordi Baulenas',
+  'email': 'jordibaulenas@ceroca.cat',
+  'bio':
+      'Desarrollador de aplicaciones móviles apasionado por Flutter y el diseño de interfaces.',
+  'likes': '24',
+  'matches': '89',
+  'activities': '03',
+  'twitter': '@jordi_twitter',
+  'instagram': '@jordi_instagram',
+  'tiktok': '@jordi_tiktok',
+};
+
+void main() => runApp(const MyApp());
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      title: 'Perfil',
+      debugShowCheckedModeBanner: false,
+      home: ProfilePage(),
+    );
+  }
+}
+
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  bool isMenuOpen = false;
+  late List<String> images;
+  bool _isAvatarHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    images = profileImages.take(3).toList();
+  }
+
+  void _handleRemoveImage(int index) {
+    setState(() {
+      images.removeAt(index);
+    });
+  }
+
+  void _handleAddImage() {
+    if (images.length >= 3) return;
+    final available = profileImages.where((img) => !images.contains(img)).toList();
+    if (available.isNotEmpty) {
+      final randomIndex = DateTime.now().millisecondsSinceEpoch % available.length;
+      setState(() {
+        images.add(available[randomIndex]);
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay más imágenes disponibles')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mi Perfil'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              setState(() {
+                isMenuOpen = !isMenuOpen;
+              });
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 16),
+
+                // Cabecera del perfil (con overlay al hacer hover)
+                Column(
+                  children: [
+                    MouseRegion(
+                      onEnter: (_) => setState(() => _isAvatarHovered = true),
+                      onExit: (_) => setState(() => _isAvatarHovered = false),
+                      child: GestureDetector(
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Cambiar foto de perfil')),
+                          );
+                        },
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 56,
+                              backgroundImage: NetworkImage(avatarUrl),
+                            ),
+                            if (_isAvatarHovered)
+                              const Positioned.fill(
+                                child: Icon(Icons.camera_alt),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(userData['name']!),
+                    const SizedBox(height: 4),
+                    Text(userData['email']!),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Tarjeta de estadísticas
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        StatCard(
+                          icon: Icons.favorite,
+                          label: 'Me gusta',
+                          value: userData['likes']!,
+                        ),
+                        StatCard(
+                          icon: Icons.people,
+                          label: 'Matches',
+                          value: userData['matches']!,
+                        ),
+                        StatCard(
+                          icon: Icons.calendar_today,
+                          label: 'Actividades',
+                          value: userData['activities']!,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Galería de fotos
+                Card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.photo_camera),
+                            const SizedBox(width: 8),
+                            const Text('Mis Fotos'),
+                            const Spacer(),
+                            Text('${images.length} de 3'),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                childAspectRatio: 0.75,
+                              ),
+                              itemCount: 3,
+                              itemBuilder: (context, index) {
+                                if (index < images.length) {
+                                  final img = images[index];
+                                  return Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          img,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 4,
+                                        right: 4,
+                                        child: GestureDetector(
+                                          onTap: () => _handleRemoveImage(index),
+                                          child: Container(
+                                            width: 28,
+                                            height: 28,
+                                            decoration: const BoxDecoration(
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(Icons.close),
+                                          ),
+                                        ),
+                                      ),
+                                      if (index == 0)
+                                        const Positioned(
+                                          top: 4,
+                                          left: 4,
+                                          child: Text('Principal'),
+                                        ),
+                                    ],
+                                  );
+                                } else {
+                                  return GestureDetector(
+                                    onTap: _handleAddImage,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          width: 2,
+                                          style: BorderStyle.solid,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            width: 40,
+                                            height: 40,
+                                            decoration: const BoxDecoration(
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(Icons.add),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          const Text('Añadir foto'),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Toca las fotos para cambiar su orden. La primera será tu foto principal.',
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Sobre mí
+                InfoSection(
+                  icon: Icons.chat,
+                  title: 'Sobre mí',
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Biografía'),
+                          const SizedBox(height: 4),
+                          Text(userData['bio']!),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Redes Sociales
+                InfoSection(
+                  icon: Icons.public,
+                  title: 'Redes Sociales',
+                  children: [
+                    SocialRow(
+                      icon: Icons.tag,
+                      label: 'Twitter',
+                      value: userData['twitter']!,
+                    ),
+                    SocialRow(
+                      icon: Icons.photo_camera,
+                      label: 'Instagram',
+                      value: userData['instagram']!,
+                    ),
+                    SocialRow(
+                      icon: Icons.music_note,
+                      label: 'TikTok',
+                      value: userData['tiktok']!,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------- Widgets reutilizables sin estilos ----------
+
+class StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const StatCard({required this.icon, required this.label, required this.value, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon),
+          ),
+          const SizedBox(height: 8),
+          Text(value),
+          const SizedBox(height: 2),
+          Text(label),
+        ],
+      ),
+    );
+  }
+}
+
+class InfoSection extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+  const InfoSection({required this.icon, required this.title, required this.children, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(icon),
+                const SizedBox(width: 8),
+                Text(title),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SocialRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const SocialRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label),
+                Text(value),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
