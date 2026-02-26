@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'dart:math' as math;
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/paginas/Perfil.dart';
-import 'package:myapp/paginas/ajustes.dart';
 
+import 'package:myapp/paginas/Perfil.dart';
+import 'package:myapp/paginas/chat_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,57 +15,65 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
   int _selectedNavIndex = 0;
+  bool _isProfileFlipped = false;
 
   final List<Profile> profiles = [
     Profile(
-      id: 1, 
-      name: "Sofia", 
-      age: 24, 
-      photos: [
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1080",
-        "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1080",
-        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1080",
-      ], 
-      bio: "Amante de la aventura 🏔️"
+      id: 1,
+      name: "Sofia",
+      age: 24,
+      photos: ["https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1080"],
+      bio: "Amante de la aventura 🏔️\n\nMe encanta el senderismo y la fotografía de paisajes. Busco a alguien para compartir rutas de montaña los fines de semana.",
     ),
     Profile(
-      id: 2, 
-      name: "Carlos", 
-      age: 27, 
-      photos: [
-        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1080",
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1080",
-      ], 
-      bio: "Fotógrafo y viajero ✈️"
+      id: 2,
+      name: "Carlos",
+      age: 27,
+      photos: ["https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1080"],
+      bio: "Fotógrafo y viajero ✈️\n\nSiempre con la maleta lista. Si te gusta el café recién hecho y las puestas de sol, nos llevaremos muy bien.",
     ),
   ];
 
   void _nextProfile() {
     setState(() {
       currentIndex = (currentIndex + 1) % profiles.length;
+      _isProfileFlipped = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("RockMeet"), centerTitle: true, actions: [
-        IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage())), icon: const Icon(Icons.settings))
-      ],),
-      body: _selectedNavIndex == 0
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              AppBar(
+                title: const Text("RockMeet", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
+                centerTitle: true,
+                elevation: 0,
+                backgroundColor: Colors.white,
+              ),
+              Expanded(
+                child: _selectedNavIndex == 0
           ? _buildExplore()
           : _selectedNavIndex == 3
-              ? const ProfilePage()
-              : const Center(child: Text("Próximamente")),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedNavIndex,
-        onTap: (index) => setState(() => _selectedNavIndex = index),
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explorar'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Likes'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble), label: 'Mensajes'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+          ? const ProfilePage()
+          : _selectedNavIndex == 2
+          ? const ChatScreen() 
+          : const Center(child: Text("Próximamente")),
+
+              ),
+              _buildBottomNav(),
+            ],
+          ),
+          if (_isProfileFlipped)
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: Container(color: Colors.black.withOpacity(0.2)),
+              ),
+            ),
         ],
       ),
     );
@@ -73,7 +81,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildExplore() {
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
         children: [
           Expanded(
@@ -83,12 +91,32 @@ class _HomePageState extends State<HomePage> {
               onSwipeLeft: _nextProfile,
               onSwipeRight: _nextProfile,
               onSwipeUp: _nextProfile,
+              onFlipChanged: (isFlipped) => setState(() => _isProfileFlipped = isFlipped),
             ),
           ),
           const SizedBox(height: 20),
-          _buildActionButtons(),
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 300),
+            opacity: _isProfileFlipped ? 0.0 : 1.0,
+            child: _buildActionButtons(),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return BottomNavigationBar(
+      currentIndex: _selectedNavIndex,
+      onTap: (index) => setState(() => _selectedNavIndex = index),
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: Colors.purple,
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explorar'),
+        BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Likes'),
+        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble), label: 'Mensajes'),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+      ],
     );
   }
 
@@ -96,10 +124,26 @@ class _HomePageState extends State<HomePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        IconButton(onPressed: _nextProfile, icon: const Icon(Icons.close, color: AppColors.error, size: 35)),
-        ElevatedButton(onPressed: _nextProfile, child: const Text("GROUP")),
-        IconButton(onPressed: _nextProfile, icon: const Icon(Icons.favorite, color: AppColors.success, size: 35)),
+        _roundButton(Icons.close, Colors.red, _nextProfile),
+        ElevatedButton(
+          onPressed: _nextProfile,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.blue,
+            shape: const StadiumBorder(),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+          child: const Text("GROUP", style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        _roundButton(Icons.favorite, Colors.green, _nextProfile),
       ],
+    );
+  }
+
+  Widget _roundButton(IconData icon, Color color, VoidCallback onPressed) {
+    return Container(
+      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+      child: IconButton(onPressed: onPressed, icon: Icon(icon, color: color, size: 30)),
     );
   }
 }
@@ -109,6 +153,7 @@ class SwipeableCard extends StatefulWidget {
   final VoidCallback onSwipeLeft;
   final VoidCallback onSwipeRight;
   final VoidCallback onSwipeUp;
+  final Function(bool) onFlipChanged;
 
   const SwipeableCard({
     super.key,
@@ -116,124 +161,169 @@ class SwipeableCard extends StatefulWidget {
     required this.onSwipeLeft,
     required this.onSwipeRight,
     required this.onSwipeUp,
+    required this.onFlipChanged,
   });
 
   @override
   State<SwipeableCard> createState() => _SwipeableCardState();
 }
 
-class _SwipeableCardState extends State<SwipeableCard> {
+class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProviderStateMixin {
   Offset _position = Offset.zero;
   bool _isDragging = false;
-  int _currentImageIndex = 0;
-  final PageController _pageController = PageController();
+  bool _isFlipped = false;
+  late AnimationController _flipController;
 
-  void _prevImage() {
-    if (_currentImageIndex > 0) {
-      _pageController.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
-    }
+  @override
+  void initState() {
+    super.initState();
+    _flipController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
   }
 
-  void _nextImage() {
-    if (_currentImageIndex < widget.profile.photos.length - 1) {
-      _pageController.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
-    }
+  @override
+  void dispose() {
+    _flipController.dispose();
+    super.dispose();
+  }
+
+  void _toggleFlip() {
+    setState(() {
+      _isFlipped = !_isFlipped;
+      _isFlipped ? _flipController.forward() : _flipController.reverse();
+      widget.onFlipChanged(_isFlipped);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    double angle = (_position.dx / 20) * (math.pi / 180);
+    double angleDrag = (_position.dx / 20) * (math.pi / 180);
 
     return GestureDetector(
       onPanStart: (_) => setState(() => _isDragging = true),
       onPanUpdate: (details) => setState(() => _position += details.delta),
       onPanEnd: (details) {
         setState(() => _isDragging = false);
-        if (_position.dx < -150) widget.onSwipeLeft();
-        else if (_position.dx > 150) widget.onSwipeRight();
-        else if (_position.dy < -150) widget.onSwipeUp();
-        else setState(() => _position = Offset.zero);
+
+        if (_position.dx < -140) {
+          widget.onSwipeLeft();
+        } else if (_position.dx > 140) {
+          widget.onSwipeRight();
+        } else if (_position.dy < -140) {
+          widget.onSwipeUp();
+        } else if (_position.dy > 100) {
+          // GESTO ABAJO: Activa el volteo
+          _toggleFlip();
+        }
+
+        setState(() => _position = Offset.zero);
       },
-      child: AnimatedContainer(
-        duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-        transform: Matrix4.identity()
-          ..translate(_position.dx, _position.dy)
-          ..rotateZ(angle),
-        child: _buildCardContent(),
+      child: AnimatedBuilder(
+        animation: _flipController,
+        builder: (context, child) {
+          // Calculamos la rotación en Y (volteo horizontal sobre el eje central)
+          final angleFlip = _flipController.value * math.pi;
+          
+          return Transform(
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.001) // Perspectiva para el efecto 3D
+              ..translate(_position.dx, _position.dy)
+              ..rotateZ(angleDrag)
+              ..rotateY(angleFlip),
+            alignment: Alignment.center,
+            child: angleFlip < math.pi / 2 
+                ? _buildFront() 
+                : Transform(
+                    // Invertimos el reverso para que el texto no se vea al revés
+                    transform: Matrix4.identity()..rotateY(math.pi),
+                    alignment: Alignment.center,
+                    child: _buildBack(),
+                  ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildCardContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(25.0),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Carrusel de imágenes
-                PageView.builder(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(), // Desactivamos scroll manual para usar los clics
-                  itemCount: widget.profile.photos.length,
-                  onPageChanged: (index) => setState(() => _currentImageIndex = index),
-                  itemBuilder: (context, index) => Image.network(widget.profile.photos[index], fit: BoxFit.cover),
-                ),
-                // Zonas de clic (Lados)
-                Row(
-                  children: [
-                    Expanded(child: GestureDetector(onTap: _prevImage, child: Container(color: Colors.transparent))),
-                    Expanded(child: GestureDetector(onTap: _nextImage, child: Container(color: Colors.transparent))),
-                  ],
-                ),
-                // Indicadores (Barras superiores)
-                Positioned(
-                  top: 15, left: 10, right: 10,
-                  child: Row(
-                    children: List.generate(widget.profile.photos.length, (index) {
-                      return Expanded(
-                        child: Container(
-                          height: 4, margin: const EdgeInsets.symmetric(horizontal: 2),
-                          decoration: BoxDecoration(
-                            color: _currentImageIndex == index ? Colors.white : Colors.white.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      );
-                    }),
+  Widget _buildFront() {
+    return AspectRatio(
+      aspectRatio: 0.75,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(25),
+          image: DecorationImage(image: NetworkImage(widget.profile.photos[0]), fit: BoxFit.cover),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(25),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
                   ),
                 ),
-                // Overlays de acción (Aparecen al arrastrar)
-                if (_position.dx > 50) _buildOverlayText("LIKE", AppColors.success, Alignment.topLeft),
-                if (_position.dx < -50) _buildOverlayText("NOPE", AppColors.error, Alignment.topRight),
-                if (_position.dy < -50 && _position.dx.abs() < 50) _buildOverlayText("GROUP", AppColors.secondary, Alignment.bottomCenter),
-              ],
+              ),
             ),
-          ),
+            Positioned(
+              bottom: 20, left: 20,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "${widget.profile.name}, ${widget.profile.age}",
+                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                  ),
+                  const Text("Desliza abajo para detalles", style: TextStyle(color: Colors.white70)),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 15),
-        Text("${widget.profile.name}, ${widget.profile.age}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-        Text(widget.profile.bio, style: const TextStyle(fontSize: 16, color: Colors.grey)),
-      ],
+      ),
     );
   }
 
-  Widget _buildOverlayText(String text, Color color, Alignment alignment) {
-    return Align(
-      alignment: alignment,
-      child: IgnorePointer( // Importante para que no bloquee los clics de las fotos
-        child: Container(
-          margin: const EdgeInsets.all(40),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            border: Border.all(color: color, width: 4),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(text, style: TextStyle(color: color, fontSize: 32, fontWeight: FontWeight.bold)),
+  Widget _buildBack() {
+    return AspectRatio(
+      aspectRatio: 0.75,
+      child: Container(
+        padding: const EdgeInsets.all(30),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.person_pin, size: 60, color: Colors.purple),
+            const SizedBox(height: 10),
+            Text(
+              widget.profile.name,
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+            ),
+            const Divider(height: 30),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  widget.profile.bio,
+                  style: const TextStyle(fontSize: 18, height: 1.5, color: Colors.black87),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: _toggleFlip,
+              icon: const Icon(Icons.flip_to_front, color: Colors.purple),
+              label: const Text("Cerrar info", style: TextStyle(color: Colors.purple)),
+            )
+          ],
         ),
       ),
     );
