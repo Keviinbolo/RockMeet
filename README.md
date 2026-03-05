@@ -1,6 +1,6 @@
 # 🎓 RockMeet
 
-RockMeet es una red social móvil para estudiantes del Institut Roca.  
+RockMeet es una red social móvil para estudiantes del Instituto Roca.  
 Permite conectar con compañeros, compartir contenido y colaborar en proyectos de tu ciclo formativo u otros.
 
 ## ✨ Características
@@ -50,11 +50,11 @@ La aplicación sigue una arquitectura basada en features, organizando el código
 Consulta docs/ARCHITECTURE.md para más detalles.
 
 👥 Público objetivo
-Estudiantes del Institut Roca
+Estudiantes del Instituto Roca
 
 Diferentes ciclos formativos (DAM, DAW, otros)
 
-Profesores (con acceso limitado para anuncios y actividades, si se implementa)
+
 
 📞 Contacto
 Para reportar bugs o sugerencias, utiliza el apartado de Issues del repositorio:

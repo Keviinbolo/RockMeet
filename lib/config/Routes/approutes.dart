@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/paginas/ajustes.dart';
-import 'package:myapp/paginas/home_page.dart';
-import 'package:myapp/paginas/login.dart';
-import 'package:myapp/paginas/pantalla_splash.dart';
-import 'package:myapp/paginas/registro_page.dart';
-import 'package:myapp/paginas/validation_demo_page.dart';
+import 'package:myapp/features/home/screens/home_staff_page.dart';
+import 'package:myapp/features/settings/screens/ajustes.dart';
+import 'package:myapp/features/home/screens/home_page.dart';
+import 'package:myapp/features/auth/screens/login.dart';
+import 'package:myapp/features/auth/screens/pantalla_splash.dart';
+import 'package:myapp/features/auth/screens/registro_page.dart';
+import 'package:myapp/features/validation_demo_page.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -13,6 +14,7 @@ class AppRoutes {
   static const String register = '/register';
   static const String home = '/home';
   static const String ajustes = '/settings';
+  static const String homestaff = '/homestaff';
 
   static Map<String, String> get routes => {
     splash: '/splash',
@@ -21,6 +23,7 @@ class AppRoutes {
     prueba: '/prueba',
     home: '/home',
     ajustes: '/settings',
+    homestaff: '/homestaff',
   };
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -39,6 +42,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const HomePage());
       case ajustes:
         return MaterialPageRoute(builder: (_) => const SettingsPage());
+      case homestaff:
+        return MaterialPageRoute(builder: (_) => const HomeStaffPage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
