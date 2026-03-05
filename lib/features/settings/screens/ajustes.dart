@@ -1,74 +1,89 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
+import 'package:myapp/config/Theme/constants/colors.dart';
 
-class Perfil extends StatelessWidget {
-  const Perfil({Key? key}) : super(key: key);
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return Theme(
-      data: AppTheme.lightTheme,
-      child: Scaffold(
-        backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
-        body: const SettingsPage(),
-      ),
-    );
-  }
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-// Página de ajustes con desplegables (sin estilos)
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({Key? key}) : super(key: key);
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _pushNotifications = true;
+  bool _emailNotifications = false;
+  bool _publicProfile = true;
+  bool _shareLocation = false;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      child: Column(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: Column(
         children: [
-          // Header con botón de retroceso usando tema
+          // Header con gradiente
           Container(
+            decoration: AppTheme.primaryGradientBox,
             padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
-            color: Theme.of(context).primaryColor,
             child: Row(
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.arrow_back, color: Colors.white),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                  ),
                 ),
                 const SizedBox(width: 20),
-                const Text('Ajustes', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(
+                  'Ajustes',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ],
             ),
           ),
-          
-          // Lista de desplegables + botón cerrar sesión
+
+          // Lista de desplegables
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               children: [
                 // Desplegable Cuenta
                 CustomExpansionTile(
                   icon: Icons.person,
                   title: 'Cuenta',
                   subtitle: 'Información personal, email',
-                  children: const [
-                    ListTile(
-                      leading: Icon(Icons.edit),
-                      title: Text('Editar perfil'),
+                  children: [
+                    _buildAccountTile(
+                      icon: Icons.edit,
+                      title: 'Editar perfil',
+                      onTap: () {},
                     ),
-                    ListTile(
-                      leading: Icon(Icons.email),
-                      title: Text('Cambiar email'),
+                    _buildAccountTile(
+                      icon: Icons.email,
+                      title: 'Cambiar email',
+                      onTap: () {},
                     ),
-                    ListTile(
-                      leading: Icon(Icons.lock),
-                      title: Text('Cambiar contraseña'),
+                    _buildAccountTile(
+                      icon: Icons.lock,
+                      title: 'Cambiar contraseña',
+                      onTap: () {},
                     ),
                   ],
                 ),
-                
+
                 // Desplegable Notificaciones
                 CustomExpansionTile(
                   icon: Icons.notifications,
@@ -76,18 +91,24 @@ class SettingsPage extends StatelessWidget {
                   subtitle: 'Configura tus alertas',
                   children: [
                     _buildSwitchTile(
-                      icon: Icons.push_pin,
+                      icon: Icons.notifications_active,
                       title: 'Notificaciones push',
-                      value: true,
+                      value: _pushNotifications,
+                      onChanged: (value) {
+                        setState(() => _pushNotifications = value);
+                      },
                     ),
                     _buildSwitchTile(
                       icon: Icons.email,
                       title: 'Notificaciones por email',
-                      value: false,
+                      value: _emailNotifications,
+                      onChanged: (value) {
+                        setState(() => _emailNotifications = value);
+                      },
                     ),
                   ],
                 ),
-                
+
                 // Desplegable Privacidad
                 CustomExpansionTile(
                   icon: Icons.lock,
@@ -97,55 +118,59 @@ class SettingsPage extends StatelessWidget {
                     _buildSwitchTile(
                       icon: Icons.visibility,
                       title: 'Perfil público',
-                      value: true,
+                      value: _publicProfile,
+                      onChanged: (value) {
+                        setState(() => _publicProfile = value);
+                      },
                     ),
                     _buildSwitchTile(
                       icon: Icons.location_on,
                       title: 'Compartir ubicación',
-                      value: false,
+                      value: _shareLocation,
+                      onChanged: (value) {
+                        setState(() => _shareLocation = value);
+                      },
                     ),
                   ],
                 ),
-                
+
                 // Desplegable Ayuda
                 CustomExpansionTile(
                   icon: Icons.help,
                   title: 'Ayuda',
                   subtitle: 'Soporte y preguntas frecuentes',
-                  children: const [
-                    ListTile(
-                      leading: Icon(Icons.help_outline),
-                      title: Text('Preguntas frecuentes'),
+                  children: [
+                    _buildAccountTile(
+                      icon: Icons.help_outline,
+                      title: 'Preguntas frecuentes',
+                      onTap: () {},
                     ),
-                    ListTile(
-                      leading: Icon(Icons.support_agent),
-                      title: Text('Contactar soporte'),
+                    _buildAccountTile(
+                      icon: Icons.support_agent,
+                      title: 'Contactar soporte',
+                      onTap: () {},
                     ),
                   ],
                 ),
-                
+
                 // Desplegable Acerca de
                 CustomExpansionTile(
                   icon: Icons.info,
                   title: 'Acerca de',
                   subtitle: 'Versión 1.0.0',
-                  children: const [
-                    ListTile(
-                      leading: Icon(Icons.info_outline),
-                      title: Text('Versión de la app'),
-                      subtitle: Text('1.0.0'),
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.code),
-                      title: Text('Términos y condiciones'),
+                  children: [
+                    _buildVersionTile(),
+                    _buildAccountTile(
+                      icon: Icons.code,
+                      title: 'Términos y condiciones',
+                      onTap: () {},
                     ),
                   ],
                 ),
-                
-                const Divider(height: 40),
-                
-                // Botón de cerrar sesión (sin estilos)
+
+                const SizedBox(height: 20),
                 const LogoutButton(),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -154,28 +179,134 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  // Helper para crear SwitchListTile sin estilos
-  static Widget _buildSwitchTile({
+  Widget _buildAccountTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(isDark ? 0.2 : 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward, 
+                color: isDark ? Colors.grey.shade500 : Colors.grey.shade600, 
+                size: 18
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchTile({
     required IconData icon,
     required String title,
     required bool value,
+    required Function(bool) onChanged,
   }) {
-    return SwitchListTile(
-      secondary: Container(
-        padding: const EdgeInsets.all(4),
-        child: Icon(icon),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey.shade800 : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200
+          ),
+        ),
+        child: SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          secondary: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: value 
+                ? AppColors.primary.withOpacity(isDark ? 0.2 : 0.1)
+                : (isDark ? Colors.grey.shade700 : Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: value ? AppColors.primary : (isDark ? Colors.grey.shade600 : Colors.grey.shade600),
+              size: 20,
+            ),
+          ),
+          title: Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
+          ),
+          value: value,
+          onChanged: onChanged,
+          activeColor: AppColors.primary,
+        ),
       ),
-      title: Text(title),
-      value: value,
-      onChanged: (newValue) {
-        // Aquí puedes manejar el cambio de estado
-      },
+    );
+  }
+
+  Widget _buildVersionTile() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Versión de la app',
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '1.0.0',
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-// Widget personalizado para ExpansionTile sin estilos
-class CustomExpansionTile extends StatelessWidget {
+class CustomExpansionTile extends StatefulWidget {
   final IconData icon;
   final String title;
   final String subtitle;
@@ -190,51 +321,139 @@ class CustomExpansionTile extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<CustomExpansionTile> createState() => _CustomExpansionTileState();
+}
+
+class _CustomExpansionTileState extends State<CustomExpansionTile> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ExpansionTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, color: Theme.of(context).primaryColor),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surface : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isExpanded 
+              ? AppColors.primary 
+              : (isDark ? Colors.grey.shade700 : Colors.grey.shade200),
+            width: _isExpanded ? 2 : 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _isExpanded
+                  ? AppColors.primary.withOpacity(isDark ? 0.3 : 0.2)
+                  : Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+              blurRadius: _isExpanded ? 12 : 4,
+              spreadRadius: _isExpanded ? 0 : 0,
+            ),
+          ],
         ),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        children: children,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-        childrenPadding: const EdgeInsets.only(left: 40, right: 16, bottom: 12),
-        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            onExpansionChanged: (value) {
+              setState(() => _isExpanded = value);
+            },
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(isDark ? 0.2 : 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(widget.icon, color: AppColors.primary, size: 20),
+            ),
+            title: Text(
+              widget.title,
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            subtitle: Text(
+              widget.subtitle,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            children: widget.children,
+            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          ),
+        ),
       ),
     );
   }
 }
 
-// Componente LogoutButton sin estilos
 class LogoutButton extends StatelessWidget {
   const LogoutButton({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       children: [
         Container(
           width: double.infinity,
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).primaryColor,
-              side: BorderSide(color: Theme.of(context).primaryColor),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFFF6B6B),
+                Color(0xFFEE5A3F),
+              ],
             ),
-            onPressed: () {
-              _showLogoutConfirmationDialog(context);
-            },
-            child: const Text('Cerrar sesión'),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF6B6B).withOpacity(0.4),
+                blurRadius: 12,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _showLogoutConfirmationDialog(context),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Center(
+                  child: Text(
+                    'Cerrar sesión',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
-        
-        const Text(
+        const SizedBox(height: 12),
+        Text(
           '¿Seguro que quieres salir? Puedes volver a iniciar sesión cuando quieras',
           textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(
+            color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+          ),
         ),
       ],
     );
@@ -245,109 +464,60 @@ class LogoutButton extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Cerrar sesión'),
-          content: const Text('¿Estás seguro de que quieres cerrar sesión?'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Cerrar sesión',
+            style: GoogleFonts.outfit(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Text(
+            '¿Estás seguro de que quieres cerrar sesión?',
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.outfit(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                // Aquí iría la lógica para cerrar sesión
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Sesión cerrada exitosamente')),
+                  SnackBar(
+                    content: Text(
+                      'Sesión cerrada exitosamente',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    backgroundColor: Colors.grey.shade800,
+                    duration: const Duration(seconds: 2),
+                  ),
                 );
               },
-              child: const Text('Cerrar sesión'),
+              child: Text(
+                'Cerrar sesión',
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFFF6B6B),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         );
       },
-    );
-  }
-}
-
-// Mantenemos el CreateAccountModal sin estilos
-class CreateAccountModal extends StatelessWidget {
-  const CreateAccountModal({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 20,
-        right: 20,
-        top: 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Crear Cuenta'),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const TextField(
-            decoration: InputDecoration(
-              labelText: 'Nombre completo',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.person),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const TextField(
-            decoration: InputDecoration(
-              labelText: 'Email',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.email),
-            ),
-            keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 16),
-          const TextField(
-            decoration: InputDecoration(
-              labelText: 'Contraseña',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.lock),
-            ),
-            obscureText: true,
-          ),
-          const SizedBox(height: 16),
-          const TextField(
-            decoration: InputDecoration(
-              labelText: 'Confirmar contraseña',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.lock_outline),
-            ),
-            obscureText: true,
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Cuenta creada exitosamente')),
-                );
-              },
-              child: const Text('Crear Cuenta'),
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
     );
   }
 }

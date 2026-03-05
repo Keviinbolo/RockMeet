@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:myapp/features/profile/screens/Perfil.dart';
 import 'package:myapp/features/chat/screens/chat_page.dart';
+import 'package:myapp/features/settings/screens/ajustes.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,15 +23,21 @@ class _HomePageState extends State<HomePage> {
       id: 1,
       name: "Sofia",
       age: 24,
-      photos: ["https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1080"],
-      bio: "Amante de la aventura 🏔️\n\nMe encanta el senderismo y la fotografía de paisajes. Busco a alguien para compartir rutas de montaña los fines de semana.",
+      photos: [
+        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1080",
+      ],
+      bio:
+          "Amante de la aventura 🏔️\n\nMe encanta el senderismo y la fotografía de paisajes. Busco a alguien para compartir rutas de montaña los fines de semana.",
     ),
     Profile(
       id: 2,
       name: "Carlos",
       age: 27,
-      photos: ["https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1080"],
-      bio: "Fotógrafo y viajero ✈️\n\nSiempre con la maleta lista. Si te gusta el café recién hecho y las puestas de sol, nos llevaremos muy bien.",
+      photos: [
+        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1080",
+      ],
+      bio:
+          "Fotógrafo y viajero ✈️\n\nSiempre con la maleta lista. Si te gusta el café recién hecho y las puestas de sol, nos llevaremos muy bien.",
     ),
   ];
 
@@ -49,20 +56,27 @@ class _HomePageState extends State<HomePage> {
           Column(
             children: [
               AppBar(
-                title: const Text("RockMeet", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
+                title: const Text("RockMeet"),
                 centerTitle: true,
-                elevation: 0,
-                backgroundColor: Colors.white,
+                actions: [
+                  IconButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    ),
+                    icon: const Icon(Icons.settings),
+                  ),
+                ],
               ),
+
               Expanded(
                 child: _selectedNavIndex == 0
-          ? _buildExplore()
-          : _selectedNavIndex == 3
-          ? const ProfilePage()
-          : _selectedNavIndex == 2
-          ? const ChatScreen() 
-          : const Center(child: Text("Próximamente")),
-
+                    ? _buildExplore()
+                    : _selectedNavIndex == 3
+                    ? const ProfilePage()
+                    : _selectedNavIndex == 2
+                    ? const ChatScreen()
+                    : const Center(child: Text("Próximamente")),
               ),
               _buildBottomNav(),
             ],
@@ -91,7 +105,8 @@ class _HomePageState extends State<HomePage> {
               onSwipeLeft: _nextProfile,
               onSwipeRight: _nextProfile,
               onSwipeUp: _nextProfile,
-              onFlipChanged: (isFlipped) => setState(() => _isProfileFlipped = isFlipped),
+              onFlipChanged: (isFlipped) =>
+                  setState(() => _isProfileFlipped = isFlipped),
             ),
           ),
           const SizedBox(height: 20),
@@ -114,7 +129,10 @@ class _HomePageState extends State<HomePage> {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explorar'),
         BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Likes'),
-        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble), label: 'Mensajes'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.chat_bubble),
+          label: 'Mensajes',
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
       ],
     );
@@ -133,7 +151,10 @@ class _HomePageState extends State<HomePage> {
             shape: const StadiumBorder(),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           ),
-          child: const Text("GROUP", style: TextStyle(fontWeight: FontWeight.bold)),
+          child: const Text(
+            "GROUP",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
         _roundButton(Icons.favorite, Colors.green, _nextProfile),
       ],
@@ -142,8 +163,14 @@ class _HomePageState extends State<HomePage> {
 
   Widget _roundButton(IconData icon, Color color, VoidCallback onPressed) {
     return Container(
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-      child: IconButton(onPressed: onPressed, icon: Icon(icon, color: color, size: 30)),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, color: color, size: 30),
+      ),
     );
   }
 }
@@ -168,7 +195,8 @@ class SwipeableCard extends StatefulWidget {
   State<SwipeableCard> createState() => _SwipeableCardState();
 }
 
-class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProviderStateMixin {
+class _SwipeableCardState extends State<SwipeableCard>
+    with SingleTickerProviderStateMixin {
   Offset _position = Offset.zero;
   bool _isDragging = false;
   bool _isFlipped = false;
@@ -225,7 +253,7 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
         builder: (context, child) {
           // Calculamos la rotación en Y (volteo horizontal sobre el eje central)
           final angleFlip = _flipController.value * math.pi;
-          
+
           return Transform(
             transform: Matrix4.identity()
               ..setEntry(3, 2, 0.001) // Perspectiva para el efecto 3D
@@ -233,8 +261,8 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
               ..rotateZ(angleDrag)
               ..rotateY(angleFlip),
             alignment: Alignment.center,
-            child: angleFlip < math.pi / 2 
-                ? _buildFront() 
+            child: angleFlip < math.pi / 2
+                ? _buildFront()
                 : Transform(
                     // Invertimos el reverso para que el texto no se vea al revés
                     transform: Matrix4.identity()..rotateY(math.pi),
@@ -253,8 +281,17 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(25),
-          image: DecorationImage(image: NetworkImage(widget.profile.photos[0]), fit: BoxFit.cover),
-          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
+          image: DecorationImage(
+            image: NetworkImage(widget.profile.photos[0]),
+            fit: BoxFit.cover,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
         ),
         child: Stack(
           children: [
@@ -271,15 +308,23 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
               ),
             ),
             Positioned(
-              bottom: 20, left: 20,
+              bottom: 20,
+              left: 20,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     "${widget.profile.name}, ${widget.profile.age}",
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const Text("Desliza abajo para detalles", style: TextStyle(color: Colors.white70)),
+                  const Text(
+                    "Desliza abajo para detalles",
+                    style: TextStyle(color: Colors.white70),
+                  ),
                 ],
               ),
             ),
@@ -297,7 +342,13 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(25),
-          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
         ),
         child: Column(
           children: [
@@ -312,7 +363,11 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
               child: SingleChildScrollView(
                 child: Text(
                   widget.profile.bio,
-                  style: const TextStyle(fontSize: 18, height: 1.5, color: Colors.black87),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    height: 1.5,
+                    color: Colors.black87,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -321,8 +376,11 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
             TextButton.icon(
               onPressed: _toggleFlip,
               icon: const Icon(Icons.flip_to_front, color: Colors.purple),
-              label: const Text("Cerrar info", style: TextStyle(color: Colors.purple)),
-            )
+              label: const Text(
+                "Cerrar info",
+                style: TextStyle(color: Colors.purple),
+              ),
+            ),
           ],
         ),
       ),
@@ -336,5 +394,11 @@ class Profile {
   final int age;
   final List<String> photos;
   final String bio;
-  Profile({required this.id, required this.name, required this.age, required this.photos, required this.bio});
+  Profile({
+    required this.id,
+    required this.name,
+    required this.age,
+    required this.photos,
+    required this.bio,
+  });
 }

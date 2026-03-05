@@ -41,7 +41,7 @@ class AppRoutes {
       case home:
         return MaterialPageRoute(builder: (_) => const HomePage());
       case ajustes:
-        return MaterialPageRoute(builder: (_) => const SettingsPage());
+        return MaterialPageRoute(builder: (_) => const SettingsScreen());
       case homestaff:
         return MaterialPageRoute(builder: (_) => const HomeStaffPage());
       default:
