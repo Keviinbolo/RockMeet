@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math' as math;
 
-import 'package:myapp/paginas/Perfil.dart';
-import 'package:myapp/paginas/chat_page.dart';
+import 'package:myapp/features/profile/screens/Perfil.dart';
+import 'package:myapp/features/chat/screens/chat_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
