@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/paginas/registro_page.dart';
+
 
 
 class LoginPage extends StatefulWidget {
@@ -172,12 +172,7 @@ class _LoginPageState extends State<LoginPage> {
                       const Text('¿No tienes cuenta? '),
                       TextButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RegistroPage(),
-                            ),
-                          );
+                          Navigator.pushNamed(context, '/register');
                         },
                         child: const Text('Regístrate'),
                       ),
