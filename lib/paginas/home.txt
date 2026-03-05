@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math' as math;
 
-import 'package:myapp/paginas/Perfil.dart';
-import 'package:myapp/paginas/chat_page.dart';
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -55,14 +52,7 @@ class _HomePageState extends State<HomePage> {
                 backgroundColor: Colors.white,
               ),
               Expanded(
-                child: _selectedNavIndex == 0
-          ? _buildExplore()
-          : _selectedNavIndex == 3
-          ? const ProfilePage()
-          : _selectedNavIndex == 2
-          ? const ChatScreen() 
-          : const Center(child: Text("Próximamente")),
-
+                child: _selectedNavIndex == 0 ? _buildExplore() : const Center(child: Text("Próximamente")),
               ),
               _buildBottomNav(),
             ],
