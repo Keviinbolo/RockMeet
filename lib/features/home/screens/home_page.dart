@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myapp/features/events/screens/event_screen.dart';
 import 'dart:ui';
 import 'dart:math' as math;
 
@@ -58,6 +59,7 @@ class _HomePageState extends State<HomePage> {
               AppBar(
                 title: const Text("RockMeet"),
                 centerTitle: true,
+                automaticallyImplyLeading: false,
                 actions: [
                   IconButton(
                     onPressed: () => Navigator.push(
@@ -72,11 +74,15 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: _selectedNavIndex == 0
                     ? _buildExplore()
-                    : _selectedNavIndex == 3
-                    ? const ProfilePage()
+                    : _selectedNavIndex == 1
+                    ? const Center(child: Text("Próximamente"))
                     : _selectedNavIndex == 2
                     ? const ChatScreen()
-                    : const Center(child: Text("Próximamente")),
+                    : _selectedNavIndex == 3
+                    ? const EventScreen()
+                    : _selectedNavIndex == 4
+                    ? const ProfilePage()
+                    : const Center(child: Text("Página no encontrada")),
               ),
               _buildBottomNav(),
             ],
@@ -129,10 +135,8 @@ class _HomePageState extends State<HomePage> {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explorar'),
         BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Likes'),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.chat_bubble),
-          label: 'Mensajes',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble), label: 'Mensajes'),
+        BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Eventos'),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
       ],
     );

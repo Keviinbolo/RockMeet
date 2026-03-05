@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-
+import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:myapp/core/services/event_service.dart';
+import 'package:myapp/features/events/class_event.dart';
+import 'package:intl/intl.dart';
 
 class HomeStaffPage extends StatefulWidget {
   const HomeStaffPage({Key? key}) : super(key: key);
@@ -11,6 +14,25 @@ class HomeStaffPage extends StatefulWidget {
 }
 
 class _HomeStaffPageState extends State<HomeStaffPage> {
+  final EventService _eventService = EventService();
+  final String _staffId = 'staff_001'; // ID del staff actual
+  List<Event> _staffEvents = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (_eventService.getAllEvents().isEmpty) {
+      _eventService.initWithMockData();
+    }
+    _staffEvents = _eventService.getEventsByStaff(_staffId);
+  }
+
+  void _refreshEvents() {
+    setState(() {
+      _staffEvents = _eventService.getEventsByStaff(_staffId);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -18,6 +40,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
         title: const Text('Panel Staff - RockMeet'),
         centerTitle: true,
         elevation: 2,
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -48,6 +71,9 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
 
   // Sección de Resumen
   Widget _buildSummarySection(BuildContext context) {
+    final activeEvents = _staffEvents.where((e) => e.status == EventStatus.active).length;
+    final totalAttendees = _staffEvents.fold<int>(0, (sum, event) => sum + event.attendeeIds.length);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -68,7 +94,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
               child: _buildStatCard(
                 context,
                 title: 'Eventos',
-                value: '12',
+                value: _staffEvents.length.toString(),
                 color: AppColors.primary,
               ),
             ),
@@ -76,8 +102,8 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
             Expanded(
               child: _buildStatCard(
                 context,
-                title: 'Usuarios',
-                value: '234',
+                title: 'Activos',
+                value: activeEvents.toString(),
                 color: AppColors.secondary,
               ),
             ),
@@ -86,7 +112,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
               child: _buildStatCard(
                 context,
                 title: 'Asistentes',
-                value: '1.2K',
+                value: totalAttendees.toString(),
                 color: Colors.orange,
               ),
             ),
@@ -168,31 +194,15 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           icon: Icons.add_circle,
           title: 'Crear Evento',
           subtitle: 'Registrar un nuevo evento',
-          onTap: () => _handleCreateEvent(),
-        ),
-        const SizedBox(height: 12),
-        _buildEventManagementButton(
-          context,
-          icon: Icons.edit,
-          title: 'Editar Evento',
-          subtitle: 'Modificar evento existente',
-          onTap: () => _handleEditEvent(),
-        ),
-        const SizedBox(height: 12),
-        _buildEventManagementButton(
-          context,
-          icon: Icons.delete_outline,
-          title: 'Cancelar Evento',
-          subtitle: 'Cancelar un evento programado',
-          onTap: () => _handleCancelEvent(),
+          onTap: _handleCreateEvent,
         ),
         const SizedBox(height: 12),
         _buildEventManagementButton(
           context,
           icon: Icons.list_alt,
           title: 'Ver Eventos',
-          subtitle: 'Lista de todos los eventos',
-          onTap: () => _handleViewEvents(),
+          subtitle: 'Lista de todos tus eventos',
+          onTap: _handleViewEvents,
         ),
       ],
     );
@@ -279,21 +289,21 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           context,
           icon: Icons.people,
           title: 'Gestionar Usuarios',
-          onTap: () => _handleManageUsers(),
+          onTap: () => _showSnackBar('Gestionar usuarios'),
         ),
         const SizedBox(height: 12),
         _buildOptionButton(
           context,
           icon: Icons.bar_chart,
           title: 'Reportes',
-          onTap: () => _handleReports(),
+          onTap: () => _showSnackBar('Reportes'),
         ),
         const SizedBox(height: 12),
         _buildOptionButton(
           context,
           icon: Icons.settings,
           title: 'Configuración',
-          onTap: () => _handleSettings(),
+          onTap: () => _showSnackBar('Configuración'),
         ),
       ],
     );
@@ -354,64 +364,647 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
 
   // Handlers
   void _handleCreateEvent() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Crear evento'),
-        backgroundColor: AppColors.primary,
-      ),
-    );
-  }
-
-  void _handleEditEvent() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Editar evento'),
-        backgroundColor: AppColors.primary,
-      ),
-    );
-  }
-
-  void _handleCancelEvent() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Cancelar evento'),
-        backgroundColor: AppColors.error,
-      ),
-    );
+    _showCreateEventDialog();
   }
 
   void _handleViewEvents() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _StaffEventsPage(
+          staffId: _staffId,
+          eventService: _eventService,
+          onEventUpdated: _refreshEvents,
+        ),
+      ),
+    );
+  }
+
+  void _showCreateEventDialog() {
+    final formKey = GlobalKey<FormState>();
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final locationController = TextEditingController();
+    final maxAttendeesController = TextEditingController(text: '100');
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    TimeOfDay selectedTime = TimeOfDay.now();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Crear Evento',
+          style: AppTheme.eventTitle.copyWith(color: AppColors.primary),
+        ),
+        content: StatefulBuilder(
+          builder: (context, setState) => SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: titleController,
+                    decoration: InputDecoration(
+                      labelText: 'Título del Evento',
+                      hintText: 'Ej: Partido de Fútbol',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Campo requerido' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: descriptionController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: 'Descripción',
+                      hintText: 'Describe el evento...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Campo requerido' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: locationController,
+                    decoration: InputDecoration(
+                      labelText: 'Ubicación',
+                      hintText: 'Ej: Patio Principal',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Campo requerido' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: maxAttendeesController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Máximo de Asistentes',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Campo requerido';
+                      if (int.tryParse(value!) == null) {
+                        return 'Debe ser un número';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Fecha: ${DateFormat('dd/MM/yyyy').format(selectedDate)}',
+                      style: AppTheme.eventLabel,
+                    ),
+                    trailing: Icon(Icons.calendar_today, color: AppColors.primary),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime.now(),
+                        lastDate:
+                            DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        setState(() => selectedDate = picked);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Hora: ${selectedTime.format(context)}',
+                      style: AppTheme.eventLabel,
+                    ),
+                    trailing: Icon(Icons.access_time, color: AppColors.primary),
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: selectedTime,
+                      );
+                      if (picked != null) {
+                        setState(() => selectedTime = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: AppTheme.filterButtonLabel
+                  .copyWith(color: Colors.grey[600]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                final dateTime = DateTime(
+                  selectedDate.year,
+                  selectedDate.month,
+                  selectedDate.day,
+                  selectedTime.hour,
+                  selectedTime.minute,
+                );
+
+                _eventService.createEvent(
+                  title: titleController.text,
+                  description: descriptionController.text,
+                  dateTime: dateTime,
+                  location: locationController.text,
+                  staffOrganizerId: _staffId,
+                  maxAttendees: int.parse(maxAttendeesController.text),
+                );
+
+                _refreshEvents();
+                Navigator.pop(context);
+                _showSnackBar('Evento creado exitosamente');
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Ver eventos'),
+        content: Text(
+          message,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: AppColors.primary,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+
+// Página para ver eventos del staff
+class _StaffEventsPage extends StatefulWidget {
+  final String staffId;
+  final EventService eventService;
+  final VoidCallback onEventUpdated;
+
+  const _StaffEventsPage({
+    required this.staffId,
+    required this.eventService,
+    required this.onEventUpdated,
+  });
+
+  @override
+  State<_StaffEventsPage> createState() => _StaffEventsPageState();
+}
+
+class _StaffEventsPageState extends State<_StaffEventsPage> {
+  late List<Event> _staffEvents;
+
+  @override
+  void initState() {
+    super.initState();
+    _staffEvents = widget.eventService.getEventsByStaff(widget.staffId);
+  }
+
+  void _refreshEvents() {
+    setState(() {
+      _staffEvents = widget.eventService.getEventsByStaff(widget.staffId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mis Eventos'),
+        elevation: 0,
+      ),
+      body: _staffEvents.isEmpty
+          ? _buildEmptyState(context)
+          : ListView.builder(
+              itemCount: _staffEvents.length,
+              itemBuilder: (context, index) {
+                final event = _staffEvents[index];
+                return _buildEventTile(context, event);
+              },
+            ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.event_busy,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No has creado eventos aún',
+            style: AppTheme.emptyStateTitle,
+          ),
+        ],
       ),
     );
   }
 
-  void _handleManageUsers() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Gestionar usuarios'),
-        backgroundColor: AppColors.secondary,
+  Widget _buildEventTile(BuildContext context, Event event) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      decoration: AppTheme.eventCardBox,
+      child: Column(
+        children: [
+          // Encabezado
+          Container(
+            decoration: AppTheme.eventHeaderGradient,
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title,
+                        style: AppTheme.eventTitle.copyWith(
+                          color: Colors.white,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          event.status.toString().split('.').last.toUpperCase(),
+                          style: AppTheme.eventLabel.copyWith(
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Contenido
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.description,
+                  style: AppTheme.eventDescription,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      DateFormat('dd/MM/yyyy HH:mm').format(event.dateTime),
+                      style: AppTheme.eventLabel.copyWith(
+                        color: isDark ? Colors.grey[300] : Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        event.location,
+                        style: AppTheme.eventLabel.copyWith(
+                          color: isDark ? Colors.grey[300] : Colors.grey[700],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Asistentes: ${event.attendeeIds.length}/${event.maxAttendees}',
+                  style: AppTheme.eventLabel.copyWith(
+                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: event.status == EventStatus.active
+                            ? () => _showEditEventDialog(event)
+                            : null,
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Editar'),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: event.status == EventStatus.active
+                                ? AppColors.primary
+                                : Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: event.status == EventStatus.active
+                            ? () => _showDeleteConfirmation(event)
+                            : null,
+                        icon: const Icon(Icons.delete),
+                        label: const Text('Cancelar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: event.status == EventStatus.active
+                              ? Colors.red
+                              : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  void _handleReports() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Reportes'),
-        backgroundColor: AppColors.secondary,
+  void _showEditEventDialog(Event event) {
+    final formKey = GlobalKey<FormState>();
+    final titleController = TextEditingController(text: event.title);
+    final descriptionController =
+        TextEditingController(text: event.description);
+    final locationController = TextEditingController(text: event.location);
+    final maxAttendeesController =
+        TextEditingController(text: event.maxAttendees.toString());
+    DateTime selectedDate = event.dateTime;
+    TimeOfDay selectedTime =
+        TimeOfDay(hour: event.dateTime.hour, minute: event.dateTime.minute);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Editar Evento',
+          style: AppTheme.eventTitle.copyWith(color: AppColors.primary),
+        ),
+        content: StatefulBuilder(
+          builder: (context, setState) => SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: titleController,
+                    decoration: InputDecoration(
+                      labelText: 'Título del Evento',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Campo requerido' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: descriptionController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: 'Descripción',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Campo requerido' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: locationController,
+                    decoration: InputDecoration(
+                      labelText: 'Ubicación',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Campo requerido' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: maxAttendeesController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Máximo de Asistentes',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Campo requerido';
+                      if (int.tryParse(value!) == null) {
+                        return 'Debe ser un número';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Fecha: ${DateFormat('dd/MM/yyyy').format(selectedDate)}',
+                      style: AppTheme.eventLabel,
+                    ),
+                    trailing: Icon(Icons.calendar_today, color: AppColors.primary),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime.now(),
+                        lastDate:
+                            DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        setState(() => selectedDate = picked);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Hora: ${selectedTime.format(context)}',
+                      style: AppTheme.eventLabel,
+                    ),
+                    trailing: Icon(Icons.access_time, color: AppColors.primary),
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: selectedTime,
+                      );
+                      if (picked != null) {
+                        setState(() => selectedTime = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: AppTheme.filterButtonLabel
+                  .copyWith(color: Colors.grey[600]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                final dateTime = DateTime(
+                  selectedDate.year,
+                  selectedDate.month,
+                  selectedDate.day,
+                  selectedTime.hour,
+                  selectedTime.minute,
+                );
+
+                widget.eventService.updateEvent(
+                  event.id,
+                  title: titleController.text,
+                  description: descriptionController.text,
+                  dateTime: dateTime,
+                  location: locationController.text,
+                  maxAttendees: int.parse(maxAttendeesController.text),
+                );
+
+                _refreshEvents();
+                Navigator.pop(context);
+                _showSnackBar('Evento actualizado exitosamente');
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text('Actualizar'),
+          ),
+        ],
       ),
     );
   }
 
-  void _handleSettings() {
+  void _showDeleteConfirmation(Event event) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          '¿Cancelar evento?',
+          style: AppTheme.eventTitle.copyWith(color: AppColors.error),
+        ),
+        content: Text(
+          'Esta acción no se puede deshacer. ¿Deseas cancelar el evento "${event.title}"?',
+          style: AppTheme.eventDescription,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'No',
+              style: AppTheme.filterButtonLabel
+                  .copyWith(color: Colors.grey[600]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              widget.eventService.cancelEvent(event.id);
+              _refreshEvents();
+              Navigator.pop(context);
+              _showSnackBar('Evento cancelado');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('Sí, Cancelar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Configuración'),
-        backgroundColor: AppColors.secondary,
+        content: Text(
+          message,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: AppColors.primary,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
