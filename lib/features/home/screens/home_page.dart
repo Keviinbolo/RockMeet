@@ -5,6 +5,8 @@ import 'dart:math' as math;
 import 'package:myapp/features/profile/screens/Perfil.dart';
 import 'package:myapp/features/chat/screens/chat_page.dart';
 import 'package:myapp/features/settings/screens/ajustes.dart';
+// CAMBIO 1: Importar el widget de animación de match
+import 'package:myapp/core/widgets/match_animation_widget.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,6 +19,7 @@ class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
   int _selectedNavIndex = 0;
   bool _isProfileFlipped = false;
+  double _dragDownProgress = 0;
 
   final List<Profile> profiles = [
     Profile(
@@ -44,6 +47,40 @@ class _HomePageState extends State<HomePage> {
   void _nextProfile() {
     setState(() {
       currentIndex = (currentIndex + 1) % profiles.length;
+      _isProfileFlipped = false;
+      _dragDownProgress = 0;
+    });
+  }
+
+  // CAMBIO 2: Agregar función para mostrar el modal de match
+  void _showMatchModal() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return MatchModal(
+          profile: {
+            'name': profiles[currentIndex].name,
+            'image': profiles[currentIndex].photos[0],
+          },
+          onClose: () {
+            Navigator.of(context).pop();
+            _nextProfile();
+          },
+        );
+      },
+    );
+  }
+
+  void _resetFlip() {
+    setState(() {
+      _isProfileFlipped = false;
+      _dragDownProgress = 0;
+    });
+  }
+
+  void _toggleCardFlip() {
+    setState(() {
       _isProfileFlipped = false;
     });
   }
@@ -81,13 +118,6 @@ class _HomePageState extends State<HomePage> {
               _buildBottomNav(),
             ],
           ),
-          if (_isProfileFlipped)
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                child: Container(color: Colors.black.withOpacity(0.2)),
-              ),
-            ),
         ],
       ),
     );
@@ -99,21 +129,59 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           Expanded(
-            child: SwipeableCard(
-              key: ValueKey(currentIndex),
-              profile: profiles[currentIndex],
-              onSwipeLeft: _nextProfile,
-              onSwipeRight: _nextProfile,
-              onSwipeUp: _nextProfile,
-              onFlipChanged: (isFlipped) =>
-                  setState(() => _isProfileFlipped = isFlipped),
+            child: Stack(
+              children: [
+                // Blur effect layer - solo durante el arrastre
+                if (_dragDownProgress > 0)
+                  Positioned.fill(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: 5 * (_dragDownProgress / 100),
+                        sigmaY: 5 * (_dragDownProgress / 100),
+                      ),
+                      child: Container(
+                        color: Colors.black.withOpacity(
+                          0.2 * (_dragDownProgress / 100),
+                        ),
+                      ),
+                    ),
+                  ),
+                // Tarjeta encima (no afectada por blur)
+                SwipeableCard(
+                  key: ValueKey(currentIndex),
+                  profile: profiles[currentIndex],
+                  onSwipeLeft: _nextProfile,
+                  // CAMBIO 3: Cambiar onSwipeRight para mostrar el modal de match
+                  onSwipeRight: _showMatchModal,
+                  onSwipeUp: _nextProfile,
+                  onFlipChanged: (isFlipped) =>
+                      setState(() => _isProfileFlipped = isFlipped),
+                  onDragDownProgress: (progress) =>
+                      setState(() => _dragDownProgress = progress),
+                ),
+                // Detectar clic fuera para voltear
+                if (_isProfileFlipped)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      onTap: _toggleCardFlip,
+                      child: Container(
+                        color: Colors.transparent,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
-          AnimatedOpacity(
-            duration: const Duration(milliseconds: 300),
-            opacity: _isProfileFlipped ? 0.0 : 1.0,
-            child: _buildActionButtons(),
+          Stack(
+            children: [
+              // Action buttons with animation
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _isProfileFlipped ? 0.0 : 1.0,
+                child: _buildActionButtons(),
+              ),
+            ],
           ),
         ],
       ),
@@ -156,7 +224,8 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
-        _roundButton(Icons.favorite, Colors.green, _nextProfile),
+        // CAMBIO 4: Cambiar el botón de corazón para mostrar el modal de match
+        _roundButton(Icons.favorite, Colors.green, _showMatchModal),
       ],
     );
   }
@@ -181,6 +250,7 @@ class SwipeableCard extends StatefulWidget {
   final VoidCallback onSwipeRight;
   final VoidCallback onSwipeUp;
   final Function(bool) onFlipChanged;
+  final Function(double) onDragDownProgress;
 
   const SwipeableCard({
     super.key,
@@ -189,6 +259,7 @@ class SwipeableCard extends StatefulWidget {
     required this.onSwipeRight,
     required this.onSwipeUp,
     required this.onFlipChanged,
+    required this.onDragDownProgress,
   });
 
   @override
@@ -231,7 +302,17 @@ class _SwipeableCardState extends State<SwipeableCard>
 
     return GestureDetector(
       onPanStart: (_) => setState(() => _isDragging = true),
-      onPanUpdate: (details) => setState(() => _position += details.delta),
+      onPanUpdate: (details) {
+        setState(() {
+          _position += details.delta;
+          // Calcular el progreso del arrastre hacia abajo (0-100)
+          double dragProgress = (_position.dy > 0)
+              ? math.min((_position.dy / 100) * 100, 100)
+              : 0;
+          // Notificar el progreso del arrastre hacia abajo
+          widget.onDragDownProgress(dragProgress);
+        });
+      },
       onPanEnd: (details) {
         setState(() => _isDragging = false);
 
@@ -246,7 +327,10 @@ class _SwipeableCardState extends State<SwipeableCard>
           _toggleFlip();
         }
 
-        setState(() => _position = Offset.zero);
+        setState(() {
+          _position = Offset.zero;
+          widget.onDragDownProgress(0);
+        });
       },
       child: AnimatedBuilder(
         animation: _flipController,
