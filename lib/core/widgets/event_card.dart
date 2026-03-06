@@ -8,9 +8,7 @@ class EventCard extends StatelessWidget {
   final Event event;
   final VoidCallback? onTap;
   final VoidCallback? onAttendanceToggle;
-  final VoidCallback? onSuggestToggle;
   final bool isUserAttending;
-  final bool isUserSuggesting;
   final bool isStaffView;
 
   const EventCard({
@@ -18,9 +16,7 @@ class EventCard extends StatelessWidget {
     required this.event,
     this.onTap,
     this.onAttendanceToggle,
-    this.onSuggestToggle,
     this.isUserAttending = false,
-    this.isUserSuggesting = false,
     this.isStaffView = false,
   });
 
@@ -168,43 +164,18 @@ class EventCard extends StatelessWidget {
 
                   // Botones de acción para usuarios
                   if (!isStaffView)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: onAttendanceToggle,
-                            icon: Icon(isUserAttending
-                                ? Icons.check_circle
-                                : Icons.add_circle_outline),
-                            label: Text(
-                              isUserAttending ? 'Asistiendo' : 'Ir',
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  isUserAttending ? Colors.green : AppColors.primary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: onSuggestToggle,
-                            icon: Icon(isUserSuggesting
-                                ? Icons.favorite
-                                : Icons.favorite_outline),
-                            label: Text(
-                              isUserSuggesting ? 'Sugerido' : 'Sugerir',
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                color: isUserSuggesting
-                                    ? Colors.red
-                                    : AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    ElevatedButton.icon(
+                      onPressed: onAttendanceToggle,
+                      icon: Icon(isUserAttending
+                          ? Icons.check_circle
+                          : Icons.add_circle_outline),
+                      label: Text(
+                        isUserAttending ? 'Asistiendo' : 'Ir',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isUserAttending ? Colors.green : AppColors.primary,
+                      ),
                     ),
 
                   // Información para staff
@@ -212,14 +183,6 @@ class EventCard extends StatelessWidget {
                     Wrap(
                       spacing: 8,
                       children: [
-                        Chip(
-                          label: Text(
-                            '${event.suggestedByIds.length} sugerencias',
-                          ),
-                          avatar: const Icon(Icons.favorite, size: 18),
-                          backgroundColor:
-                              AppColors.primary.withOpacity(0.2),
-                        ),
                         Chip(
                           label: Text(
                             event.status.toString().split('.').last.toUpperCase(),

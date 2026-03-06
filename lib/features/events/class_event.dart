@@ -6,8 +6,8 @@ class Event {
   final String location;
   final String? imageUrl;
   final String staffOrganizerId;
-  final List<String> attendeeIds; // Usuarios que van a asistir
-  final List<String> suggestedByIds; // Usuarios que sugirieron el evento
+  final String? suggestedByUserId; // Nuevo: Usuario que sugirió/creó el evento
+  final List<String> attendeeIds;
   final int maxAttendees;
   final EventStatus status;
   final DateTime createdAt;
@@ -21,8 +21,8 @@ class Event {
     required this.location,
     this.imageUrl,
     required this.staffOrganizerId,
+    this.suggestedByUserId,
     this.attendeeIds = const [],
-    this.suggestedByIds = const [],
     this.maxAttendees = 100,
     this.status = EventStatus.active,
     required this.createdAt,
@@ -37,8 +37,8 @@ class Event {
     String? location,
     String? imageUrl,
     String? staffOrganizerId,
+    String? suggestedByUserId,
     List<String>? attendeeIds,
-    List<String>? suggestedByIds,
     int? maxAttendees,
     EventStatus? status,
     DateTime? createdAt,
@@ -52,8 +52,8 @@ class Event {
       location: location ?? this.location,
       imageUrl: imageUrl ?? this.imageUrl,
       staffOrganizerId: staffOrganizerId ?? this.staffOrganizerId,
+      suggestedByUserId: suggestedByUserId ?? this.suggestedByUserId,
       attendeeIds: attendeeIds ?? this.attendeeIds,
-      suggestedByIds: suggestedByIds ?? this.suggestedByIds,
       maxAttendees: maxAttendees ?? this.maxAttendees,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -62,4 +62,4 @@ class Event {
   }
 }
 
-enum EventStatus { active, cancelled, completed }
+enum EventStatus { pending, active, inactive, cancelled, completed }

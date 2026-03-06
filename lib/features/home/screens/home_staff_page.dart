@@ -50,17 +50,17 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
             children: [
               // Sección de Resumen
               _buildSummarySection(context),
-              
+
               const SizedBox(height: 28),
-              
+
               // Sección de Gestión de Eventos
               _buildEventManagementSection(context),
-              
+
               const SizedBox(height: 28),
-              
+
               // Sección adicional
               _buildAdditionalSection(context),
-              
+
               const SizedBox(height: 24),
             ],
           ),
@@ -71,9 +71,15 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
 
   // Sección de Resumen
   Widget _buildSummarySection(BuildContext context) {
-    final activeEvents = _staffEvents.where((e) => e.status == EventStatus.active).length;
-    final totalAttendees = _staffEvents.fold<int>(0, (sum, event) => sum + event.attendeeIds.length);
-    
+    final activeEvents = _staffEvents
+        .where((e) => e.status == EventStatus.active)
+        .length;
+    final totalAttendees = _staffEvents.fold<int>(
+      0,
+      (sum, event) => sum + event.attendeeIds.length,
+    );
+    final pendingEvents = _eventService.getPendingEvents().length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -111,8 +117,8 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
             Expanded(
               child: _buildStatCard(
                 context,
-                title: 'Asistentes',
-                value: totalAttendees.toString(),
+                title: 'Pendientes',
+                value: pendingEvents.toString(),
                 color: Colors.orange,
               ),
             ),
@@ -130,15 +136,12 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
     required Color color,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
         color: isDark ? AppColors.surface : Colors.white,
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 2,
-        ),
+        border: Border.all(color: color.withOpacity(0.3), width: 2),
         boxShadow: [
           BoxShadow(
             color: color.withOpacity(0.2),
@@ -176,7 +179,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
   // Sección de Gestión de Eventos
   Widget _buildEventManagementSection(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -204,6 +207,14 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           subtitle: 'Lista de todos tus eventos',
           onTap: _handleViewEvents,
         ),
+        const SizedBox(height: 12),
+        _buildEventManagementButton(
+          context,
+          icon: Icons.approval,
+          title: 'Aprobar Eventos',
+          subtitle: 'Revisar eventos sugeridos por usuarios',
+          onTap: _handleApproveEvents,
+        ),
       ],
     );
   }
@@ -217,17 +228,14 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Material(
       color: Colors.transparent,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: isDark ? AppColors.surface : Colors.white,
-          border: Border.all(
-            color: AppColors.border,
-            width: 1.5,
-          ),
+          border: Border.all(color: AppColors.border, width: 1.5),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(isDark ? 0.4 : 0.08),
@@ -237,12 +245,11 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           ],
         ),
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: Icon(
-            icon,
-            color: AppColors.primary,
-            size: 28,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
           ),
+          leading: Icon(icon, color: AppColors.primary, size: 28),
           title: Text(
             title,
             style: GoogleFonts.outfit(
@@ -272,7 +279,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
   // Sección adicional
   Widget _buildAdditionalSection(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -317,17 +324,14 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Material(
       color: Colors.transparent,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: isDark ? AppColors.surface : Colors.white,
-          border: Border.all(
-            color: AppColors.border,
-            width: 1.5,
-          ),
+          border: Border.all(color: AppColors.border, width: 1.5),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(isDark ? 0.4 : 0.08),
@@ -337,12 +341,11 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           ],
         ),
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: Icon(
-            icon,
-            color: AppColors.secondary,
-            size: 26,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
           ),
+          leading: Icon(icon, color: AppColors.secondary, size: 26),
           title: Text(
             title,
             style: GoogleFonts.outfit(
@@ -372,6 +375,19 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
       context,
       MaterialPageRoute(
         builder: (_) => _StaffEventsPage(
+          staffId: _staffId,
+          eventService: _eventService,
+          onEventUpdated: _refreshEvents,
+        ),
+      ),
+    );
+  }
+
+  void _handleApproveEvents() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _PendingEventsPage(
           staffId: _staffId,
           eventService: _eventService,
           onEventUpdated: _refreshEvents,
@@ -471,14 +487,16 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
                       'Fecha: ${DateFormat('dd/MM/yyyy').format(selectedDate)}',
                       style: AppTheme.eventLabel,
                     ),
-                    trailing: Icon(Icons.calendar_today, color: AppColors.primary),
+                    trailing: Icon(
+                      Icons.calendar_today,
+                      color: AppColors.primary,
+                    ),
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
                         initialDate: selectedDate,
                         firstDate: DateTime.now(),
-                        lastDate:
-                            DateTime.now().add(const Duration(days: 365)),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
                       );
                       if (picked != null) {
                         setState(() => selectedDate = picked);
@@ -513,8 +531,9 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: AppTheme.filterButtonLabel
-                  .copyWith(color: Colors.grey[600]),
+              style: AppTheme.filterButtonLabel.copyWith(
+                color: Colors.grey[600],
+              ),
             ),
           ),
           ElevatedButton(
@@ -542,10 +561,316 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
                 _showSnackBar('Evento creado exitosamente');
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: AppColors.primary,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+
+// Página para aprobar eventos pendientes
+class _PendingEventsPage extends StatefulWidget {
+  final String staffId;
+  final EventService eventService;
+  final VoidCallback onEventUpdated;
+
+  const _PendingEventsPage({
+    required this.staffId,
+    required this.eventService,
+    required this.onEventUpdated,
+  });
+
+  @override
+  State<_PendingEventsPage> createState() => _PendingEventsPageState();
+}
+
+class _PendingEventsPageState extends State<_PendingEventsPage> {
+  late List<Event> _pendingEvents;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshEvents();
+  }
+
+  void _refreshEvents() {
+    setState(() {
+      _pendingEvents = widget.eventService.getPendingEvents();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Eventos Pendientes de Aprobación'),
+        elevation: 0,
+      ),
+      body: _pendingEvents.isEmpty
+          ? _buildEmptyState(context)
+          : ListView.builder(
+              itemCount: _pendingEvents.length,
+              itemBuilder: (context, index) {
+                final event = _pendingEvents[index];
+                return _buildPendingEventTile(context, event);
+              },
+            ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle, size: 64, color: Colors.green[400]),
+          const SizedBox(height: 16),
+          Text('No hay eventos pendientes', style: AppTheme.emptyStateTitle),
+          const SizedBox(height: 8),
+          Text(
+            'Todos los eventos sugeridos han sido revisados',
+            style: AppTheme.eventLabel,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingEventTile(BuildContext context, Event event) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      decoration: AppTheme.eventCardBox,
+      child: Column(
+        children: [
+          // Encabezado con color diferente para pendientes
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.orange[600]!, Colors.orange[400]!],
+              ),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title,
+                        style: AppTheme.eventTitle.copyWith(
+                          color: Colors.white,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          'Sugerido por: ${event.suggestedByUserId ?? "Usuario"}',
+                          style: AppTheme.eventLabel.copyWith(
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Contenido
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.description,
+                  style: AppTheme.eventDescription,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      DateFormat('dd/MM/yyyy HH:mm').format(event.dateTime),
+                      style: AppTheme.eventLabel.copyWith(
+                        color: isDark ? Colors.grey[300] : Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        event.location,
+                        style: AppTheme.eventLabel.copyWith(
+                          color: isDark ? Colors.grey[300] : Colors.grey[700],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Máximo de asistentes: ${event.maxAttendees}',
+                  style: AppTheme.eventLabel.copyWith(
+                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showApproveConfirmation(event),
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text('Aceptar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showRejectConfirmation(event),
+                        icon: const Icon(Icons.cancel),
+                        label: const Text('Rechazar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showApproveConfirmation(Event event) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          '¿Aprobar evento?',
+          style: AppTheme.eventTitle.copyWith(color: Colors.green),
+        ),
+        content: Text(
+          'El evento "${event.title}" será aprobado y estará disponible para que otros usuarios se apunten.',
+          style: AppTheme.eventDescription,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: AppTheme.filterButtonLabel.copyWith(
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              widget.eventService.approveEvent(event.id, widget.staffId);
+              widget.onEventUpdated();
+              _refreshEvents();
+              Navigator.pop(context);
+              _showSnackBar('Evento aprobado exitosamente');
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Sí, Aprobar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRejectConfirmation(Event event) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          '¿Rechazar evento?',
+          style: AppTheme.eventTitle.copyWith(color: AppColors.error),
+        ),
+        content: Text(
+          'El evento "${event.title}" será rechazado y no estará disponible. Esta acción no se puede deshacer.',
+          style: AppTheme.eventDescription,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: AppTheme.filterButtonLabel.copyWith(
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              widget.eventService.rejectEvent(event.id);
+              widget.onEventUpdated();
+              _refreshEvents();
+              Navigator.pop(context);
+              _showSnackBar('Evento rechazado');
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Sí, Rechazar'),
           ),
         ],
       ),
@@ -602,10 +927,7 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis Eventos'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Mis Eventos'), elevation: 0),
       body: _staffEvents.isEmpty
           ? _buildEmptyState(context)
           : ListView.builder(
@@ -623,16 +945,9 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.event_busy,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.event_busy, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
-          Text(
-            'No has creado eventos aún',
-            style: AppTheme.emptyStateTitle,
-          ),
+          Text('No has creado eventos aún', style: AppTheme.emptyStateTitle),
         ],
       ),
     );
@@ -703,7 +1018,11 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 16, color: AppColors.primary),
+                    Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       DateFormat('dd/MM/yyyy HH:mm').format(event.dateTime),
@@ -741,7 +1060,9 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: event.status == EventStatus.active
+                        onPressed:
+                            event.status == EventStatus.active ||
+                                event.status == EventStatus.inactive
                             ? () => _showEditEventDialog(event)
                             : null,
                         icon: const Icon(Icons.edit),
@@ -758,15 +1079,19 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: event.status == EventStatus.active
+                        onPressed:
+                            event.status == EventStatus.active ||
+                                event.status == EventStatus.inactive
                             ? () => _showDeleteConfirmation(event)
                             : null,
                         icon: const Icon(Icons.delete),
                         label: const Text('Cancelar'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: event.status == EventStatus.active
+                          backgroundColor:
+                              event.status == EventStatus.active ||
+                                  event.status == EventStatus.inactive
                               ? Colors.red
-                              : Colors.grey,
+                              : null,
                         ),
                       ),
                     ),
@@ -783,14 +1108,20 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
   void _showEditEventDialog(Event event) {
     final formKey = GlobalKey<FormState>();
     final titleController = TextEditingController(text: event.title);
-    final descriptionController =
-        TextEditingController(text: event.description);
+    final descriptionController = TextEditingController(
+      text: event.description,
+    );
+
     final locationController = TextEditingController(text: event.location);
-    final maxAttendeesController =
-        TextEditingController(text: event.maxAttendees.toString());
+    final maxAttendeesController = TextEditingController(
+      text: event.maxAttendees.toString(),
+    );
     DateTime selectedDate = event.dateTime;
-    TimeOfDay selectedTime =
-        TimeOfDay(hour: event.dateTime.hour, minute: event.dateTime.minute);
+    TimeOfDay selectedTime = TimeOfDay(
+      hour: event.dateTime.hour,
+      minute: event.dateTime.minute,
+    );
+    EventStatus currentStatus = event.status;
 
     showDialog(
       context: context,
@@ -871,14 +1202,16 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                       'Fecha: ${DateFormat('dd/MM/yyyy').format(selectedDate)}',
                       style: AppTheme.eventLabel,
                     ),
-                    trailing: Icon(Icons.calendar_today, color: AppColors.primary),
+                    trailing: Icon(
+                      Icons.calendar_today,
+                      color: AppColors.primary,
+                    ),
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
                         initialDate: selectedDate,
                         firstDate: DateTime.now(),
-                        lastDate:
-                            DateTime.now().add(const Duration(days: 365)),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
                       );
                       if (picked != null) {
                         setState(() => selectedDate = picked);
@@ -903,6 +1236,34 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                       }
                     },
                   ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        if (currentStatus == EventStatus.active) {
+                          currentStatus = EventStatus.inactive;
+                        } else if (currentStatus == EventStatus.inactive) {
+                          currentStatus = EventStatus.active;
+                        }
+                      });
+                    },
+                    icon: Icon(
+                      currentStatus == EventStatus.active
+                          ? Icons.check_circle
+                          : Icons.pause_circle,
+                    ),
+                    label: Text(
+                      currentStatus == EventStatus.active
+                          ? 'Evento Activo'
+                          : 'Evento Inactivo',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: currentStatus == EventStatus.active
+                          ? AppColors.primary
+                          : Colors.grey[600],
+                      minimumSize: const Size(double.infinity, 44),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -913,10 +1274,12 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: AppTheme.filterButtonLabel
-                  .copyWith(color: Colors.grey[600]),
+              style: AppTheme.filterButtonLabel.copyWith(
+                color: Colors.grey[600],
+              ),
             ),
           ),
+
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
@@ -936,15 +1299,17 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                   location: locationController.text,
                   maxAttendees: int.parse(maxAttendeesController.text),
                 );
-
+                if (currentStatus == EventStatus.active) {
+                  widget.eventService.activateEvent(event.id);
+                } else if (currentStatus == EventStatus.inactive) {
+                  widget.eventService.deactivateEvent(event.id);
+                }
                 _refreshEvents();
                 Navigator.pop(context);
                 _showSnackBar('Evento actualizado exitosamente');
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Actualizar'),
           ),
         ],
@@ -973,8 +1338,9 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'No',
-              style: AppTheme.filterButtonLabel
-                  .copyWith(color: Colors.grey[600]),
+              style: AppTheme.filterButtonLabel.copyWith(
+                color: Colors.grey[600],
+              ),
             ),
           ),
           ElevatedButton(
@@ -984,9 +1350,7 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
               Navigator.pop(context);
               _showSnackBar('Evento cancelado');
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Sí, Cancelar'),
           ),
         ],

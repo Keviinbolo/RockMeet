@@ -19,13 +19,35 @@ class _EventScreenState extends State<EventScreen> {
   late List<Event> _filteredEvents;
   String _filterType = 'all';
 
+  // Controladores para el formulario
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _locationController;
+  late TextEditingController _maxAttendeesController;
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+
   @override
   void initState() {
     super.initState();
+    _titleController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _locationController = TextEditingController();
+    _maxAttendeesController = TextEditingController(text: '100');
+
     if (_eventService.getAllEvents().isEmpty) {
       _eventService.initWithMockData();
     }
     _updateFilteredEvents();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _locationController.dispose();
+    _maxAttendeesController.dispose();
+    super.dispose();
   }
 
   void _updateFilteredEvents() {
@@ -37,11 +59,7 @@ class _EventScreenState extends State<EventScreen> {
               .where((e) => e.attendeeIds.contains(_currentUserId))
               .toList();
           break;
-        case 'suggested':
-          _filteredEvents = allEvents
-              .where((e) => e.suggestedByIds.contains(_currentUserId))
-              .toList();
-          break;
+
         default:
           _filteredEvents = allEvents;
       }
@@ -61,20 +79,6 @@ class _EventScreenState extends State<EventScreen> {
         } catch (e) {
           _showSnackBar('Error: El evento está lleno', isError: true);
         }
-      }
-      _updateFilteredEvents();
-    }
-  }
-
-  void _toggleSuggestion(String eventId) {
-    final event = _eventService.getEventById(eventId);
-    if (event != null) {
-      if (event.suggestedByIds.contains(_currentUserId)) {
-        _eventService.removeSuggestEvent(eventId, _currentUserId);
-        _showSnackBar('Sugerencia removida');
-      } else {
-        _eventService.suggestEvent(eventId, _currentUserId);
-        _showSnackBar('¡Evento sugerido!');
       }
       _updateFilteredEvents();
     }
@@ -108,9 +112,7 @@ class _EventScreenState extends State<EventScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           event.title,
-          style: AppTheme.eventTitle.copyWith(
-            color: AppColors.primary,
-          ),
+          style: AppTheme.eventTitle.copyWith(color: AppColors.primary),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -132,10 +134,23 @@ class _EventScreenState extends State<EventScreen> {
                 value: '${event.attendeeIds.length}/${event.maxAttendees}',
               ),
               const SizedBox(height: 12),
-              _DetailRow(
-                label: 'Sugerencias',
-                value: '${event.suggestedByIds.length}',
-              ),
+              if (event.imageUrl != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Imagen del evento', style: AppTheme.eventDetailLabel),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        event.imageUrl!,
+                        height: 150,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -154,10 +169,184 @@ class _EventScreenState extends State<EventScreen> {
     );
   }
 
+  void _showCreateEventDialog() {
+    _titleController.clear();
+    _descriptionController.clear();
+    _locationController.clear();
+    _maxAttendeesController.text = '100';
+    _selectedDate = null;
+    _selectedTime = null;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Crear Evento',
+          style: AppTheme.eventTitle.copyWith(color: AppColors.primary),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'Título del evento',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  prefixIcon: const Icon(Icons.event),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'Descripción',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  prefixIcon: const Icon(Icons.description),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _locationController,
+                decoration: InputDecoration(
+                  labelText: 'Ubicación',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  prefixIcon: const Icon(Icons.location_on),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _maxAttendeesController,
+                decoration: InputDecoration(
+                  labelText: 'Máximo de asistentes',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  prefixIcon: const Icon(Icons.people),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate:
+                              DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (date != null) {
+                          setState(() => _selectedDate = date);
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(_selectedDate == null
+                          ? 'Seleccionar fecha'
+                          : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          setState(() => _selectedTime = time);
+                        }
+                      },
+                      icon: const Icon(Icons.schedule),
+                      label: Text(_selectedTime == null
+                          ? 'Seleccionar hora'
+                          : '${_selectedTime!.hour}:${_selectedTime!.minute.toString().padLeft(2, '0')}'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: AppTheme.filterButtonLabel.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_titleController.text.isEmpty ||
+                  _descriptionController.text.isEmpty ||
+                  _locationController.text.isEmpty ||
+                  _selectedDate == null ||
+                  _selectedTime == null) {
+                _showSnackBar('Por favor completa todos los campos',
+                    isError: true);
+                return;
+              }
+
+              final dateTime = DateTime(
+                _selectedDate!.year,
+                _selectedDate!.month,
+                _selectedDate!.day,
+                _selectedTime!.hour,
+                _selectedTime!.minute,
+              );
+
+              try {
+                _eventService.createSuggestedEvent(
+                  title: _titleController.text,
+                  description: _descriptionController.text,
+                  dateTime: dateTime,
+                  location: _locationController.text,
+                  suggestedByUserId: _currentUserId,
+                  maxAttendees: int.parse(_maxAttendeesController.text),
+                );
+
+                Navigator.pop(context);
+                _showSnackBar(
+                    '¡Evento sugerido! Espera la aprobación del staff');
+              } catch (e) {
+                _showSnackBar('Error al crear el evento', isError: true);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Column(
         children: [
           // Filtros
@@ -184,15 +373,6 @@ class _EventScreenState extends State<EventScreen> {
                       _updateFilteredEvents();
                     },
                   ),
-                  const SizedBox(width: 8),
-                  _FilterOption(
-                    label: 'Sugeridos',
-                    isSelected: _filterType == 'suggested',
-                    onTap: () {
-                      setState(() => _filterType = 'suggested');
-                      _updateFilteredEvents();
-                    },
-                  ),
                 ],
               ),
             ),
@@ -206,24 +386,27 @@ class _EventScreenState extends State<EventScreen> {
                     itemCount: _filteredEvents.length,
                     itemBuilder: (context, index) {
                       final event = _filteredEvents[index];
-                      final isAttending =
-                          event.attendeeIds.contains(_currentUserId);
-                      final isSuggesting =
-                          event.suggestedByIds.contains(_currentUserId);
+                      final isAttending = event.attendeeIds.contains(
+                        _currentUserId,
+                      );
 
                       return EventCard(
                         event: event,
                         onTap: () => _showEventDetails(event),
-                        onAttendanceToggle: () => _toggleAttendance(event.id),
-                        onSuggestToggle: () => _toggleSuggestion(event.id),
+                        onAttendanceToggle: () =>
+                            _toggleAttendance(event.id),
                         isUserAttending: isAttending,
-                        isUserSuggesting: isSuggesting,
                         isStaffView: false,
                       );
                     },
                   ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showCreateEventDialog,
+        tooltip: 'Crear evento',
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -270,8 +453,6 @@ class _EmptyState extends StatelessWidget {
     String message = 'No hay eventos disponibles';
     if (filterType == 'attending') {
       message = 'No estás apuntado a ningún evento';
-    } else if (filterType == 'suggested') {
-      message = 'No has sugerido ningún evento';
     }
 
     return Center(
@@ -305,25 +486,16 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _DetailRow({
-    required this.label,
-    required this.value,
-  });
+  const _DetailRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: AppTheme.eventDetailLabel,
-        ),
+        Text(label, style: AppTheme.eventDetailLabel),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: AppTheme.eventDetailValue,
-        ),
+        Text(value, style: AppTheme.eventDetailValue),
       ],
     );
   }
