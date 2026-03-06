@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 
-
 class AppTheme {
   // ===== DECORACIONES PREDETERMINADAS =====
   
@@ -62,6 +61,97 @@ class AppTheme {
         spreadRadius: 2,
       ),
     ],
+  );
+
+  // ===== DECORACIONES PARA EVENTOS =====
+  
+  static BoxDecoration get eventCardBox => BoxDecoration(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(color: AppColors.border, width: 1.5),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.3),
+        blurRadius: 8,
+        spreadRadius: 2,
+      ),
+    ],
+  );
+
+  static BoxDecoration get eventHeaderGradient => BoxDecoration(
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: AppColors.gradientPrimary,
+    ),
+    borderRadius: const BorderRadius.only(
+      topLeft: Radius.circular(12),
+      topRight: Radius.circular(12),
+    ),
+  );
+
+  static BoxDecoration get filterButtonActive => BoxDecoration(
+    color: AppColors.primary,
+    border: Border.all(
+      color: AppColors.primary,
+      width: 2,
+    ),
+    borderRadius: BorderRadius.circular(8),
+  );
+
+  static BoxDecoration get filterButtonInactive => BoxDecoration(
+    color: Colors.transparent,
+    border: Border.all(
+      color: AppColors.border,
+      width: 2,
+    ),
+    borderRadius: BorderRadius.circular(8),
+  );
+
+  // ===== TEXT STYLES PARA EVENTOS =====
+  
+  static TextStyle get eventTitle => GoogleFonts.outfit(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 0.5,
+  );
+
+  static TextStyle get eventDescription => GoogleFonts.outfit(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.3,
+  );
+
+  static TextStyle get eventLabel => GoogleFonts.outfit(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.4,
+    color: AppColors.primary,
+  );
+
+  static TextStyle get eventDetailLabel => GoogleFonts.outfit(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.3,
+    color: AppColors.primary,
+  );
+
+  static TextStyle get eventDetailValue => GoogleFonts.outfit(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.2,
+  );
+
+  static TextStyle get filterButtonLabel => GoogleFonts.outfit(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.3,
+  );
+
+  static TextStyle get emptyStateTitle => GoogleFonts.outfit(
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.3,
   );
 
   // ===== LIGHT THEME =====
