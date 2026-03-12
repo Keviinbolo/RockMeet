@@ -5,6 +5,8 @@ import 'package:myapp/config/Theme/constants/colors.dart';
 import 'terminos_condiciones.dart';
 import 'politica_privacidad.dart';
 import 'cambiar_contrasenia.dart';
+import 'contactar_soporte.dart';
+import 'preguntas_frecuentes.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -143,12 +145,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildAccountTile(
                       icon: Icons.help_outline,
                       title: 'Preguntas frecuentes',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PreguntasFrecuentesScreen(),
+                          ),
+                        );
+                      },
                     ),
                     _buildAccountTile(
                       icon: Icons.support_agent,
                       title: 'Contactar soporte',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ContactarSoporteScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
