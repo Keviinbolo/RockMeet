@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/features/events/screens/event_screen.dart';
+import 'package:myapp/features/like/screens/like_page.dart';
 import 'dart:ui';
 import 'dart:math' as math;
 
@@ -112,7 +113,7 @@ class _HomePageState extends State<HomePage> {
                 child: _selectedNavIndex == 0
                     ? _buildExplore()
                     : _selectedNavIndex == 1
-                    ? const Center(child: Text("Próximamente"))
+                    ? const LikesPage()
                     : _selectedNavIndex == 2
                     ? const ChatScreen()
                     : _selectedNavIndex == 3
