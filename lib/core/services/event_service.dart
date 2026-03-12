@@ -1,9 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:myapp/features/events/class_event.dart';
 import 'package:uuid/uuid.dart';
 
 class EventService {
   static final EventService _instance = EventService._internal();
-  final List<Event> _events = [];
 
   factory EventService() {
     return _instance;
@@ -11,279 +11,310 @@ class EventService {
 
   EventService._internal();
 
-  // Obtener todos los eventos
-  List<Event> getAllEvents() => _events;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Obtener eventos activos
-  List<Event> getActiveEvents() =>
-      _events.where((e) => e.status == EventStatus.active).toList();
-
-  // Obtener eventos creados por un staff
-  List<Event> getEventsByStaff(String staffId) =>
-      _events.where((e) => e.staffOrganizerId == staffId).toList();
-
-  // Obtener eventos a los que asiste un usuario
-  List<Event> getUserAttendingEvents(String userId) {
-    return _events.where((e) => e.attendeeIds.contains(userId)).toList();
-  }
-
-  // Crear evento (solo staff)
-  Event createEvent({
+  // Crear evento
+  Future<String> createEvent({
     required String title,
     required String description,
     required DateTime dateTime,
     required String location,
     required String staffOrganizerId,
-    String? imageUrl,
     int maxAttendees = 100,
-  }) {
-    final event = Event(
-      id: const Uuid().v4(),
-      title: title,
-      description: description,
-      dateTime: dateTime,
-      location: location,
-      imageUrl: imageUrl,
-      staffOrganizerId: staffOrganizerId,
-      maxAttendees: maxAttendees,
-      createdAt: DateTime.now(),
-    );
-
-    _events.add(event);
-    return event;
+    String? imageUrl,
+    String? suggestedByUserId,
+  }) async {
+    try {
+      final eventId = const Uuid().v4();
+      await _firestore.collection('events').doc(eventId).set({
+        'id': eventId,
+        'title': title,
+        'description': description,
+        'dateTime': Timestamp.fromDate(dateTime),
+        'location': location,
+        'staffOrganizerId': staffOrganizerId,
+        'suggestedByUserId': suggestedByUserId,
+        'attendeeIds': [],
+        'maxAttendees': maxAttendees,
+        'status': EventStatus.active.toString(),
+        'imageUrl': imageUrl ?? '',
+        'createdAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+      });
+      return eventId;
+    } catch (e) {
+      print('Error creando evento: $e');
+      rethrow;
+    }
   }
 
-  // Editar evento
-  Event? updateEvent(
+  // Obtener evento por ID
+  Future<Event?> getEventById(String eventId) async {
+    try {
+      final doc = await _firestore.collection('events').doc(eventId).get();
+      if (doc.exists) {
+        return _eventFromMap(doc.data()!, eventId);
+      }
+      return null;
+    } catch (e) {
+      print('Error obteniendo evento: $e');
+      return null;
+    }
+  }
+
+  // Stream de todos los eventos
+  Stream<List<Event>> getAllEventsStream() {
+    return _firestore
+        .collection('events')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => _eventFromMap(doc.data(), doc.id))
+              .toList(),
+        );
+  }
+
+  // Stream de eventos del staff
+  Stream<List<Event>> getEventsByStaffStream(String staffId) {
+    return _firestore
+        .collection('events')
+        .where('staffOrganizerId', isEqualTo: staffId)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => _eventFromMap(doc.data(), doc.id))
+              .toList(),
+        );
+  }
+
+  // Stream de eventos activos
+  Stream<List<Event>> getActiveEventsStream() {
+    return _firestore
+        .collection('events')
+        .where('status', isEqualTo: EventStatus.active.toString())
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => _eventFromMap(doc.data(), doc.id))
+              .toList(),
+        );
+  }
+
+  // Stream de eventos pendientes
+  Stream<List<Event>> getPendingEventsStream() {
+    return _firestore
+        .collection('events')
+        .where('status', isEqualTo: EventStatus.pending.toString())
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => _eventFromMap(doc.data(), doc.id))
+              .toList(),
+        );
+  }
+
+  // Stream de eventos en los que un usuario está registrado
+  Stream<List<Event>> getUserAttendingEventsStream(String userId) {
+    return _firestore
+        .collection('events')
+        .where('attendeeIds', arrayContains: userId)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => _eventFromMap(doc.data(), doc.id))
+              .toList(),
+        );
+  }
+
+  // Marcar usuario como asistente
+  Future<void> markUserAsAttendee(String eventId, String userId) async {
+    try {
+      final event = await getEventById(eventId);
+      if (event == null) throw Exception('Evento no encontrado');
+
+      if (event.attendeeIds.length >= event.maxAttendees) {
+        throw Exception('El evento está lleno');
+      }
+
+      if (!event.attendeeIds.contains(userId)) {
+        await _firestore.collection('events').doc(eventId).update({
+          'attendeeIds': FieldValue.arrayUnion([userId]),
+          'updatedAt': Timestamp.now(),
+        });
+      }
+    } catch (e) {
+      print('Error marcando asistente: $e');
+      rethrow;
+    }
+  }
+
+  // Remover usuario como asistente
+  Future<void> removeUserAsAttendee(String eventId, String userId) async {
+    try {
+      await _firestore.collection('events').doc(eventId).update({
+        'attendeeIds': FieldValue.arrayRemove([userId]),
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error removiendo asistente: $e');
+      rethrow;
+    }
+  }
+
+  // Actualizar evento
+  Future<void> updateEvent(
     String eventId, {
     String? title,
     String? description,
     DateTime? dateTime,
     String? location,
-    String? imageUrl,
     int? maxAttendees,
-  }) {
-    final index = _events.indexWhere((e) => e.id == eventId);
-    if (index == -1) return null;
+    String? imageUrl,
+  }) async {
+    try {
+      Map<String, dynamic> updates = {'updatedAt': Timestamp.now()};
 
-    final updatedEvent = _events[index].copyWith(
-      title: title,
-      description: description,
-      dateTime: dateTime,
-      location: location,
-      imageUrl: imageUrl,
-      maxAttendees: maxAttendees,
-      updatedAt: DateTime.now(),
-    );
+      if (title != null) updates['title'] = title;
+      if (description != null) updates['description'] = description;
+      if (dateTime != null) updates['dateTime'] = Timestamp.fromDate(dateTime);
+      if (location != null) updates['location'] = location;
+      if (maxAttendees != null) updates['maxAttendees'] = maxAttendees;
+      if (imageUrl != null) updates['imageUrl'] = imageUrl;
 
-    _events[index] = updatedEvent;
-    return updatedEvent;
+      await _firestore.collection('events').doc(eventId).update(updates);
+    } catch (e) {
+      print('Error actualizando evento: $e');
+      rethrow;
+    }
+  }
+
+  // Aprobar evento
+  Future<void> approveEvent(String eventId, String staffId) async {
+    try {
+      await _firestore.collection('events').doc(eventId).update({
+        'status': EventStatus.active.toString(),
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error aprobando evento: $e');
+      rethrow;
+    }
+  }
+
+  // Rechazar evento
+  Future<void> rejectEvent(String eventId) async {
+    try {
+      await _firestore.collection('events').doc(eventId).update({
+        'status': EventStatus.cancelled.toString(),
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error rechazando evento: $e');
+      rethrow;
+    }
+  }
+
+  // Activar evento
+  Future<void> activateEvent(String eventId) async {
+    try {
+      await _firestore.collection('events').doc(eventId).update({
+        'status': EventStatus.active.toString(),
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error activando evento: $e');
+      rethrow;
+    }
+  }
+
+  // Desactivar evento
+  Future<void> deactivateEvent(String eventId) async {
+    try {
+      await _firestore.collection('events').doc(eventId).update({
+        'status': EventStatus.inactive.toString(),
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error desactivando evento: $e');
+      rethrow;
+    }
   }
 
   // Cancelar evento
-  Event? cancelEvent(String eventId) {
-    final index = _events.indexWhere((e) => e.id == eventId);
-    if (index == -1) return null;
-
-    final cancelledEvent = _events[index].copyWith(
-      status: EventStatus.cancelled,
-    );
-    _events[index] = cancelledEvent;
-    return cancelledEvent;
-  }
-
-  // Marcar asistencia
-  Event? markUserAsAttendee(String eventId, String userId) {
-    final event = _events.firstWhere(
-      (e) => e.id == eventId,
-      orElse: () => throw Exception('Event not found'),
-    );
-
-    if (event.attendeeIds.contains(userId)) return event;
-    if (event.attendeeIds.length >= event.maxAttendees) {
-      throw Exception('Event is full');
+  Future<void> cancelEvent(String eventId) async {
+    try {
+      await _firestore.collection('events').doc(eventId).update({
+        'status': EventStatus.cancelled.toString(),
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error cancelando evento: $e');
+      rethrow;
     }
-
-    final attendees = [...event.attendeeIds, userId];
-    final index = _events.indexWhere((e) => e.id == eventId);
-    final updatedEvent = _events[index].copyWith(
-      attendeeIds: attendees,
-      updatedAt: DateTime.now(),
-    );
-
-    _events[index] = updatedEvent;
-    return updatedEvent;
   }
 
-  // Desmarcar asistencia
-  Event? removeUserAsAttendee(String eventId, String userId) {
-    final index = _events.indexWhere((e) => e.id == eventId);
-    if (index == -1) return null;
-
-    final attendees = _events[index].attendeeIds
-        .where((id) => id != userId)
-        .toList();
-
-    final updatedEvent = _events[index].copyWith(
-      attendeeIds: attendees,
-      updatedAt: DateTime.now(),
+  // Helper privado para convertir documento a Event
+  Event _eventFromMap(Map<String, dynamic> data, String docId) {
+    return Event(
+      id: data['id'] ?? docId,
+      title: data['title'] ?? '',
+      description: data['description'] ?? '',
+      dateTime: (data['dateTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      location: data['location'] ?? '',
+      staffOrganizerId: data['staffOrganizerId'] ?? '',
+      suggestedByUserId: data['suggestedByUserId'],
+      attendeeIds: List<String>.from(data['attendeeIds'] ?? []),
+      maxAttendees: data['maxAttendees'] ?? 100,
+      status: _parseEventStatus(data['status']),
+      imageUrl: data['imageUrl'],
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
-
-    _events[index] = updatedEvent;
-    return updatedEvent;
   }
 
-  Event createSuggestedEvent({
+  EventStatus _parseEventStatus(String? statusString) {
+    if (statusString == null) return EventStatus.active;
+    try {
+      return EventStatus.values.firstWhere(
+        (e) => e.toString() == statusString,
+        orElse: () => EventStatus.active,
+      );
+    } catch (e) {
+      return EventStatus.active;
+    }
+  }
+
+  // Crear evento sugerido por usuario (requiere aprobación)
+  Future<String> createSuggestedEvent({
     required String title,
     required String description,
     required DateTime dateTime,
     required String location,
     required String suggestedByUserId,
-    String? imageUrl,
     int maxAttendees = 100,
-  }) {
-    final event = Event(
-      id: const Uuid().v4(),
-      title: title,
-      description: description,
-      dateTime: dateTime,
-      location: location,
-      imageUrl: imageUrl,
-      staffOrganizerId: '', // Se asignará cuando apruebe staff
-      suggestedByUserId: suggestedByUserId,
-      maxAttendees: maxAttendees,
-      status: EventStatus.pending, // Estado pendiente de aprobación
-      createdAt: DateTime.now(),
-    );
-
-    _events.add(event);
-    return event;
-  }
-
-  // Obtener eventos pendientes de aprobación
-  List<Event> getPendingEvents() =>
-      _events.where((e) => e.status == EventStatus.pending).toList();
-
-  // Aprobar evento sugerido (solo staff)
-  Event? approveEvent(String eventId, String staffId) {
-    final index = _events.indexWhere((e) => e.id == eventId);
-    if (index == -1) return null;
-
-    final approvedEvent = _events[index].copyWith(
-      status: EventStatus.active,
-      staffOrganizerId: staffId,
-      updatedAt: DateTime.now(),
-    );
-
-    _events[index] = approvedEvent;
-    return approvedEvent;
-  }
-
-  // Rechazar evento sugerido (solo staff)
-  Event? rejectEvent(String eventId) {
-    final index = _events.indexWhere((e) => e.id == eventId);
-    if (index == -1) return null;
-
-    _events.removeAt(index);
-    return null;
-  }
-
-  // Desactivar evento
-  Event? deactivateEvent(String eventId) {
-    final index = _events.indexWhere((e) => e.id == eventId);
-    if (index == -1) return null;
-
-    final inactiveEvent = _events[index].copyWith(
-      status: EventStatus.inactive,
-      updatedAt: DateTime.now(),
-    );
-    _events[index] = inactiveEvent;
-    return inactiveEvent;
-  }
-
-  // Activar evento
-  Event? activateEvent(String eventId) {
-    final index = _events.indexWhere((e) => e.id == eventId);
-    if (index == -1) return null;
-
-    final activeEvent = _events[index].copyWith(
-      status: EventStatus.active,
-      updatedAt: DateTime.now(),
-    );
-    _events[index] = activeEvent;
-    return activeEvent;
-  }
-
-  // Obtener un evento por ID
-  Event? getEventById(String eventId) {
+    String? imageUrl,
+  }) async {
     try {
-      return _events.firstWhere((e) => e.id == eventId);
+      final eventId = const Uuid().v4();
+      await _firestore.collection('events').doc(eventId).set({
+        'id': eventId,
+        'title': title,
+        'description': description,
+        'dateTime': Timestamp.fromDate(dateTime),
+        'location': location,
+        'staffOrganizerId': 'pending', // Temporal, hasta que sea aprobado
+        'suggestedByUserId': suggestedByUserId,
+        'attendeeIds': [],
+        'maxAttendees': maxAttendees,
+        'status': EventStatus.pending.toString(), // ← ESTADO PENDIENTE
+        'imageUrl': imageUrl ?? '',
+        'createdAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+      });
+      return eventId;
     } catch (e) {
-      return null;
+      print('Error creando evento sugerido: $e');
+      rethrow;
     }
-  }
-
-  // Limpiar eventos (útil para testing)
-  void clearEvents() => _events.clear();
-  //Prueba de datos utilizando el constructor de eventos para crear eventos de ejemplo
-  void initWithMockData() {
-    final now = DateTime.now();
-    _events.addAll([
-      Event(
-        id: '1',
-        title: 'Fútbol - Partido de Prácticas',
-        description:
-            'Partido amistoso para todos los estudiantes interesados en fútbol. Se juega en el patio principal.',
-        dateTime: now.add(const Duration(days: 7)),
-        location: 'Patio Principal - Instituto ROCA',
-        staffOrganizerId: 'staff_001',
-        maxAttendees: 30,
-        createdAt: now,
-      ),
-      Event(
-        id: '2',
-        title: 'Torneo de Voleibol Inter-Cursos',
-        description:
-            'Competencia de voleibol entre los diferentes cursos. Inscripción por equipos de 6 personas.',
-        dateTime: now.add(const Duration(days: 14)),
-        location: 'Cancha de Voleibol - Instituto ROCA',
-        staffOrganizerId: 'staff_002',
-        maxAttendees: 100,
-        createdAt: now,
-      ),
-      Event(
-        id: '3',
-        title: 'Taller de Debate Académico',
-        description:
-            'Sesión de debate sobre temas de actualidad. Mejora tu oratoria y argumentación.',
-        dateTime: now.add(const Duration(days: 3)),
-        location: 'Aula Magna - Instituto ROCA',
-        staffOrganizerId: 'staff_001',
-        maxAttendees: 40,
-        createdAt: now,
-      ),
-      Event(
-        id: '4',
-        title: 'Carrera de Atletismo 100m',
-        description:
-            'Carrera de velocidad abierta para todos los estudiantes. Hay premios para los ganadores.',
-        dateTime: now.add(const Duration(days: 10)),
-        location: 'Pista de Atletismo - Instituto ROCA',
-        staffOrganizerId: 'staff_003',
-        maxAttendees: 50,
-        createdAt: now,
-      ),
-      Event(
-        id: '5',
-        title: 'Jornada de Ciencias',
-        description:
-            'Presenta tus proyectos científicos y aprende de otros estudiantes. Muestra de trabajos prácticos.',
-        dateTime: now.add(const Duration(days: 21)),
-        location: 'Laboratorios - Instituto ROCA',
-        staffOrganizerId: 'staff_002',
-        maxAttendees: 80,
-        createdAt: now,
-      ),
-    ]);
   }
 }

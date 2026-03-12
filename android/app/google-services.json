@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "286086003467",
+    "firebase_url": "https://rockmeet-56f83-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "rockmeet-56f83",
+    "storage_bucket": "rockmeet-56f83.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:286086003467:android:4f77d192f2e6b132d5000e",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGqBFj5HlKzW_mrPJs8-4LaQd3g7LIA00"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
