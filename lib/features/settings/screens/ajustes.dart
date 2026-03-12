@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
+import 'terminos_condiciones.dart';
+import 'politica_privacidad.dart';
+import 'cambiar_contrasenia.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -67,19 +70,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: 'Información personal, email',
                   children: [
                     _buildAccountTile(
-                      icon: Icons.edit,
-                      title: 'Editar perfil',
-                      onTap: () {},
-                    ),
-                    _buildAccountTile(
-                      icon: Icons.email,
-                      title: 'Cambiar email',
-                      onTap: () {},
-                    ),
-                    _buildAccountTile(
                       icon: Icons.lock,
                       title: 'Cambiar contraseña',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CambiarContraseniaScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -163,7 +163,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildAccountTile(
                       icon: Icons.code,
                       title: 'Términos y condiciones',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TerminosCondicionesScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildAccountTile(
+                      icon: Icons.privacy_tip,
+                      title: 'Política y privacidad',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PoliticaPrivacidadScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
