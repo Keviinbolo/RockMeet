@@ -32,7 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Header con gradiente
           Container(
             decoration: AppTheme.primaryGradientBox,
-            padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             child: Row(
               children: [
                 GestureDetector(
@@ -168,6 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
+                
 
                 // Desplegable Acerca de
                 CustomExpansionTile(

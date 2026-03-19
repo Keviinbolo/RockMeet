@@ -43,6 +43,66 @@ class _PreguntasFrecuentesScreenState extends State<PreguntasFrecuentesScreen> {
       answer:
           'Ve a "Ajustes" > "Ayuda" > "Contactar soporte" donde podrás enviar un mensaje directo a nuestro equipo de soporte. Responderemos a tu consulta lo antes posible.',
     ),
+    FAQItem(
+      question: '¿Cómo funcionan los intereses y el matching?',
+      answer:
+          'Nuestro algoritmo te muestra perfiles de personas que comparten tus intereses. Cuantos más intereses selecciones y completes tu perfil, mejores serán las recomendaciones que recibas.',
+    ),
+    FAQItem(
+      question: '¿Es seguro compartir mi información personal?',
+      answer:
+          'Tu privacidad es nuestra prioridad. Todos tus datos están encriptados y protegidos. Nunca compartimos tu información con terceros sin tu consentimiento. Puedes revisar nuestras políticas en "Ajustes" > "Acerca de" > "Política y privacidad".',
+    ),
+    FAQItem(
+      question: '¿Cómo sé que los perfiles son reales?',
+      answer:
+          'Todos los nuevos usuarios deben verificar su identidad. Recomendamos ver múltiples fotos, leer la biografía completa y conversar antes de conocer en persona. Si un perfil parece sospechoso, puedes reportarlo.',
+    ),
+    FAQItem(
+      question: '¿Cómo bloqueo o reporto a un usuario?',
+      answer:
+          'Abre el perfil del usuario problemático y toca el icono de los tres puntos en la esquina. Selecciona "Bloquear" para evitar que se comunique contigo o "Reportar" para notificar a nuestro equipo sobre comportamiento inapropiado.',
+    ),
+    FAQItem(
+      question: '¿Puedo ver quién visitó mi perfil?',
+      answer:
+          'Por ahora, no mostramos la lista de visitantes para mantener la privacidad de nuestros usuarios. Sin embargo, puedes ver cuando alguien te envía un mensaje o muestra interés en ti.',
+    ),
+    FAQItem(
+      question: '¿Cómo configuro mis notificaciones?',
+      answer:
+          'Ve a "Ajustes" > "Notificaciones" donde puedes activar o desactivar notificaciones push y notificaciones por correo. También puedes elegir qué tipo de eventos deseas que te notifiquen.',
+    ),
+    FAQItem(
+      question: '¿Puedo hacer mi perfil privado?',
+      answer:
+          'Sí, puedes controlar la visibilidad de tu perfil desde "Ajustes" > "Privacidad" > "Perfil público". Si lo desactivas, solo las personas que ya sigues podrán ver tu perfil completo.',
+    ),
+    FAQItem(
+      question: '¿Qué hago si olvido mi contraseña?',
+      answer:
+          'En la pantalla de inicio de sesión, toca "¿Olvidaste tu contraseña?". Ingresa tu correo electrónico registrado y recibirás un enlace para restablecer tu contraseña. El enlace expira en 24 horas por seguridad.',
+    ),
+    FAQItem(
+      question: '¿Cómo elimino mi cuenta?',
+      answer:
+          'Para eliminar tu cuenta, contacta al equipo de soporte desde "Ajustes" > "Ayuda" > "Contactar soporte" y solicita la eliminación. Ten en cuenta que esta acción es permanente y no se puede deshacer.',
+    ),
+    FAQItem(
+      question: '¿Puedo usar RockMeet desde múltiples dispositivos?',
+      answer:
+          'Sí, puedes acceder a tu cuenta desde diferentes dispositivos usando tus credenciales. Sin embargo, por seguridad, si lo haces desde un dispositivo desconocido, recibirás una notificación.',
+    ),
+    FAQItem(
+      question: '¿Hay límites en la cantidad de mensajes que puedo enviar?',
+      answer:
+          'No hay límite en la cantidad de mensajes que puedes enviar a otros usuarios. Sin embargo, si recibimos reportes de spam, podemos limitar temporalmente tu cuenta.',
+    ),
+    FAQItem(
+      question: '¿Qué hago si la aplicación se comporta de manera extraña?',
+      answer:
+          '1. Intenta cerrar y abrir la app nuevamente\n2. Limpia el caché de la aplicación en tu dispositivo\n3. Actualiza la aplicación a la última versión disponible\n4. Si el problema persiste, contacta al soporte técnico.',
+    ),
   ];
 
   @override
@@ -56,7 +116,7 @@ class _PreguntasFrecuentesScreenState extends State<PreguntasFrecuentesScreen> {
           // Header con gradiente
           Container(
             decoration: AppTheme.primaryGradientBox,
-            padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             child: Row(
               children: [
                 GestureDetector(

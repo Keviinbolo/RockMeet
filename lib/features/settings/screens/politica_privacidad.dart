@@ -17,7 +17,7 @@ class PoliticaPrivacidadScreen extends StatelessWidget {
           // Header con gradiente
           Container(
             decoration: AppTheme.primaryGradientBox,
-            padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             child: Row(
               children: [
                 GestureDetector(

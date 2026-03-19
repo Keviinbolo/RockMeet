@@ -415,11 +415,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 onTap: () =>
                                                     _handleRemoveImage(index),
                                                 child: Container(
-                                                  width: 28,
-                                                  height: 28,
+                                                  width: 20,
+                                                  height: 20,
                                                   decoration: const BoxDecoration(
                                                     shape: BoxShape.circle,
-                                                    color: Colors.white,
+                                                    color: Color.fromARGB(255, 255, 0, 0),
                                                   ),
                                                   child: const Icon(
                                                     Icons.close,
