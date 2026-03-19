@@ -55,25 +55,31 @@ class _HomePageState extends State<HomePage> {
   }
 
   // CAMBIO 2: Agregar función para mostrar el modal de match
-  void _showMatchModal() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return MatchModal(
-          profile: {
-            'name': profiles[currentIndex].name,
-            'image': profiles[currentIndex].photos[0],
-          },
-          onClose: () {
-            Navigator.of(context).pop();
-            _nextProfile();
-          },
-        );
-      },
-    );
-  }
-
+ // Busca la función _showMatchModal en tu HomePage y reemplázala por esta:
+void _showMatchModal() {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return MatchModal(
+        profile: {
+          'name': profiles[currentIndex].name,
+          'image': profiles[currentIndex].photos[0],
+        },
+        // Esta es la función mágica que cambia la pestaña
+        onSendMessage: () {
+          setState(() {
+            _selectedNavIndex = 2; // Cambia a la pestaña de ChatScreen
+          });
+        },
+        onClose: () {
+          Navigator.of(context).pop();
+          _nextProfile();
+        },
+      );
+    },
+  );
+}
   void _resetFlip() {
     setState(() {
       _isProfileFlipped = false;

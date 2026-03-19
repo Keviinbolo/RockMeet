@@ -1,23 +1,20 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 class MatchModal extends StatelessWidget {
   final Map<String, dynamic> profile; // Reemplaza con tu modelo Profile
   final VoidCallback onClose;
+  final VoidCallback onSendMessage;
 
-  const MatchModal({
-    super.key,
-    required this.profile,
-    required this.onClose,
-  });
+  const MatchModal({super.key, required this.profile, required this.onClose, required this.onSendMessage});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black.withOpacity(0.8),
       body: Stack(
+        
         children: [
           // ============================================================
           // EFECTO 1: CORAZONES CAYENDO (Confetti)
@@ -73,10 +70,11 @@ class MatchModal extends StatelessWidget {
                       BounceInLeft(
                         delay: const Duration(milliseconds: 400),
                         child: _ProfileAvatar(
-                          imageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop',
+                          imageUrl:
+                              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop',
                         ),
                       ),
-                      
+
                       const SizedBox(width: 10),
 
                       // Corazón Central con Brillo
@@ -90,7 +88,7 @@ class MatchModal extends StatelessWidget {
                                 color: Colors.pink.withOpacity(0.5),
                                 blurRadius: 20,
                                 spreadRadius: 5,
-                              )
+                              ),
                             ],
                           ),
                           child: const Icon(
@@ -106,9 +104,7 @@ class MatchModal extends StatelessWidget {
                       // Foto del Match (Derecha)
                       BounceInRight(
                         delay: const Duration(milliseconds: 400),
-                        child: _ProfileAvatar(
-                          imageUrl: profile['image'],
-                        ),
+                        child: _ProfileAvatar(imageUrl: profile['image']),
                       ),
                     ],
                   ),
@@ -140,7 +136,10 @@ class MatchModal extends StatelessWidget {
                           text: 'Enviar mensaje',
                           isGradient: true,
                           icon: Icons.message,
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.pop(context);
+                            onSendMessage();
+                          },
                         ),
                         const SizedBox(height: 12),
                         _ActionButton(
@@ -188,7 +187,8 @@ class _FallingHeart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final random = Random();
-    final double startX = random.nextDouble() * MediaQuery.of(context).size.width;
+    final double startX =
+        random.nextDouble() * MediaQuery.of(context).size.width;
     final int duration = 3 + random.nextInt(2);
 
     return FadeInDown(
@@ -196,15 +196,18 @@ class _FallingHeart extends StatelessWidget {
       from: -50,
       child: Container(
         alignment: Alignment(
-          (startX / MediaQuery.of(context).size.width) * 2 - 1, 
-          -1.2
+          (startX / MediaQuery.of(context).size.width) * 2 - 1,
+          -1.2,
         ),
         child: TweenAnimationBuilder(
           tween: Tween<double>(begin: 0, end: 1.0),
           duration: const Duration(seconds: 3),
           builder: (context, double value, child) {
             return Transform.translate(
-              offset: Offset(0, value * MediaQuery.of(context).size.height * 1.2),
+              offset: Offset(
+                0,
+                value * MediaQuery.of(context).size.height * 1.2,
+              ),
               child: const Icon(Icons.favorite, color: Colors.pink, size: 30),
             );
           },
@@ -251,7 +254,11 @@ class _ActionButton extends StatelessWidget {
             ],
             Text(
               text,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
