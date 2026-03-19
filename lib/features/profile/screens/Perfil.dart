@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:myapp/features/profile/interest_screen.dart';
 
 // Datos del usuario (iniciales)
-const String avatarUrl =
+const String defaultAvatarUrl =
     'https://images.unsplash.com/photo-1543689604-6fe8dbcd1f59?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMHN0dWRlbnQlMjBwb3J0cmFpdCUyMGhhcHB5fGVufDF8fHx8MTc3MjEyMDc0MHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral';
 
 const List<String> profileImages = [
@@ -9,7 +10,7 @@ const List<String> profileImages = [
   'https://images.unsplash.com/photo-1744869985867-d23cc60e3625?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwbGlmZXN0eWxlJTIwY2FzdWFsfGVufDF8fHx8MTc3MjEyMDk3MXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
   'https://images.unsplash.com/photo-1768725845828-a74119dc4f34?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBob2JieSUyMGFjdGl2aXR5fGVufDF8fHx8MTc3MjEyMDk3MXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
   'https://images.unsplash.com/photo-1623790679957-5a20f98faef6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMGFkdWx0JTIwdHJhdmVsfGVufDF8fHx8MTc3MjEyMDk3Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-  'https://images.unsplash.com/photo-1709287253135-865c92751871?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMG5hdHVyZSUyMG91dGRvb3JzfGVufDF8fHx8MTc3MjEyMDk3Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+  'https://images.unsplash.com/photo-1709287253135-865c51892771?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMG5hdHVyZSUyMG91dGRvb3JzfGVufDF8fHx8MTc3MjEyMDk3Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
 ];
 
 class UserData {
@@ -61,11 +62,12 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   bool isMenuOpen = false;
   late List<String> images;
-  bool _isAvatarHovered = false;
   bool _isEditing = false;
 
   // Datos del usuario
   late UserData _userData;
+  late List<Interest> _userInterests;
+  late String _avatarUrl;
 
   // Controladores para edición
   late TextEditingController _nameController;
@@ -78,11 +80,13 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     images = profileImages.take(3).toList();
+    _avatarUrl = defaultAvatarUrl;
 
     _userData = UserData(
       name: 'Jordi Baulenas',
       email: 'jordibaulenas@ceroca.cat',
-      bio: 'Desarrollador de aplicaciones móviles apasionado por Flutter y el diseño de interfaces.',
+      bio:
+          'Desarrollador de aplicaciones móviles apasionado por Flutter y el diseño de interfaces.',
       twitter: '@jordi_twitter',
       instagram: '@jordi_instagram',
       tiktok: '@jordi_tiktok',
@@ -90,6 +94,34 @@ class _ProfilePageState extends State<ProfilePage> {
       matches: '89',
       activities: '03',
     );
+
+    _userInterests = [
+      Interest(
+        Icons.music_note,
+        'Música',
+        subInterests: ['Rock', 'Pop', 'Jazz', 'Electrónica', 'Hip-Hop'],
+      ),
+      Interest(
+        Icons.sports_soccer,
+        'Deporte',
+        subInterests: ['Fútbol', 'Baloncesto', 'Tenis', 'Running', 'Natación'],
+      ),
+      Interest(
+        Icons.movie,
+        'Películas',
+        subInterests: ['Acción', 'Comedia', 'Drama', 'Ciencia Ficción', 'Terror'],
+      ),
+      Interest(
+        Icons.book,
+        'Lectura',
+        subInterests: ['Ficción', 'Misterio', 'Fantasía', 'Biografía', 'Tecnología'],
+      ),
+      Interest(
+        Icons.travel_explore,
+        'Viajar',
+        subInterests: ['Playas', 'Montañas', 'Ciudades', 'Aventura', 'Cultural'],
+      ),
+    ];
 
     _nameController = TextEditingController(text: _userData.name);
     _bioController = TextEditingController(text: _userData.bio);
@@ -131,9 +163,9 @@ class _ProfilePageState extends State<ProfilePage> {
       _userData.tiktok = _tiktokController.text;
       _isEditing = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Cambios guardados')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cambios guardados')));
   }
 
   void _handleRemoveImage(int index) {
@@ -144,9 +176,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _handleAddImage() {
     if (images.length >= 3) return;
-    final available = profileImages.where((img) => !images.contains(img)).toList();
+    final available = profileImages
+        .where((img) => !images.contains(img))
+        .toList();
     if (available.isNotEmpty) {
-      final randomIndex = DateTime.now().millisecondsSinceEpoch % available.length;
+      final randomIndex =
+          DateTime.now().millisecondsSinceEpoch % available.length;
       setState(() {
         images.add(available[randomIndex]);
       });
@@ -157,10 +192,66 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  void _showAvatarSelector() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Cambiar foto de perfil',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: profileImages.length,
+              itemBuilder: (context, index) {
+                final isSelected = _avatarUrl == profileImages[index];
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _avatarUrl = profileImages[index];
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: isSelected ? Colors.deepPurple : Colors.grey,
+                        width: isSelected ? 3 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        profileImages[index],
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           Center(
@@ -173,69 +264,40 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     const SizedBox(height: 16),
 
-                    // Cabecera del perfil con botón de edición medio unido
+                    // Cabecera del perfil - solo avatar sin botón de edición ni hover
                     Column(
                       children: [
-                        // Stack que contiene el avatar y el botón superpuesto
-                        Stack(
-                          clipBehavior: Clip.none, // Permite que el botón sobresalga
-                          children: [
-                            // Avatar con overlay de cámara al hacer hover
-                            MouseRegion(
-                              onEnter: (_) => setState(() => _isAvatarHovered = true),
-                              onExit: (_) => setState(() => _isAvatarHovered = false),
-                              child: GestureDetector(
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Cambiar foto de perfil')),
-                                  );
-                                },
-                                child: CircleAvatar(
-                                  radius: 70,
-                                  backgroundImage: NetworkImage(avatarUrl),
-                                ),
+                        // Avatar simple sin funcionalidades adicionales
+                        GestureDetector(
+                          onTap: _isEditing ? _showAvatarSelector : null,
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 70,
+                                backgroundImage: NetworkImage(_avatarUrl),
                               ),
-                            ),
-                            if (_isAvatarHovered)
-                              const Positioned.fill(
-                                child: Align(
-                                  alignment: Alignment.center,
-                                  child: Icon(Icons.camera_alt, size: 30),
-                                ),
-                              ),
-                            // Botón de edición medio unido en la parte inferior
-                            Positioned(
-                              bottom: -20, // Mitad del botón (40/2) sobresale
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: GestureDetector(
-                                  onTap: _toggleEdit,
+                              if (_isEditing)
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
                                   child: Container(
                                     width: 40,
                                     height: 40,
                                     decoration: const BoxDecoration(
-                                      color: Colors.white,
                                       shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black12,
-                                          blurRadius: 4,
-                                          offset: Offset(0, 2),
-                                        ),
-                                      ],
+                                      color: Colors.deepPurple,
                                     ),
-                                    child: Icon(
-                                      _isEditing ? Icons.close : Icons.edit,
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.white,
                                       size: 20,
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 40), // Espacio para el botón + separación
+                        const SizedBox(height: 20), // Espacio ajustado
                         // Nombre y email
                         _isEditing
                             ? TextFormField(
@@ -251,7 +313,21 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     ),
                     const SizedBox(height: 24),
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: _toggleEdit,
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Editar perfil'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
 
+                    const SizedBox(height: 24),
                     // Tarjeta de estadísticas (no editables)
                     Card(
                       child: Padding(
@@ -286,7 +362,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             child: Row(
                               children: [
                                 const Icon(Icons.photo_camera),
@@ -304,12 +383,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                 GridView.builder(
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
-                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 3,
-                                    crossAxisSpacing: 8,
-                                    mainAxisSpacing: 8,
-                                    childAspectRatio: 0.75,
-                                  ),
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 3,
+                                        crossAxisSpacing: 8,
+                                        mainAxisSpacing: 8,
+                                        childAspectRatio: 0.75,
+                                      ),
                                   itemCount: 3,
                                   itemBuilder: (context, index) {
                                     if (index < images.length) {
@@ -317,7 +397,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                       return Stack(
                                         children: [
                                           ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                             child: Image.network(
                                               img,
                                               fit: BoxFit.cover,
@@ -325,22 +407,27 @@ class _ProfilePageState extends State<ProfilePage> {
                                               height: double.infinity,
                                             ),
                                           ),
-                                          Positioned(
-                                            top: 4,
-                                            right: 4,
-                                            child: GestureDetector(
-                                              onTap: () => _handleRemoveImage(index),
-                                              child: Container(
-                                                width: 28,
-                                                height: 28,
-                                                decoration: const BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: Colors.white,
+                                          if (_isEditing)
+                                            Positioned(
+                                              top: 4,
+                                              right: 4,
+                                              child: GestureDetector(
+                                                onTap: () =>
+                                                    _handleRemoveImage(index),
+                                                child: Container(
+                                                  width: 20,
+                                                  height: 20,
+                                                  decoration: const BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Color.fromARGB(255, 255, 0, 0),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.close,
+                                                    size: 18,
+                                                  ),
                                                 ),
-                                                child: const Icon(Icons.close, size: 18),
                                               ),
                                             ),
-                                          ),
                                           if (index == 0)
                                             const Positioned(
                                               top: 4,
@@ -351,17 +438,23 @@ class _ProfilePageState extends State<ProfilePage> {
                                       );
                                     } else {
                                       return GestureDetector(
-                                        onTap: _handleAddImage,
+                                        onTap: _isEditing ? _handleAddImage : null,
                                         child: Container(
                                           decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                             border: Border.all(
                                               width: 2,
                                               style: BorderStyle.solid,
+                                              color: _isEditing
+                                                  ? Colors.grey
+                                                  : Colors.grey.shade700,
                                             ),
                                           ),
                                           child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
                                               Container(
                                                 width: 40,
@@ -369,10 +462,22 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 decoration: const BoxDecoration(
                                                   shape: BoxShape.circle,
                                                 ),
-                                                child: const Icon(Icons.add),
+                                                child: Icon(
+                                                  Icons.add,
+                                                  color: _isEditing
+                                                      ? Colors.grey
+                                                      : Colors.grey.shade600,
+                                                ),
                                               ),
                                               const SizedBox(height: 4),
-                                              const Text('Añadir foto'),
+                                              Text(
+                                                'Añadir foto',
+                                                style: TextStyle(
+                                                  color: _isEditing
+                                                      ? Colors.grey
+                                                      : Colors.grey.shade600,
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ),
@@ -381,9 +486,15 @@ class _ProfilePageState extends State<ProfilePage> {
                                   },
                                 ),
                                 const SizedBox(height: 8),
-                                const Text(
-                                  'Toca las fotos para cambiar su orden. La primera será tu foto principal.',
+                                Text(
+                                  _isEditing
+                                      ? 'Toca el icono de cerrar (X) para eliminar fotos. Toca + para añadir nuevas.'
+                                      : 'Haz clic en "Editar perfil" para cambiar tus fotos.',
                                   textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade500,
+                                  ),
                                 ),
                               ],
                             ),
@@ -421,6 +532,116 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const SizedBox(height: 24),
 
+                    // --- SECCIÓN INTERESES (Sin título/icono en la cabecera) ---
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  final result = await Navigator.push<List<Interest>>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => InterestScreen(currentInterests: _userInterests),
+                                    ),
+                                  );
+                                  if (result != null) {
+                                    setState(() {
+                                      _userInterests = result;
+                                    });
+                                  }
+                                },
+                                icon: const Icon(Icons.edit),
+                                label: const Text('Intereses'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            if (_userInterests.where((i) => i.selected).isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Text(
+                                  'No hay intereses seleccionados',
+                                  style: TextStyle(color: Colors.grey.shade500),
+                                ),
+                              )
+                            else
+                              ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: _userInterests.where((i) => i.selected).length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                itemBuilder: (context, index) {
+                                  final interest = _userInterests
+                                      .where((i) => i.selected)
+                                      .toList()[index];
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 36,
+                                            height: 36,
+                                            decoration: BoxDecoration(
+                                              color: Colors.deepPurple.withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              interest.icon,
+                                              color: Colors.deepPurple,
+                                              size: 18,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            interest.label,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: interest.selectedSubInterests
+                                            .map(
+                                              (sub) => Chip(
+                                                label: Text(sub),
+                                                deleteIcon: const Icon(Icons.close, size: 16),
+                                                onDeleted: () {
+                                                  setState(() {
+                                                    interest.selectedSubInterests.remove(sub);
+                                                    if (interest.selectedSubInterests.isEmpty) {
+                                                      interest.selected = false;
+                                                    }
+                                                  });
+                                                },
+                                              ),
+                                            )
+                                            .toList(),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
                     // Redes Sociales
                     InfoSection(
                       icon: Icons.public,
@@ -446,7 +667,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 80),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -484,9 +705,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Container(
             width: 36,
             height: 36,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-            ),
+            decoration: const BoxDecoration(shape: BoxShape.circle),
             child: Icon(icon),
           ),
           const SizedBox(width: 12),
@@ -518,7 +737,12 @@ class StatCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  const StatCard({required this.icon, required this.label, required this.value, super.key});
+  const StatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -528,9 +752,7 @@ class StatCard extends StatelessWidget {
           Container(
             width: 48,
             height: 48,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-            ),
+            decoration: const BoxDecoration(shape: BoxShape.circle),
             child: Icon(icon),
           ),
           const SizedBox(height: 8),
@@ -547,7 +769,12 @@ class InfoSection extends StatelessWidget {
   final IconData icon;
   final String title;
   final List<Widget> children;
-  const InfoSection({required this.icon, required this.title, required this.children, super.key});
+  const InfoSection({
+    required this.icon,
+    required this.title,
+    required this.children,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -558,11 +785,7 @@ class InfoSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
-              children: [
-                Icon(icon),
-                const SizedBox(width: 8),
-                Text(title),
-              ],
+              children: [Icon(icon), const SizedBox(width: 8), Text(title)],
             ),
           ),
           Padding(
