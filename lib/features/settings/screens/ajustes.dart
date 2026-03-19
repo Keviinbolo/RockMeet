@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:myapp/core/services/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -506,6 +507,8 @@ class LogoutButton extends StatelessWidget {
                     duration: const Duration(seconds: 2),
                   ),
                 );
+                AuthService().logout();
+                Navigator.pushReplacementNamed(context, '/login');
               },
               child: Text(
                 'Cerrar sesión',

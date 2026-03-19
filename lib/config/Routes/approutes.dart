@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:myapp/core/services/portal_auth.dart';
 import 'package:myapp/features/home/screens/home_staff_page.dart';
 import 'package:myapp/features/settings/screens/ajustes.dart';
 import 'package:myapp/features/home/screens/home_page.dart';
 import 'package:myapp/features/auth/screens/login.dart';
-import 'package:myapp/features/auth/screens/pantalla_splash.dart';
 import 'package:myapp/features/auth/screens/registro_page.dart';
 import 'package:myapp/features/validation_demo_page.dart';
 
@@ -30,7 +30,7 @@ class AppRoutes {
     switch (settings.name) {
       case splash:
         return MaterialPageRoute(
-          builder: (_) => const AnimatedSplashScreen(nextScreen: LoginPage()),
+          builder: (_) => const PortalAuth(),
         );
       case prueba:
         return MaterialPageRoute(builder: (_) => const ValidationDemoPage());

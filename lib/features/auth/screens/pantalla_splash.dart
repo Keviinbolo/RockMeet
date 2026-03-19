@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
@@ -24,7 +25,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   @override
   void initState() {
     super.initState();
-
+    _checkFireStoreConnection();
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -48,7 +49,8 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     //Simulación de validación (reemplazaremos luego esto con la lógica real)
     _initializeApp();
   }
-
+  
+  
   void _initializeApp() {
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
@@ -62,7 +64,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
       }
     });
   }
-
+  
   void _retryInitialization() {
     setState(() {
       _validationState = ValidationState.loading;
@@ -128,5 +130,14 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
         ],
       ),
     );
+  }
+  
+  Future<void> _checkFireStoreConnection() async {
+    try {
+      await FirebaseFirestore.instance.collection('test').get();
+      debugPrint('Conexión a Firestore exitosa');
+    } catch (e) {
+      debugPrint('Error al conectar a Firestore: $e');
+    }
   }
 }

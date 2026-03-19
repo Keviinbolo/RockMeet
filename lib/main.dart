@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:myapp/config/Routes/approutes.dart';
@@ -9,13 +8,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Inicializar Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  //Probar la conexión a Firestore
-  try {
-    await FirebaseFirestore.instance.collection('test').get();
-    print('Conexión a Firestore exitosa');
-  } catch (e) {
-    print('Error al conectar a Firestore: $e');
-  }
+  
 
   runApp(const MyApp());
 }
