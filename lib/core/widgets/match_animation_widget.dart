@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+
 
 class MatchModal extends StatelessWidget {
   final Map<String, dynamic> profile; // Reemplaza con tu modelo Profile
