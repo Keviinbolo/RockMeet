@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/features/profile/interest_screen.dart';
+import 'package:myapp/core/services/profile_service.dart';
 
 // Datos del usuario (iniciales)
 const String defaultAvatarUrl =
@@ -63,6 +64,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isMenuOpen = false;
   late List<String> images;
   bool _isEditing = false;
+  bool _isLoadingProfile = false;
 
   // Datos del usuario
   late UserData _userData;
@@ -128,6 +130,69 @@ class _ProfilePageState extends State<ProfilePage> {
     _twitterController = TextEditingController(text: _userData.twitter);
     _instagramController = TextEditingController(text: _userData.instagram);
     _tiktokController = TextEditingController(text: _userData.tiktok);
+
+    _loadProfileFromFirestore();
+  }
+
+  Future<void> _loadProfileFromFirestore() async {
+    setState(() => _isLoadingProfile = true);
+
+    try {
+      final profile = await ProfileService.instance.getCurrentUserProfile();
+      if (profile == null || !mounted) return;
+
+      final displayName = profile['displayName'] as String?;
+      final bio = profile['bio'] as String?;
+      final photoURL = profile['photoURL'] as String?;
+      final twitter = profile['twitter'] as String?;
+      final instagram = profile['instagram'] as String?;
+      final tiktok = profile['tiktok'] as String?;
+      final gallery = (profile['gallery'] as List?)?.whereType<String>().toList();
+      final interests = (profile['interests'] as List?)?.whereType<String>().toList();
+
+      setState(() {
+        if (displayName != null && displayName.isNotEmpty) {
+          _userData.name = displayName;
+          _nameController.text = displayName;
+        }
+        if (bio != null) {
+          _userData.bio = bio;
+          _bioController.text = bio;
+        }
+        if (twitter != null) {
+          _userData.twitter = twitter;
+          _twitterController.text = twitter;
+        }
+        if (instagram != null) {
+          _userData.instagram = instagram;
+          _instagramController.text = instagram;
+        }
+        if (tiktok != null) {
+          _userData.tiktok = tiktok;
+          _tiktokController.text = tiktok;
+        }
+        if (photoURL != null && photoURL.isNotEmpty) {
+          _avatarUrl = photoURL;
+        }
+        if (gallery != null && gallery.isNotEmpty) {
+          images = gallery.take(3).toList();
+        }
+        if (interests != null && interests.isNotEmpty) {
+          for (final i in _userInterests) {
+            i.selected = interests.contains(i.label);
+          }
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo cargar el perfil')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingProfile = false);
+      }
+    }
   }
 
   @override
@@ -154,7 +219,7 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
-  void _saveChanges() {
+  Future<void> _saveChanges() async {
     setState(() {
       _userData.name = _nameController.text;
       _userData.bio = _bioController.text;
@@ -163,6 +228,24 @@ class _ProfilePageState extends State<ProfilePage> {
       _userData.tiktok = _tiktokController.text;
       _isEditing = false;
     });
+
+    final selectedInterests = _userInterests
+      .where((i) => i.selected)
+        .map((i) => i.label)
+        .toList();
+
+    await ProfileService.instance.updateCurrentUserProfile(
+      displayName: _userData.name,
+      bio: _userData.bio,
+      photoURL: _avatarUrl,
+      twitter: _userData.twitter,
+      instagram: _userData.instagram,
+      tiktok: _userData.tiktok,
+      gallery: images,
+      interests: selectedInterests,
+    );
+
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Cambios guardados')));
@@ -172,6 +255,7 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() {
       images.removeAt(index);
     });
+    ProfileService.instance.updateCurrentUserProfile(gallery: images);
   }
 
   void _handleAddImage() {
@@ -185,6 +269,7 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         images.add(available[randomIndex]);
       });
+      ProfileService.instance.updateCurrentUserProfile(gallery: images);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No hay más imágenes disponibles')),
@@ -222,6 +307,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     setState(() {
                       _avatarUrl = profileImages[index];
                     });
+                    ProfileService.instance.updateCurrentUserProfile(
+                      photoURL: profileImages[index],
+                    );
                     Navigator.pop(context);
                   },
                   child: Container(
@@ -251,6 +339,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingProfile) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -552,6 +644,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                     setState(() {
                                       _userInterests = result;
                                     });
+
+                                    final selectedInterests = _userInterests
+                                        .where((i) => i.selected)
+                                        .map((i) => i.label)
+                                        .toList();
+                                    ProfileService.instance.updateCurrentUserProfile(
+                                      interests: selectedInterests,
+                                    );
                                   }
                                 },
                                 icon: const Icon(Icons.edit),

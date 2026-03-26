@@ -20,8 +20,8 @@ class FirebaseService {
     try {
       String fileName = DateTime.now().millisecondsSinceEpoch.toString();
       Reference ref = _storage.ref().child('$folder/$fileName');
-      
-      await ref.putFile(filePath as File);
+
+      await ref.putFile(File(filePath));
       String downloadUrl = await ref.getDownloadURL();
       
       return downloadUrl;

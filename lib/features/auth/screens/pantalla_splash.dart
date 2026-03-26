@@ -134,10 +134,23 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   
   Future<void> _checkFireStoreConnection() async {
     try {
-      await FirebaseFirestore.instance.collection('test').get();
+      // Usa una colección que sí existe y tiene lectura permitida en reglas.
+      await FirebaseFirestore.instance.collection('events').limit(1).get();
       debugPrint('Conexión a Firestore exitosa');
+    } on FirebaseException catch (e) {
+      debugPrint('Error Firebase al conectar a Firestore: ${e.code} - ${e.message}');
+      if (!mounted) return;
+      setState(() {
+        _validationState = ValidationState.error;
+        _errorMessage = 'No se pudo conectar con la base de datos';
+      });
     } catch (e) {
       debugPrint('Error al conectar a Firestore: $e');
+      if (!mounted) return;
+      setState(() {
+        _validationState = ValidationState.error;
+        _errorMessage = 'Error inesperado al iniciar';
+      });
     }
   }
 }

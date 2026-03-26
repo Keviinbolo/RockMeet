@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,7 +16,7 @@ class HomeStaffPage extends StatefulWidget {
 
 class _HomeStaffPageState extends State<HomeStaffPage> {
   final EventService _eventService = EventService();
-  final String _staffId = 'staff_001'; // ID del staff actual
+  String? get _staffId => FirebaseAuth.instance.currentUser?.uid;
   List<Event> _staffEvents = [];
   @override
   void initState() {
@@ -32,7 +33,9 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
         automaticallyImplyLeading: false,
       ),
       body: StreamBuilder<List<Event>>(
-        stream: _eventService.getEventsByStaffStream(_staffId),
+        stream: _staffId == null
+            ? const Stream<List<Event>>.empty()
+            : _eventService.getEventsByStaffStream(_staffId!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -76,7 +79,9 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
   // Sección de Resumen
   Widget _buildSummarySection(BuildContext context) {
     return StreamBuilder<List<Event>>(
-      stream: _eventService.getEventsByStaffStream(_staffId),
+      stream: _staffId == null
+          ? const Stream<List<Event>>.empty()
+          : _eventService.getEventsByStaffStream(_staffId!),
       builder: (context, staffSnapshot) {
         final staffEvents = staffSnapshot.data ?? [];
         final activeEvents = staffEvents
@@ -383,11 +388,17 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
   }
 
   void _handleViewEvents() {
+    final staffId = _staffId;
+    if (staffId == null) {
+      _showSnackBar('Debes iniciar sesión para ver tus eventos');
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => _StaffEventsPage(
-          staffId: _staffId,
+          staffId: staffId,
           eventService: _eventService,
           onEventUpdated: () {},
         ),
@@ -396,11 +407,17 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
   }
 
   void _handleApproveEvents() {
+    final staffId = _staffId;
+    if (staffId == null) {
+      _showSnackBar('Debes iniciar sesión para aprobar eventos');
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => _PendingEventsPage(
-          staffId: _staffId,
+          staffId: staffId,
           eventService: _eventService,
           onEventUpdated: () {},
         ),
@@ -560,6 +577,12 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           ),
           ElevatedButton(
             onPressed: () {
+              final staffId = _staffId;
+              if (staffId == null) {
+                _showSnackBar('Debes iniciar sesión para crear eventos');
+                return;
+              }
+
               if (formKey.currentState!.validate()) {
                 final dateTime = DateTime(
                   selectedDate.year,
@@ -574,7 +597,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
                   description: descriptionController.text,
                   dateTime: dateTime,
                   location: locationController.text,
-                  staffOrganizerId: _staffId,
+                  staffOrganizerId: staffId,
                   maxAttendees: int.parse(maxAttendeesController.text),
                 );
 

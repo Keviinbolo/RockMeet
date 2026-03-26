@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
@@ -16,7 +17,7 @@ class EventScreen extends StatefulWidget {
 
 class _EventScreenState extends State<EventScreen> {
   final EventService _eventService = EventService();
-  final String _currentUserId = 'user_001';
+  String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
   String _filterType = 'all';
 
   // Controladores para el formulario
@@ -46,18 +47,24 @@ class _EventScreenState extends State<EventScreen> {
   }
 
   void _toggleAttendance(String eventId) async {
+    final currentUserId = _currentUserId;
+    if (currentUserId == null) {
+      _showSnackBar('Debes iniciar sesion para apuntarte a eventos', isError: true);
+      return;
+    }
+
     try {
       final event = await _eventService.getEventById(eventId);
       if (event != null) {
-        if (event.attendeeIds.contains(_currentUserId)) {
-          await _eventService.removeUserAsAttendee(eventId, _currentUserId);
+        if (event.attendeeIds.contains(currentUserId)) {
+          await _eventService.removeUserAsAttendee(eventId, currentUserId);
           _showSnackBar('Te has desapuntado del evento');
         } else {
           if (event.attendeeIds.length >= event.maxAttendees) {
             _showSnackBar('Error: El evento está lleno', isError: true);
             return;
           }
-          await _eventService.markUserAsAttendee(eventId, _currentUserId);
+          await _eventService.markUserAsAttendee(eventId, currentUserId);
           _showSnackBar('¡Te has apuntado al evento!');
         }
       }
@@ -322,7 +329,7 @@ class _EventScreenState extends State<EventScreen> {
                 description: _descriptionController.text,
                 dateTime: dateTime,
                 location: _locationController.text,
-                suggestedByUserId: _currentUserId,
+                suggestedByUserId: _currentUserId ?? '',
                 maxAttendees: int.parse(_maxAttendeesController.text),
               );
 
@@ -373,8 +380,10 @@ class _EventScreenState extends State<EventScreen> {
           Expanded(
             child: StreamBuilder<List<Event>>(
               stream: _filterType == 'attending'
-                  ? _eventService.getUserAttendingEventsStream(_currentUserId)
-                  : _eventService.getActiveEventsStream(),
+                ? (_currentUserId == null
+                  ? const Stream<List<Event>>.empty()
+                  : _eventService.getUserAttendingEventsStream(_currentUserId!))
+                : _eventService.getActiveEventsStream(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -390,9 +399,8 @@ class _EventScreenState extends State<EventScreen> {
                   itemCount: events.length,
                   itemBuilder: (context, index) {
                     final event = events[index];
-                    final isAttending = event.attendeeIds.contains(
-                      _currentUserId,
-                    );
+                    final isAttending = _currentUserId != null &&
+                        event.attendeeIds.contains(_currentUserId);
 
                     return EventCard(
                       event: event,

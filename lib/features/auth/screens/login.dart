@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/core/services/auth_service.dart';
-import 'package:myapp/features/auth/screens/pantalla_splash.dart';
-import 'package:myapp/features/home/screens/home_page.dart';
-
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -24,6 +21,50 @@ class _LoginPageState extends State<LoginPage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await AuthService().login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      final message = switch (e.code) {
+        'user-not-found' => 'No existe una cuenta con ese correo.',
+        'wrong-password' => 'La contraseña es incorrecta.',
+        'invalid-email' => 'El email no es válido.',
+        'invalid-credential' => 'Credenciales inválidas.',
+        _ => 'No se pudo iniciar sesión (${e.code}).',
+      };
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error inesperado al iniciar sesión.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
 
@@ -120,30 +161,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 24),
 
                   ElevatedButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            if (_formKey.currentState!.validate()) {
-                              setState(() {
-                                _isLoading = true;
-                              });
-                              Future.delayed(const Duration(seconds: 2), () {
-                                setState(() {
-                                  _isLoading = false;
-                                });
-                              });
-                            }
-                            AuthService().login(
-                              _emailController.text.trim(),
-                              _passwordController.text.trim(),
-                            ).then((_) {
-                              Navigator.pushReplacementNamed(context, '/home');
-                            }).catchError((error) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: ${error.toString()}')),
-                              );
-                            });
-                          },
+                    onPressed: _isLoading ? null : _handleLogin,
                     child: _isLoading
                         ? const SizedBox(
                             height: 20,
