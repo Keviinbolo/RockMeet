@@ -1,9 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:myapp/config/Theme/constants/text_styles.dart';
 
 void main() {
   runApp(const MaterialApp(
-    home: LikesPage(), 
+    home: LikesPage(),
     debugShowCheckedModeBanner: false,
   ));
 }
@@ -27,20 +29,56 @@ class LikePerson {
 class LikesPage extends StatelessWidget {
   const LikesPage({super.key});
 
-  // Datos de ejemplo (puedes mover esto a un servicio o estado)
+  // Datos de ejemplo
   List<LikePerson> get _data => [
-    LikePerson(id: 1, name: "Sofía", age: 28, image: "https://images.unsplash.com/photo-1690444963408-9573a17a8058?w=500"),
-    LikePerson(id: 2, name: "Carlos", age: 32, image: "https://images.unsplash.com/photo-1695485121912-25c7ea05119c?w=500"),
-    LikePerson(id: 3, name: "María", age: 26, image: "https://images.unsplash.com/photo-1522206038088-8698bcefa6a0?w=500"),
-    LikePerson(id: 4, name: "Diego", age: 30, image: "https://images.unsplash.com/photo-1616235931343-10a92ecaeaf2?w=500"),
-    LikePerson(id: 5, name: "Valentina", age: 27, image: "https://images.unsplash.com/photo-1660152988640-99bcdecf2bc5?w=500"),
-    LikePerson(id: 6, name: "Alejandro", age: 29, image: "https://images.unsplash.com/photo-1622626426572-c268eb006092?w=500"),
-  ];
+        LikePerson(
+          id: 1,
+          name: "Sofía",
+          age: 28,
+          image:
+              "https://images.unsplash.com/photo-1690444963408-9573a17a8058?w=500",
+        ),
+        LikePerson(
+          id: 2,
+          name: "Carlos",
+          age: 32,
+          image:
+              "https://images.unsplash.com/photo-1695485121912-25c7ea05119c?w=500",
+        ),
+        LikePerson(
+          id: 3,
+          name: "María",
+          age: 26,
+          image:
+              "https://images.unsplash.com/photo-1522206038088-8698bcefa6a0?w=500",
+        ),
+        LikePerson(
+          id: 4,
+          name: "Diego",
+          age: 30,
+          image:
+              "https://images.unsplash.com/photo-1616235931343-10a92ecaeaf2?w=500",
+        ),
+        LikePerson(
+          id: 5,
+          name: "Valentina",
+          age: 27,
+          image:
+              "https://images.unsplash.com/photo-1660152988640-99bcdecf2bc5?w=500",
+        ),
+        LikePerson(
+          id: 6,
+          name: "Alejandro",
+          age: 29,
+          image:
+              "https://images.unsplash.com/photo-1622626426572-c268eb006092?w=500",
+        ),
+      ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF09090B), // zinc-950
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -48,25 +86,23 @@ class LikesPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // --- Header ---
-              const Text(
-                "Personas que te dieron like",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
+              Text(
+                "Sugerencias para ti",
+                style: AppTextStyles.displaySmall,
               ),
               const SizedBox(height: 8),
               Text(
                 "${_data.length} personas están interesadas en ti",
-                style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 16),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 32),
 
               // --- Grid de Likes ---
               GridView.builder(
-                shrinkWrap: true, // Importante para que funcione dentro de SingleChildScrollView
-                physics: const NeverScrollableScrollPhysics(), // El scroll lo maneja el SingleChildScrollView
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   childAspectRatio: 3 / 4,
@@ -78,8 +114,6 @@ class LikesPage extends StatelessWidget {
               ),
 
               const SizedBox(height: 32),
-
-
             ],
           ),
         ),
@@ -92,7 +126,7 @@ class LikesPage extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: const Color(0xFF18181B), // zinc-900
+        color: AppColors.surface,
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -103,20 +137,22 @@ class LikesPage extends StatelessWidget {
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(color: Colors.black.withOpacity(0.2)),
+              child: Container(
+                color: Colors.black.withOpacity(0.2),
+              ),
             ),
           ),
 
           // Gradiente inferior para legibilidad del texto
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Color(0xCC09090B),
-                  Color(0xFF09090B),
+                  AppColors.background.withOpacity(0.8),
+                  AppColors.background,
                 ],
               ),
             ),
@@ -127,12 +163,12 @@ class LikesPage extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: AppColors.surface.withOpacity(0.5),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.lock_outline,
-                color: Colors.white70,
+                color: AppColors.primary.withOpacity(0.7),
                 size: 28,
               ),
             ),
@@ -148,15 +184,13 @@ class LikesPage extends StatelessWidget {
               children: [
                 Text(
                   "${person.name}, ${person.age}",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTextStyles.titleLarge,
                 ),
-                const Text(
+                Text(
                   "Dale like para ver perfil",
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -166,6 +200,5 @@ class LikesPage extends StatelessWidget {
     );
   }
 
-  // Widget del Banner de pago
-  
+  // Widget del Banner de pago (pendiente de implementar)
 }
