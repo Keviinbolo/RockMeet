@@ -1,43 +1,32 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/config/Theme/constants/text_styles.dart';
 
 
 class MatchModal extends StatelessWidget {
-  final Map profile; // Reemplaza con tu modelo Profile
+  final Map<String, dynamic> profile; // Reemplaza con tu modelo Profile
   final VoidCallback onClose;
   final VoidCallback onSendMessage;
 
-  const MatchModal({
-    super.key,
-    required this.profile,
-    required this.onClose,
-    required this.onSendMessage,
-  });
+  const MatchModal({super.key, required this.profile, required this.onClose, required this.onSendMessage});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: Stack(
+        
         children: [
           // ============================================================
           // EFECTO 1: CORAZONES CAYENDO (Confetti)
           // ============================================================
-          ...List.generate(20, (index) => const _FallingHeart()),
+          ...List.generate(20, (index) => _FallingHeart()),
 
           // Botón de cerrar (X)
           Positioned(
             top: 60,
             right: 20,
             child: IconButton(
-              icon: const Icon(Icons.close),
-              color: AppColors.textPrimary,
+              icon: const Icon(Icons.close),//importar un color
               onPressed: onClose,
             ),
           ),
@@ -55,13 +44,15 @@ class MatchModal extends StatelessWidget {
                     delay: const Duration(milliseconds: 200),
                     child: ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(
-                        colors: AppColors.gradientPrimary,
+                        colors: [Colors.pink, Colors.purple, Colors.pink],//importar un color
                       ).createShader(bounds),
-                      child: Text(
+                      child: const Text(
                         '¡Es un Match!',
                         textAlign: TextAlign.center,
-                        style: AppTextStyles.displayLarge.copyWith(
+                        style: TextStyle(
                           fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -78,7 +69,7 @@ class MatchModal extends StatelessWidget {
                       // Tu Foto (Izquierda)
                       BounceInLeft(
                         delay: const Duration(milliseconds: 400),
-                        child: const _ProfileAvatar(
+                        child: _ProfileAvatar(
                           imageUrl:
                               'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop',
                         ),
@@ -94,16 +85,15 @@ class MatchModal extends StatelessWidget {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color:
-                                    AppColors.primary.withOpacity(0.5),
+                                color: Colors.pink.withOpacity(0.5),
                                 blurRadius: 20,
                                 spreadRadius: 5,
                               ),
                             ],
                           ),
                           child: const Icon(
-                            Icons.compare_arrows,
-                            color: AppColors.primary,
+                            Icons.favorite,
+                            color: Colors.pink,
                             size: 60,
                           ),
                         ),
@@ -129,10 +119,7 @@ class MatchModal extends StatelessWidget {
                     child: Text(
                       '¡A ${profile['name']} también le gustas!',
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        fontSize: 20,
-                        color: AppColors.textPrimary,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 20),
                     ),
                   ),
 
@@ -185,10 +172,7 @@ class _ProfileAvatar extends StatelessWidget {
       height: 100,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(
-          color: AppColors.primary,
-          width: 4,
-        ),
+        border: Border.all(color: Colors.pink, width: 4),
         image: DecorationImage(
           image: NetworkImage(imageUrl),
           fit: BoxFit.cover,
@@ -200,8 +184,6 @@ class _ProfileAvatar extends StatelessWidget {
 
 // Widget auxiliar para los corazones que caen
 class _FallingHeart extends StatelessWidget {
-  const _FallingHeart();
-
   @override
   Widget build(BuildContext context) {
     final random = Random();
@@ -218,7 +200,7 @@ class _FallingHeart extends StatelessWidget {
           -1.2,
         ),
         child: TweenAnimationBuilder(
-          tween: Tween(begin: 0.0, end: 1.0),
+          tween: Tween<double>(begin: 0, end: 1.0),
           duration: const Duration(seconds: 3),
           builder: (context, double value, child) {
             return Transform.translate(
@@ -226,11 +208,7 @@ class _FallingHeart extends StatelessWidget {
                 0,
                 value * MediaQuery.of(context).size.height * 1.2,
               ),
-              child: const Icon(
-                Icons.stars,
-                color: AppColors.primary,
-                size: 30,
-              ),
+              child: const Icon(Icons.add_alert, color: Colors.pink, size: 30),
             );
           },
         ),
@@ -255,41 +233,32 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final BoxDecoration decoration = isGradient
-        ? AppTheme.primaryGradientBox.copyWith(
-            borderRadius: BorderRadius.circular(30),
-          )
-        : BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: AppColors.textPrimary,
-            ),
-          );
-
-    final TextStyle textStyle = AppTextStyles.button.copyWith(
-      fontSize: 16,
-      color: isGradient ? Colors.white : AppColors.textPrimary,
-    );
-
-    final Color iconColor =
-        isGradient ? Colors.white : AppColors.textPrimary;
-
     return GestureDetector(
       onTap: onPressed,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: decoration,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          border: isGradient ? null : Border.all(color: Colors.white),
+          gradient: isGradient
+              ? const LinearGradient(colors: [Colors.pink, Colors.purple])
+              : null,
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
-              Icon(icon, color: iconColor, size: 20),
+              Icon(icon, color: Colors.white, size: 20),
               const SizedBox(width: 8),
             ],
             Text(
               text,
-              style: textStyle,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ],
         ),

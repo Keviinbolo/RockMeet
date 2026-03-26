@@ -7,12 +7,8 @@ import 'dart:math' as math;
 import 'package:myapp/features/profile/screens/Perfil.dart';
 import 'package:myapp/features/chat/screens/chat_page.dart';
 import 'package:myapp/features/settings/screens/ajustes.dart';
+// CAMBIO 1: Importar el widget de animación de match
 import 'package:myapp/core/widgets/match_animation_widget.dart';
-
-// estilos
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/config/Theme/constants/text_styles.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -58,30 +54,32 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _showMatchModal() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return MatchModal(
-          profile: {
-            'name': profiles[currentIndex].name,
-            'image': profiles[currentIndex].photos[0],
-          },
-          onSendMessage: () {
-            setState(() {
-              _selectedNavIndex = 2;
-            });
-          },
-          onClose: () {
-            Navigator.of(context).pop();
-            _nextProfile();
-          },
-        );
-      },
-    );
-  }
-
+  // CAMBIO 2: Agregar función para mostrar el modal de match
+ // Busca la función _showMatchModal en tu HomePage y reemplázala por esta:
+void _showMatchModal() {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return MatchModal(
+        profile: {
+          'name': profiles[currentIndex].name,
+          'image': profiles[currentIndex].photos[0],
+        },
+        // Esta es la función mágica que cambia la pestaña
+        onSendMessage: () {
+          setState(() {
+            _selectedNavIndex = 2; // Cambia a la pestaña de ChatScreen
+          });
+        },
+        onClose: () {
+          Navigator.of(context).pop();
+          _nextProfile();
+        },
+      );
+    },
+  );
+}
   void _resetFlip() {
     setState(() {
       _isProfileFlipped = false;
@@ -98,46 +96,37 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           Column(
             children: [
               AppBar(
-                backgroundColor: AppColors.surface,
-                title: Text(
-                  "RockMeet",
-                  style: AppTextStyles.headlineSmall,
-                ),
+                title: const Text("RockMeet"),
                 centerTitle: true,
                 automaticallyImplyLeading: false,
                 actions: [
                   IconButton(
                     onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const SettingsScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
                     ),
                     icon: const Icon(Icons.settings),
-                    color: AppColors.textPrimary,
                   ),
                 ],
               ),
+
               Expanded(
                 child: _selectedNavIndex == 0
                     ? _buildExplore()
                     : _selectedNavIndex == 1
-                        ? const LikesPage()
-                        : _selectedNavIndex == 2
-                            ? const ChatScreen()
-                            : _selectedNavIndex == 3
-                                ? const EventScreen()
-                                : _selectedNavIndex == 4
-                                    ? const ProfilePage()
-                                    : const Center(
-                                        child: Text("Página no encontrada"),
-                                      ),
+                    ? const LikesPage()
+                    : _selectedNavIndex == 2
+                    ? const ChatScreen()
+                    : _selectedNavIndex == 3
+                    ? const EventScreen()
+                    : _selectedNavIndex == 4
+                    ? const ProfilePage()
+                    : const Center(child: Text("Página no encontrada")),
               ),
               _buildBottomNav(),
             ],
@@ -155,6 +144,7 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: Stack(
               children: [
+                // Blur effect layer - solo durante el arrastre
                 if (_dragDownProgress > 0)
                   Positioned.fill(
                     child: BackdropFilter(
@@ -163,16 +153,18 @@ class _HomePageState extends State<HomePage> {
                         sigmaY: 5 * (_dragDownProgress / 100),
                       ),
                       child: Container(
-                        color: AppColors.background.withOpacity(
+                        color: Colors.black.withOpacity(
                           0.2 * (_dragDownProgress / 100),
                         ),
                       ),
                     ),
                   ),
+                // Tarjeta encima (no afectada por blur)
                 SwipeableCard(
                   key: ValueKey(currentIndex),
                   profile: profiles[currentIndex],
                   onSwipeLeft: _nextProfile,
+                  // CAMBIO 3: Cambiar onSwipeRight para mostrar el modal de match
                   onSwipeRight: _showMatchModal,
                   onSwipeUp: _nextProfile,
                   onFlipChanged: (isFlipped) =>
@@ -180,6 +172,7 @@ class _HomePageState extends State<HomePage> {
                   onDragDownProgress: (progress) =>
                       setState(() => _dragDownProgress = progress),
                 ),
+                // Detectar clic fuera para voltear
                 if (_isProfileFlipped)
                   Positioned.fill(
                     child: GestureDetector(
@@ -195,6 +188,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 20),
           Stack(
             children: [
+              // Action buttons with animation
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
                 opacity: _isProfileFlipped ? 0.0 : 1.0,
@@ -212,9 +206,7 @@ class _HomePageState extends State<HomePage> {
       currentIndex: _selectedNavIndex,
       onTap: (index) => setState(() => _selectedNavIndex = index),
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: AppColors.textSecondary,
-      backgroundColor: AppColors.surface,
+      selectedItemColor: Colors.purple,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explorar'),
         BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Likes'),
@@ -229,24 +221,18 @@ class _HomePageState extends State<HomePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _roundButton(Icons.close, AppColors.error, _nextProfile),
-        _roundButton(Icons.favorite, AppColors.success, _showMatchModal),
+        _roundButton(Icons.close, Colors.red, _nextProfile),
+        // CAMBIO 4: Cambiar el botón de corazón para mostrar el modal de match
+        _roundButton(Icons.favorite, Colors.green, _showMatchModal),
       ],
     );
   }
 
   Widget _roundButton(IconData icon, Color color, VoidCallback onPressed) {
     return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+      decoration: const BoxDecoration(
+        color: Colors.white,
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: IconButton(
         onPressed: onPressed,
@@ -317,9 +303,11 @@ class _SwipeableCardState extends State<SwipeableCard>
       onPanUpdate: (details) {
         setState(() {
           _position += details.delta;
+          // Calcular el progreso del arrastre hacia abajo (0-100)
           double dragProgress = (_position.dy > 0)
               ? math.min((_position.dy / 100) * 100, 100)
               : 0;
+          // Notificar el progreso del arrastre hacia abajo
           widget.onDragDownProgress(dragProgress);
         });
       },
@@ -333,6 +321,7 @@ class _SwipeableCardState extends State<SwipeableCard>
         } else if (_position.dy < -140) {
           widget.onSwipeUp();
         } else if (_position.dy > 100) {
+          // GESTO ABAJO: Activa el volteo
           _toggleFlip();
         }
 
@@ -344,11 +333,12 @@ class _SwipeableCardState extends State<SwipeableCard>
       child: AnimatedBuilder(
         animation: _flipController,
         builder: (context, child) {
+          // Calculamos la rotación en Y (volteo horizontal sobre el eje central)
           final angleFlip = _flipController.value * math.pi;
 
           return Transform(
             transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
+              ..setEntry(3, 2, 0.001) // Perspectiva para el efecto 3D
               ..translate(_position.dx, _position.dy)
               ..rotateZ(angleDrag)
               ..rotateY(angleFlip),
@@ -356,6 +346,7 @@ class _SwipeableCardState extends State<SwipeableCard>
             child: angleFlip < math.pi / 2
                 ? _buildFront()
                 : Transform(
+                    // Invertimos el reverso para que el texto no se vea al revés
                     transform: Matrix4.identity()..rotateY(math.pi),
                     alignment: Alignment.center,
                     child: _buildBack(),
@@ -376,11 +367,11 @@ class _SwipeableCardState extends State<SwipeableCard>
             image: NetworkImage(widget.profile.photos[0]),
             fit: BoxFit.cover,
           ),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withOpacity(0.26),
+              color: Colors.black26,
               blurRadius: 10,
-              offset: const Offset(0, 5),
+              offset: Offset(0, 5),
             ),
           ],
         ),
@@ -393,10 +384,7 @@ class _SwipeableCardState extends State<SwipeableCard>
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      AppColors.background.withOpacity(0.8),
-                    ],
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
                   ),
                 ),
               ),
@@ -409,13 +397,15 @@ class _SwipeableCardState extends State<SwipeableCard>
                 children: [
                   Text(
                     "${widget.profile.name}, ${widget.profile.age}",
-                    style: AppTextStyles.displayMedium,
-                  ),
-                  Text(
-                    "Desliza abajo para detalles",
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  const Text(
+                    "Desliza abajo para detalles",
+                    style: TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
@@ -432,35 +422,33 @@ class _SwipeableCardState extends State<SwipeableCard>
       child: Container(
         padding: const EdgeInsets.all(30),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(25),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withOpacity(0.26),
+              color: Colors.black26,
               blurRadius: 10,
-              offset: const Offset(0, 5),
+              offset: Offset(0, 5),
             ),
           ],
         ),
         child: Column(
           children: [
-            Icon(
-              Icons.person_pin,
-              size: 60,
-              color: AppColors.primary,
-            ),
+            const Icon(Icons.person_pin, size: 60, color: Colors.purple),
             const SizedBox(height: 10),
             Text(
               widget.profile.name,
-              style: AppTextStyles.headlineSmall,
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
-            const Divider(height: 30, color: AppColors.divider),
+            const Divider(height: 30),
             Expanded(
               child: SingleChildScrollView(
                 child: Text(
                   widget.profile.bio,
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.textPrimary,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    height: 1.5,
+                    color: Colors.black87,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -469,15 +457,10 @@ class _SwipeableCardState extends State<SwipeableCard>
             const SizedBox(height: 10),
             TextButton.icon(
               onPressed: _toggleFlip,
-              icon: Icon(
-                Icons.flip_to_front,
-                color: AppColors.primary,
-              ),
-              label: Text(
+              icon: const Icon(Icons.flip_to_front, color: Colors.purple),
+              label: const Text(
                 "Cerrar info",
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: AppColors.primary,
-                ),
+                style: TextStyle(color: Colors.purple),
               ),
             ),
           ],
@@ -493,7 +476,6 @@ class Profile {
   final int age;
   final List<String> photos;
   final String bio;
-
   Profile({
     required this.id,
     required this.name,
