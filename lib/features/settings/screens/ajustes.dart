@@ -1,8 +1,10 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:myapp/core/services/auth_service.dart';
+import 'package:myapp/features/settings/screens/info_cuenta.dart';
 import 'terminos_condiciones.dart';
 import 'politica_privacidad.dart';
 import 'cambiar_contrasenia.dart';
@@ -177,7 +179,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Acerca de',
                   subtitle: 'Versión 1.0.0',
                   children: [
-                    _buildVersionTile(),
+                    //informacion cuenta
+                     _buildAccountTile(
+                      icon: Icons.account_circle,
+                      title: 'Información de la cuenta',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const InformacionCuentaScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    
                     _buildAccountTile(
                       icon: Icons.code,
                       title: 'Términos y condiciones',
