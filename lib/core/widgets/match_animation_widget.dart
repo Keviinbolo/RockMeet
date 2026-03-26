@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 
+
 class MatchModal extends StatelessWidget {
   final Map<String, dynamic> profile; // Reemplaza con tu modelo Profile
   final VoidCallback onClose;
