@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:myapp/core/services/event_service.dart';
@@ -16,7 +17,6 @@ class EventScreen extends StatefulWidget {
 class _EventScreenState extends State<EventScreen> {
   final EventService _eventService = EventService();
   final String _currentUserId = 'user_001';
-  late List<Event> _filteredEvents;
   String _filterType = 'all';
 
   // Controladores para el formulario
@@ -34,11 +34,6 @@ class _EventScreenState extends State<EventScreen> {
     _descriptionController = TextEditingController();
     _locationController = TextEditingController();
     _maxAttendeesController = TextEditingController(text: '100');
-
-    if (_eventService.getAllEvents().isEmpty) {
-      _eventService.initWithMockData();
-    }
-    _updateFilteredEvents();
   }
 
   @override
@@ -50,37 +45,24 @@ class _EventScreenState extends State<EventScreen> {
     super.dispose();
   }
 
-  void _updateFilteredEvents() {
-    final allEvents = _eventService.getActiveEvents();
-    setState(() {
-      switch (_filterType) {
-        case 'attending':
-          _filteredEvents = allEvents
-              .where((e) => e.attendeeIds.contains(_currentUserId))
-              .toList();
-          break;
-
-        default:
-          _filteredEvents = allEvents;
-      }
-      _filteredEvents.sort((a, b) => a.dateTime.compareTo(b.dateTime));
-    });
-  }
-
-  void _toggleAttendance(String eventId) {
-    final event = _eventService.getEventById(eventId);
-    if (event != null) {
-      if (event.attendeeIds.contains(_currentUserId)) {
-        _eventService.removeUserAsAttendee(eventId, _currentUserId);
-      } else {
-        try {
-          _eventService.markUserAsAttendee(eventId, _currentUserId);
+  void _toggleAttendance(String eventId) async {
+    try {
+      final event = await _eventService.getEventById(eventId);
+      if (event != null) {
+        if (event.attendeeIds.contains(_currentUserId)) {
+          await _eventService.removeUserAsAttendee(eventId, _currentUserId);
+          _showSnackBar('Te has desapuntado del evento');
+        } else {
+          if (event.attendeeIds.length >= event.maxAttendees) {
+            _showSnackBar('Error: El evento está lleno', isError: true);
+            return;
+          }
+          await _eventService.markUserAsAttendee(eventId, _currentUserId);
           _showSnackBar('¡Te has apuntado al evento!');
-        } catch (e) {
-          _showSnackBar('Error: El evento está lleno', isError: true);
         }
       }
-      _updateFilteredEvents();
+    } catch (e) {
+      _showSnackBar('Error: ${e.toString()}', isError: true);
     }
   }
 
@@ -124,7 +106,7 @@ class _EventScreenState extends State<EventScreen> {
               const SizedBox(height: 12),
               _DetailRow(
                 label: 'Fecha',
-                value: event.dateTime.toString().split('.').first,
+                value: DateFormat('dd/MM/yyyy HH:mm').format(event.dateTime),
               ),
               const SizedBox(height: 12),
               _DetailRow(label: 'Ubicación', value: event.location),
@@ -134,7 +116,7 @@ class _EventScreenState extends State<EventScreen> {
                 value: '${event.attendeeIds.length}/${event.maxAttendees}',
               ),
               const SizedBox(height: 12),
-              if (event.imageUrl != null)
+              if (event.imageUrl != null && event.imageUrl!.isNotEmpty)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -189,102 +171,118 @@ class _EventScreenState extends State<EventScreen> {
           style: AppTheme.eventTitle.copyWith(color: AppColors.primary),
         ),
         content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: 'Título del evento',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.event),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: 'Descripción',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.description),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _locationController,
-                decoration: InputDecoration(
-                  labelText: 'Ubicación',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.location_on),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _maxAttendeesController,
-                decoration: InputDecoration(
-                  labelText: 'Máximo de asistentes',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.people),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime.now(),
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 365)),
-                        );
-                        if (date != null) {
-                          setState(() => _selectedDate = date);
-                        }
-                      },
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(_selectedDate == null
-                          ? 'Seleccionar fecha'
-                          : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
+          child: StatefulBuilder(
+            builder: (context, setState) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Título del evento',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    prefixIcon: const Icon(Icons.event),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.now(),
-                        );
-                        if (time != null) {
-                          setState(() => _selectedTime = time);
-                        }
-                      },
-                      icon: const Icon(Icons.schedule),
-                      label: Text(_selectedTime == null
-                          ? 'Seleccionar hora'
-                          : '${_selectedTime!.hour}:${_selectedTime!.minute.toString().padLeft(2, '0')}'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _descriptionController,
+                  decoration: InputDecoration(
+                    labelText: 'Descripción',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    prefixIcon: const Icon(Icons.description),
                   ),
-                ],
-              ),
-            ],
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _locationController,
+                  decoration: InputDecoration(
+                    labelText: 'Ubicación',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.location_on),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _maxAttendeesController,
+                  decoration: InputDecoration(
+                    labelText: 'Máximo de asistentes',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.people),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
+                          );
+                          if (date != null) {
+                            setState(() => _selectedDate = date);
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(
+                          _selectedDate == null
+                              ? 'Seleccionar fecha'
+                              : DateFormat('dd/MM/yyyy').format(_selectedDate!),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                            initialEntryMode: TimePickerEntryMode.input,
+                            builder: (context, child) {
+                              return MediaQuery(
+                                data: MediaQuery.of(
+                                  context,
+                                ).copyWith(alwaysUse24HourFormat: true),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (time != null) {
+                            setState(() => _selectedTime = time);
+                          }
+                        },
+                        icon: const Icon(Icons.schedule),
+                        label: Text(
+                          _selectedTime == null
+                              ? 'Seleccionar hora'
+                              : '${_selectedTime!.hour}:${_selectedTime!.minute.toString().padLeft(2, '0')}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -304,8 +302,10 @@ class _EventScreenState extends State<EventScreen> {
                   _locationController.text.isEmpty ||
                   _selectedDate == null ||
                   _selectedTime == null) {
-                _showSnackBar('Por favor completa todos los campos',
-                    isError: true);
+                _showSnackBar(
+                  'Por favor completa todos los campos',
+                  isError: true,
+                );
                 return;
               }
 
@@ -317,26 +317,19 @@ class _EventScreenState extends State<EventScreen> {
                 _selectedTime!.minute,
               );
 
-              try {
-                _eventService.createSuggestedEvent(
-                  title: _titleController.text,
-                  description: _descriptionController.text,
-                  dateTime: dateTime,
-                  location: _locationController.text,
-                  suggestedByUserId: _currentUserId,
-                  maxAttendees: int.parse(_maxAttendeesController.text),
-                );
+              _eventService.createSuggestedEvent(
+                title: _titleController.text,
+                description: _descriptionController.text,
+                dateTime: dateTime,
+                location: _locationController.text,
+                suggestedByUserId: _currentUserId,
+                maxAttendees: int.parse(_maxAttendeesController.text),
+              );
 
-                Navigator.pop(context);
-                _showSnackBar(
-                    '¡Evento sugerido! Espera la aprobación del staff');
-              } catch (e) {
-                _showSnackBar('Error al crear el evento', isError: true);
-              }
+              Navigator.pop(context);
+              _showSnackBar('¡Evento sugerido! Espera la aprobación del staff');
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Crear'),
           ),
         ],
@@ -361,7 +354,6 @@ class _EventScreenState extends State<EventScreen> {
                     isSelected: _filterType == 'all',
                     onTap: () {
                       setState(() => _filterType = 'all');
-                      _updateFilteredEvents();
                     },
                   ),
                   const SizedBox(width: 8),
@@ -370,7 +362,6 @@ class _EventScreenState extends State<EventScreen> {
                     isSelected: _filterType == 'attending',
                     onTap: () {
                       setState(() => _filterType = 'attending');
-                      _updateFilteredEvents();
                     },
                   ),
                 ],
@@ -380,26 +371,40 @@ class _EventScreenState extends State<EventScreen> {
 
           // Lista de eventos
           Expanded(
-            child: _filteredEvents.isEmpty
-                ? _EmptyState(filterType: _filterType)
-                : ListView.builder(
-                    itemCount: _filteredEvents.length,
-                    itemBuilder: (context, index) {
-                      final event = _filteredEvents[index];
-                      final isAttending = event.attendeeIds.contains(
-                        _currentUserId,
-                      );
+            child: StreamBuilder<List<Event>>(
+              stream: _filterType == 'attending'
+                  ? _eventService.getUserAttendingEventsStream(_currentUserId)
+                  : _eventService.getActiveEventsStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                      return EventCard(
-                        event: event,
-                        onTap: () => _showEventDetails(event),
-                        onAttendanceToggle: () =>
-                            _toggleAttendance(event.id),
-                        isUserAttending: isAttending,
-                        isStaffView: false,
-                      );
-                    },
-                  ),
+                final events = snapshot.data ?? [];
+
+                if (events.isEmpty) {
+                  return _EmptyState(filterType: _filterType);
+                }
+
+                return ListView.builder(
+                  itemCount: events.length,
+                  itemBuilder: (context, index) {
+                    final event = events[index];
+                    final isAttending = event.attendeeIds.contains(
+                      _currentUserId,
+                    );
+
+                    return EventCard(
+                      event: event,
+                      onTap: () => _showEventDetails(event),
+                      onAttendanceToggle: () => _toggleAttendance(event.id),
+                      isUserAttending: isAttending,
+                      isStaffView: false,
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),

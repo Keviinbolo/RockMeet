@@ -1,6 +1,8 @@
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:myapp/core/services/auth_service.dart';
 
 
 class RegistroPage extends StatelessWidget {
@@ -65,14 +67,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
       );
       return;
     }
-
-    print('Registro:');
-    print('Nombre: ${_nameController.text}');
-    print('Email: ${_emailController.text}');
-    print('Edad: ${_ageController.text}');
-    print('Curso: ${_courseController.text}');
-    print('Código tutor: ${_tutorCodeController.text}');
     
+    AuthService().register(_emailController.text, _passwordController.text, _nameController.text);
+    //FirebaseAuth.instance.currentUser!.email;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Registro exitoso'),

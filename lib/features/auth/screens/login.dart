@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:myapp/core/services/auth_service.dart';
+import 'package:myapp/features/auth/screens/pantalla_splash.dart';
+import 'package:myapp/features/home/screens/home_page.dart';
 
 
 
@@ -130,6 +133,16 @@ class _LoginPageState extends State<LoginPage> {
                                 });
                               });
                             }
+                            AuthService().login(
+                              _emailController.text.trim(),
+                              _passwordController.text.trim(),
+                            ).then((_) {
+                              Navigator.pushReplacementNamed(context, '/home');
+                            }).catchError((error) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: ${error.toString()}')),
+                              );
+                            });
                           },
                     child: _isLoading
                         ? const SizedBox(

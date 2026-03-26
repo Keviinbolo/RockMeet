@@ -17,20 +17,9 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
   final EventService _eventService = EventService();
   final String _staffId = 'staff_001'; // ID del staff actual
   List<Event> _staffEvents = [];
-
   @override
   void initState() {
     super.initState();
-    if (_eventService.getAllEvents().isEmpty) {
-      _eventService.initWithMockData();
-    }
-    _staffEvents = _eventService.getEventsByStaff(_staffId);
-  }
-
-  void _refreshEvents() {
-    setState(() {
-      _staffEvents = _eventService.getEventsByStaff(_staffId);
-    });
   }
 
   @override
@@ -42,89 +31,112 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
         elevation: 2,
         automaticallyImplyLeading: false,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Sección de Resumen
-              _buildSummarySection(context),
+      body: StreamBuilder<List<Event>>(
+        stream: _eventService.getEventsByStaffStream(_staffId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              const SizedBox(height: 28),
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            _staffEvents = [];
+          } else {
+            _staffEvents = snapshot.data!;
+          }
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 12.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Sección de Resumen
+                _buildSummarySection(context),
 
-              // Sección de Gestión de Eventos
-              _buildEventManagementSection(context),
+                const SizedBox(height: 28),
 
-              const SizedBox(height: 28),
+                // Sección de Gestión de Eventos
+                _buildEventManagementSection(context),
 
-              // Sección adicional
-              _buildAdditionalSection(context),
+                const SizedBox(height: 28),
 
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
+                // Sección adicional
+                _buildAdditionalSection(context),
+
+                const SizedBox(height: 24),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   // Sección de Resumen
   Widget _buildSummarySection(BuildContext context) {
-    final activeEvents = _staffEvents
-        .where((e) => e.status == EventStatus.active)
-        .length;
-    final totalAttendees = _staffEvents.fold<int>(
-      0,
-      (sum, event) => sum + event.attendeeIds.length,
-    );
-    final pendingEvents = _eventService.getPendingEvents().length;
+    return StreamBuilder<List<Event>>(
+      stream: _eventService.getEventsByStaffStream(_staffId),
+      builder: (context, staffSnapshot) {
+        final staffEvents = staffSnapshot.data ?? [];
+        final activeEvents = staffEvents
+            .where((e) => e.status == EventStatus.active)
+            .length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Resumen del Panel',
-          style: GoogleFonts.outfit(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                context,
-                title: 'Eventos',
-                value: _staffEvents.length.toString(),
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                context,
-                title: 'Activos',
-                value: activeEvents.toString(),
-                color: AppColors.secondary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                context,
-                title: 'Pendientes',
-                value: pendingEvents.toString(),
-                color: Colors.orange,
-              ),
-            ),
-          ],
-        ),
-      ],
+        return StreamBuilder<List<Event>>(
+          stream: _eventService.getPendingEventsStream(),
+          builder: (context, pendingSnapshot) {
+            final pendingEvents = pendingSnapshot.data ?? [];
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Resumen del Panel',
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        context,
+                        title: 'Eventos',
+                        value: staffEvents.length.toString(),
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatCard(
+                        context,
+                        title: 'Activos',
+                        value: activeEvents.toString(),
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatCard(
+                        context,
+                        title: 'Pendientes',
+                        value: pendingEvents.length.toString(),
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -377,7 +389,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
         builder: (_) => _StaffEventsPage(
           staffId: _staffId,
           eventService: _eventService,
-          onEventUpdated: _refreshEvents,
+          onEventUpdated: () {},
         ),
       ),
     );
@@ -390,7 +402,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
         builder: (_) => _PendingEventsPage(
           staffId: _staffId,
           eventService: _eventService,
-          onEventUpdated: _refreshEvents,
+          onEventUpdated: () {},
         ),
       ),
     );
@@ -515,6 +527,16 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
                       final picked = await showTimePicker(
                         context: context,
                         initialTime: selectedTime,
+                        initialEntryMode: TimePickerEntryMode.input,
+                        builder: (context, child) {
+                          return MediaQuery(
+                            data: MediaQuery.of(
+                              context,
+                            ).copyWith(alwaysUse24HourFormat: true),
+
+                            child: child!,
+                          );
+                        },
                       );
                       if (picked != null) {
                         setState(() => selectedTime = picked);
@@ -556,7 +578,6 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
                   maxAttendees: int.parse(maxAttendeesController.text),
                 );
 
-                _refreshEvents();
                 Navigator.pop(context);
                 _showSnackBar('Evento creado exitosamente');
               }
@@ -602,20 +623,6 @@ class _PendingEventsPage extends StatefulWidget {
 }
 
 class _PendingEventsPageState extends State<_PendingEventsPage> {
-  late List<Event> _pendingEvents;
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshEvents();
-  }
-
-  void _refreshEvents() {
-    setState(() {
-      _pendingEvents = widget.eventService.getPendingEvents();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -623,15 +630,28 @@ class _PendingEventsPageState extends State<_PendingEventsPage> {
         title: const Text('Eventos Pendientes de Aprobación'),
         elevation: 0,
       ),
-      body: _pendingEvents.isEmpty
-          ? _buildEmptyState(context)
-          : ListView.builder(
-              itemCount: _pendingEvents.length,
-              itemBuilder: (context, index) {
-                final event = _pendingEvents[index];
-                return _buildPendingEventTile(context, event);
-              },
-            ),
+      body: StreamBuilder<List<Event>>(
+        stream: widget.eventService.getPendingEventsStream(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final pendingEvents = snapshot.data ?? [];
+
+          if (pendingEvents.isEmpty) {
+            return _buildEmptyState(context);
+          }
+
+          return ListView.builder(
+            itemCount: pendingEvents.length,
+            itemBuilder: (context, index) {
+              final event = pendingEvents[index];
+              return _buildPendingEventTile(context, event);
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -661,7 +681,6 @@ class _PendingEventsPageState extends State<_PendingEventsPage> {
       decoration: AppTheme.eventCardBox,
       child: Column(
         children: [
-          // Encabezado con color diferente para pendientes
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -707,7 +726,6 @@ class _PendingEventsPageState extends State<_PendingEventsPage> {
               ],
             ),
           ),
-          // Contenido
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -823,7 +841,6 @@ class _PendingEventsPageState extends State<_PendingEventsPage> {
             onPressed: () {
               widget.eventService.approveEvent(event.id, widget.staffId);
               widget.onEventUpdated();
-              _refreshEvents();
               Navigator.pop(context);
               _showSnackBar('Evento aprobado exitosamente');
             },
@@ -865,7 +882,6 @@ class _PendingEventsPageState extends State<_PendingEventsPage> {
             onPressed: () {
               widget.eventService.rejectEvent(event.id);
               widget.onEventUpdated();
-              _refreshEvents();
               Navigator.pop(context);
               _showSnackBar('Evento rechazado');
             },
@@ -910,33 +926,32 @@ class _StaffEventsPage extends StatefulWidget {
 }
 
 class _StaffEventsPageState extends State<_StaffEventsPage> {
-  late List<Event> _staffEvents;
-
-  @override
-  void initState() {
-    super.initState();
-    _staffEvents = widget.eventService.getEventsByStaff(widget.staffId);
-  }
-
-  void _refreshEvents() {
-    setState(() {
-      _staffEvents = widget.eventService.getEventsByStaff(widget.staffId);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Mis Eventos'), elevation: 0),
-      body: _staffEvents.isEmpty
-          ? _buildEmptyState(context)
-          : ListView.builder(
-              itemCount: _staffEvents.length,
-              itemBuilder: (context, index) {
-                final event = _staffEvents[index];
-                return _buildEventTile(context, event);
-              },
-            ),
+      body: StreamBuilder<List<Event>>(
+        stream: widget.eventService.getEventsByStaffStream(widget.staffId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final staffEvents = snapshot.data ?? [];
+
+          if (staffEvents.isEmpty) {
+            return _buildEmptyState(context);
+          }
+
+          return ListView.builder(
+            itemCount: staffEvents.length,
+            itemBuilder: (context, index) {
+              final event = staffEvents[index];
+              return _buildEventTile(context, event);
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -1230,6 +1245,16 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                       final picked = await showTimePicker(
                         context: context,
                         initialTime: selectedTime,
+                        initialEntryMode: TimePickerEntryMode.input,
+                        builder: (context, child) {
+                          return MediaQuery(
+                            data: MediaQuery.of(
+                              context,
+                            ).copyWith(alwaysUse24HourFormat: true),
+
+                            child: child!,
+                          );
+                        },
                       );
                       if (picked != null) {
                         setState(() => selectedTime = picked);
@@ -1304,7 +1329,7 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                 } else if (currentStatus == EventStatus.inactive) {
                   widget.eventService.deactivateEvent(event.id);
                 }
-                _refreshEvents();
+
                 Navigator.pop(context);
                 _showSnackBar('Evento actualizado exitosamente');
               }
@@ -1346,7 +1371,7 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
           ElevatedButton(
             onPressed: () {
               widget.eventService.cancelEvent(event.id);
-              _refreshEvents();
+
               Navigator.pop(context);
               _showSnackBar('Evento cancelado');
             },

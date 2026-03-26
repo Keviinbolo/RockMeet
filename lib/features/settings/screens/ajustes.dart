@@ -542,6 +542,8 @@ class LogoutButton extends StatelessWidget {
                     duration: const Duration(seconds: 2),
                   ),
                 );
+                AuthService().logout();
+                Navigator.pushReplacementNamed(context, '/login');
               },
               child: Text(
                 'Cerrar sesión',
