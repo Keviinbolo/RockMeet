@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:myapp/core/services/auth_service.dart';
+import 'terminos_condiciones.dart';
+import 'politica_privacidad.dart';
+import 'cambiar_contrasenia.dart';
+import 'contactar_soporte.dart';
+import 'preguntas_frecuentes.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -27,7 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Header con gradiente
           Container(
             decoration: AppTheme.primaryGradientBox,
-            padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             child: Row(
               children: [
                 GestureDetector(
@@ -67,19 +73,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: 'Información personal, email',
                   children: [
                     _buildAccountTile(
-                      icon: Icons.edit,
-                      title: 'Editar perfil',
-                      onTap: () {},
-                    ),
-                    _buildAccountTile(
-                      icon: Icons.email,
-                      title: 'Cambiar email',
-                      onTap: () {},
-                    ),
-                    _buildAccountTile(
                       icon: Icons.lock,
                       title: 'Cambiar contraseña',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CambiarContraseniaScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -143,15 +146,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildAccountTile(
                       icon: Icons.help_outline,
                       title: 'Preguntas frecuentes',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PreguntasFrecuentesScreen(),
+                          ),
+                        );
+                      },
                     ),
                     _buildAccountTile(
                       icon: Icons.support_agent,
                       title: 'Contactar soporte',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ContactarSoporteScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
+                
 
                 // Desplegable Acerca de
                 CustomExpansionTile(
@@ -163,7 +181,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildAccountTile(
                       icon: Icons.code,
                       title: 'Términos y condiciones',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TerminosCondicionesScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildAccountTile(
+                      icon: Icons.privacy_tip,
+                      title: 'Política y privacidad',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PoliticaPrivacidadScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -506,6 +543,8 @@ class LogoutButton extends StatelessWidget {
                     duration: const Duration(seconds: 2),
                   ),
                 );
+                AuthService().logout();
+                Navigator.pushReplacementNamed(context, '/login');
               },
               child: Text(
                 'Cerrar sesión',
