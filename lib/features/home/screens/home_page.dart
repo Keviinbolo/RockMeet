@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/features/events/screens/event_screen.dart';
 import 'package:myapp/features/like/screens/like_page.dart';
 import 'dart:ui';
 import 'dart:math' as math;
 
+import 'package:myapp/core/services/chat_service.dart';
 import 'package:myapp/features/profile/screens/Perfil.dart';
 import 'package:myapp/features/chat/screens/chat_page.dart';
 import 'package:myapp/features/settings/screens/ajustes.dart';
 import 'package:myapp/core/widgets/match_animation_widget.dart';
 
-// estilos
-import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:myapp/config/Theme/constants/text_styles.dart';
 
@@ -26,56 +27,176 @@ class _HomePageState extends State<HomePage> {
   int _selectedNavIndex = 0;
   bool _isProfileFlipped = false;
   double _dragDownProgress = 0;
+  List<Profile> _visibleProfiles = [];
+  String? _pendingChatPeerUid;
+  String? _pendingChatPeerName;
+  String? _pendingChatPeerAvatarUrl;
 
-  final List<Profile> profiles = [
-    Profile(
-      id: 1,
-      name: "Sofia",
-      age: 24,
-      photos: [
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1080",
-      ],
-      bio:
-          "Amante de la aventura 🏔️\n\nMe encanta el senderismo y la fotografía de paisajes. Busco a alguien para compartir rutas de montaña los fines de semana.",
-    ),
-    Profile(
-      id: 2,
-      name: "Carlos",
-      age: 27,
-      photos: [
-        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1080",
-      ],
-      bio:
-          "Fotógrafo y viajero ✈️\n\nSiempre con la maleta lista. Si te gusta el café recién hecho y las puestas de sol, nos llevaremos muy bien.",
-    ),
-  ];
+  Stream<QuerySnapshot<Map<String, dynamic>>> _profilesStream() {
+    return FirebaseFirestore.instance.collection('users').limit(50).snapshots();
+  }
 
-  void _nextProfile() {
+  Profile _mapDocToProfile(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+    int index,
+  ) {
+    final data = doc.data();
+
+    final displayName = (data['displayName'] as String?)?.trim();
+    final bio = (data['bio'] as String?)?.trim();
+    final age = data['age'];
+    final gallery =
+        (data['gallery'] as List?)?.whereType<String>().toList() ?? <String>[];
+    final photoUrl = (data['photoURL'] as String?)?.trim();
+
+    final photos = <String>[
+      if (photoUrl != null && photoUrl.isNotEmpty) photoUrl,
+      ...gallery.where((url) => url.trim().isNotEmpty),
+    ];
+
+    return Profile(
+      id: index,
+      uid: doc.id,
+      name: (displayName != null && displayName.isNotEmpty)
+          ? displayName
+          : 'Usuario',
+      age: age is int ? age : int.tryParse('$age') ?? 18,
+      photos: photos.isNotEmpty
+          ? photos
+          : <String>[
+              'https://images.unsplash.com/photo-1521119989659-a83eee488004?q=80&w=1080',
+            ],
+      bio: (bio != null && bio.isNotEmpty)
+          ? bio
+          : 'Este usuario aun no ha agregado una biografia.',
+    );
+  }
+
+  Future<void> _saveInteraction({
+    required Profile profile,
+    required String type,
+  }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final interactionId = '${currentUser.uid}_${profile.uid}';
+    await FirebaseFirestore.instance
+        .collection('interactions')
+        .doc(interactionId)
+        .set({
+          'fromUserId': currentUser.uid,
+          'toUserId': profile.uid,
+          'type': type,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+  }
+
+  Future<bool> _isMutualLike(Profile profile) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return false;
+
+    final inverseId = '${profile.uid}_${currentUser.uid}';
+    final inverseDoc = await FirebaseFirestore.instance
+        .collection('interactions')
+        .doc(inverseId)
+        .get();
+
+    if (!inverseDoc.exists) {
+      return false;
+    }
+
+    final data = inverseDoc.data();
+    return data != null && data['type'] == 'like';
+  }
+
+  Future<void> _prepareChatForMatch(Profile profile) async {
+    await ChatService.instance.ensureDirectChat(
+      peerUid: profile.uid,
+      peerName: profile.name,
+      peerAvatarUrl: profile.photos.first,
+    );
+
+    if (!mounted) return;
     setState(() {
-      currentIndex = (currentIndex + 1) % profiles.length;
+      _pendingChatPeerUid = profile.uid;
+      _pendingChatPeerName = profile.name;
+      _pendingChatPeerAvatarUrl = profile.photos.first;
+    });
+  }
+
+  Future<void> _handlePass(Profile currentProfile, int profilesLength) async {
+    try {
+      await _saveInteraction(profile: currentProfile, type: 'pass');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo guardar la interacción.')),
+        );
+      }
+    } finally {
+      _nextProfile(profilesLength);
+    }
+  }
+
+  Future<void> _handleLike(Profile currentProfile, int profilesLength) async {
+    var isMutualLike = false;
+
+    try {
+      await _saveInteraction(profile: currentProfile, type: 'like');
+      isMutualLike = await _isMutualLike(currentProfile);
+
+      if (isMutualLike) {
+        await _prepareChatForMatch(currentProfile);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo guardar la interacción.')),
+        );
+      }
+      _nextProfile(profilesLength);
+      return;
+    }
+
+    if (isMutualLike) {
+      _showMatchModal(currentProfile, profilesLength);
+      return;
+    }
+
+    _nextProfile(profilesLength);
+  }
+
+  void _nextProfile(int profilesLength) {
+    if (profilesLength == 0) return;
+    setState(() {
+      currentIndex = (currentIndex + 1) % profilesLength;
       _isProfileFlipped = false;
       _dragDownProgress = 0;
     });
   }
 
-  void _showMatchModal() {
+  void _showMatchModal(Profile currentProfile, int profilesLength) {
+    if (profilesLength == 0) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return MatchModal(
           profile: {
-            'name': profiles[currentIndex].name,
-            'image': profiles[currentIndex].photos[0],
+            'name': currentProfile.name,
+            'image': currentProfile.photos.first,
           },
           onSendMessage: () {
+            Navigator.of(context).pop();
             setState(() {
               _selectedNavIndex = 2;
             });
           },
           onClose: () {
             Navigator.of(context).pop();
-            _nextProfile();
+            _nextProfile(profilesLength);
           },
         );
       },
@@ -163,19 +284,14 @@ class _HomePageState extends State<HomePage> {
             children: [
               AppBar(
                 backgroundColor: AppColors.surface,
-                title: Text(
-                  "RockMeet",
-                  style: AppTextStyles.headlineSmall,
-                ),
+                title: Text("RockMeet", style: AppTextStyles.headlineSmall),
                 centerTitle: true,
                 automaticallyImplyLeading: false,
                 actions: [
                   IconButton(
                     onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const SettingsScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
                     ),
                     icon: const Icon(Icons.settings),
                     color: AppColors.textPrimary,
@@ -186,16 +302,19 @@ class _HomePageState extends State<HomePage> {
                 child: _selectedNavIndex == 0
                     ? _buildExplore()
                     : _selectedNavIndex == 1
-                        ? const LikesPage()
-                        : _selectedNavIndex == 2
-                            ? const ChatScreen()
-                            : _selectedNavIndex == 3
-                                ? const EventScreen()
-                                : _selectedNavIndex == 4
-                                    ? const ProfilePage()
-                                    : const Center(
-                                        child: Text("Página no encontrada"),
-                                      ),
+                    ? const LikesPage()
+                    : _selectedNavIndex == 2
+                    ? ChatScreen(
+                        key: ValueKey('chat-${_pendingChatPeerUid ?? 'none'}'),
+                        initialPeerUid: _pendingChatPeerUid,
+                        initialPeerName: _pendingChatPeerName,
+                        initialPeerAvatarUrl: _pendingChatPeerAvatarUrl,
+                      )
+                    : _selectedNavIndex == 3
+                    ? const EventScreen()
+                    : _selectedNavIndex == 4
+                    ? const ProfilePage()
+                    : const Center(child: Text("Página no encontrada")),
               ),
               _buildBottomNav(),
             ],
@@ -206,23 +325,90 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildExplore() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Column(
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                if (_dragDownProgress > 0)
-                  Positioned.fill(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: 5 * (_dragDownProgress / 100),
-                        sigmaY: 5 * (_dragDownProgress / 100),
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _profilesStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'No se pudieron cargar perfiles.\n${snapshot.error}',
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+
+        final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+        final docs =
+            (snapshot.data?.docs ??
+                    <QueryDocumentSnapshot<Map<String, dynamic>>>[])
+                .where(
+                  (doc) => currentUserId == null || doc.id != currentUserId,
+                )
+                .toList(growable: false);
+        final profiles = <Profile>[
+          for (var i = 0; i < docs.length; i++)
+            _mapDocToProfile(docs[i], i + 1),
+        ];
+        _visibleProfiles = profiles;
+
+        if (profiles.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                'Todavia no hay perfiles disponibles para mostrar.',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
+        }
+
+        final safeIndex = currentIndex % profiles.length;
+        final currentProfile = profiles[safeIndex];
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Column(
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    if (_dragDownProgress > 0)
+                      Positioned.fill(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(
+                            sigmaX: 5 * (_dragDownProgress / 100),
+                            sigmaY: 5 * (_dragDownProgress / 100),
+                          ),
+                          child: Container(
+                            color: AppColors.background.withOpacity(
+                              0.2 * (_dragDownProgress / 100),
+                            ),
+                          ),
+                        ),
                       ),
-                      child: Container(
-                        color: AppColors.background.withOpacity(
-                          0.2 * (_dragDownProgress / 100),
+                    SwipeableCard(
+                      key: ValueKey('$safeIndex-${currentProfile.id}'),
+                      profile: currentProfile,
+                      onSwipeLeft: () =>
+                          _handlePass(currentProfile, profiles.length),
+                      onSwipeRight: () =>
+                          _handleLike(currentProfile, profiles.length),
+                      onSwipeUp: () => _nextProfile(profiles.length),
+                      onFlipChanged: (isFlipped) =>
+                          setState(() => _isProfileFlipped = isFlipped),
+                      onDragDownProgress: (progress) =>
+                          setState(() => _dragDownProgress = progress),
+                    ),
+                    if (_isProfileFlipped)
+                      Positioned.fill(
+                        child: GestureDetector(
+                          onTap: _toggleCardFlip,
+                          child: Container(color: Colors.transparent),
                         ),
                       ),
                     ),
@@ -240,30 +426,21 @@ class _HomePageState extends State<HomePage> {
                   // NUEVO: Pasamos el callback del menú
                   onMenuAction: (action) => _handleCardMenuAction(action, profiles[currentIndex]),
                 ),
-                if (_isProfileFlipped)
-                  Positioned.fill(
-                    child: GestureDetector(
-                      onTap: _toggleCardFlip,
-                      child: Container(
-                        color: Colors.transparent,
-                      ),
-                    ),
+              ),
+              const SizedBox(height: 20),
+              Stack(
+                children: [
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: _isProfileFlipped ? 0.0 : 1.0,
+                    child: _buildActionButtons(),
                   ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Stack(
-            children: [
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: _isProfileFlipped ? 0.0 : 1.0,
-                child: _buildActionButtons(),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -278,7 +455,10 @@ class _HomePageState extends State<HomePage> {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explorar'),
         BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Likes'),
-        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble), label: 'Mensajes'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.chat_bubble),
+          label: 'Mensajes',
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Eventos'),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
       ],
@@ -286,11 +466,31 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildActionButtons() {
+    final hasProfiles = _visibleProfiles.isNotEmpty;
+    final safeIndex = hasProfiles ? currentIndex % _visibleProfiles.length : 0;
+    final currentProfile = hasProfiles ? _visibleProfiles[safeIndex] : null;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _roundButton(Icons.close, AppColors.error, _nextProfile),
-        _roundButton(Icons.favorite, AppColors.success, _showMatchModal),
+        _roundButton(
+          Icons.close,
+          AppColors.error,
+          hasProfiles
+              ? () {
+                  _handlePass(currentProfile!, _visibleProfiles.length);
+                }
+              : () {},
+        ),
+        _roundButton(
+          Icons.favorite,
+          AppColors.success,
+          hasProfiles
+              ? () {
+                  _handleLike(currentProfile!, _visibleProfiles.length);
+                }
+              : () {},
+        ),
       ],
     );
   }
@@ -581,6 +781,7 @@ class _SwipeableCardState extends State<SwipeableCard>
 
 class Profile {
   final int id;
+  final String uid;
   final String name;
   final int age;
   final List<String> photos;
@@ -588,6 +789,7 @@ class Profile {
 
   Profile({
     required this.id,
+    required this.uid,
     required this.name,
     required this.age,
     required this.photos,
