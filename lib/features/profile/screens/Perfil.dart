@@ -47,13 +47,13 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       title: 'Perfil',
       debugShowCheckedModeBanner: false,
-      home: ProfilePage(),
+      home: ProfilePage(uid: ''),
     );
   }
 }
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({super.key, required String uid});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -69,6 +69,9 @@ class _ProfilePageState extends State<ProfilePage> {
   late UserData _userData;
   late List<Interest> _userInterests;
   late String _avatarUrl;
+
+  // Amigos que sigue
+  String _friendsCount = '0';
 
   // Controladores para edición
   late TextEditingController _nameController;
@@ -169,15 +172,12 @@ class _ProfilePageState extends State<ProfilePage> {
       final twitter = profile['twitter'] as String?;
       final instagram = profile['instagram'] as String?;
       final tiktok = profile['tiktok'] as String?;
-      final gallery = (profile['gallery'] as List?)
-          ?.whereType<String>()
-          .toList();
-      final interests = (profile['interests'] as List?)
-          ?.whereType<String>()
-          .toList();
+      final gallery = (profile['gallery'] as List?)?.whereType<String>().toList();
+      final interests = (profile['interests'] as List?)?.whereType<String>().toList();
       final likes = profile['likes'];
       final matches = profile['matches'];
       final activities = profile['activities'];
+      final friends = profile['friends'];
 
       setState(() {
         if (displayName != null && displayName.isNotEmpty) {
@@ -217,6 +217,9 @@ class _ProfilePageState extends State<ProfilePage> {
         }
         if (activities != null) {
           _userData.activities = '$activities';
+        }
+        if (friends != null) {
+          _friendsCount = '$friends';
         }
         if (interests != null && interests.isNotEmpty) {
           for (final i in _userInterests) {
@@ -397,10 +400,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     const SizedBox(height: 16),
 
-                    // Cabecera del perfil - solo avatar sin botón de edición ni hover
+                    // Cabecera del perfil
                     Column(
                       children: [
-                        // Avatar simple sin funcionalidades adicionales
                         GestureDetector(
                           onTap: _isEditing ? _showAvatarSelector : null,
                           child: Stack(
@@ -430,8 +432,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20), // Espacio ajustado
-                        // Nombre y email
+                        const SizedBox(height: 20),
+                        // Solo nombre (sin email)
                         _isEditing
                             ? TextFormField(
                                 controller: _nameController,
@@ -441,8 +443,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               )
                             : Text(_userData.name),
-                        const SizedBox(height: 4),
-                        Text(_userData.email), // email no editable
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -461,7 +461,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
 
                     const SizedBox(height: 24),
-                    // Tarjeta de estadísticas (no editables)
+                    // Tarjeta de estadísticas (ahora con 4 elementos)
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -482,6 +482,12 @@ class _ProfilePageState extends State<ProfilePage> {
                               icon: Icons.calendar_today,
                               label: 'Actividades',
                               value: _userData.activities,
+                            ),
+                            // Amigos que sigue
+                            StatCard(
+                              icon: Icons.group,
+                              label: 'Amigos',
+                              value: _friendsCount,
                             ),
                           ],
                         ),
@@ -673,7 +679,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // --- SECCIÓN INTERESES (Sin título/icono en la cabecera) ---
+                    // Intereses
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),

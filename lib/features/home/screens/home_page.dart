@@ -255,7 +255,7 @@ class _HomePageState extends State<HomePage> {
                     : _selectedNavIndex == 3
                     ? const EventScreen()
                     : _selectedNavIndex == 4
-                    ? const ProfilePage()
+                    ? const ProfilePage(uid: '',)
                     : const Center(child: Text("Página no encontrada")),
               ),
               _buildBottomNav(),
