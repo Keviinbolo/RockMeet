@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/features/profile/interest_screen.dart';
 import 'package:myapp/core/services/profile_service.dart';
 
@@ -38,8 +39,6 @@ class UserData {
   });
 }
 
-void main() => runApp(const MyApp());
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -78,26 +77,8 @@ class _ProfilePageState extends State<ProfilePage> {
   late TextEditingController _instagramController;
   late TextEditingController _tiktokController;
 
-  @override
-  void initState() {
-    super.initState();
-    images = profileImages.take(3).toList();
-    _avatarUrl = defaultAvatarUrl;
-
-    _userData = UserData(
-      name: 'Jordi Baulenas',
-      email: 'jordibaulenas@ceroca.cat',
-      bio:
-          'Desarrollador de aplicaciones móviles apasionado por Flutter y el diseño de interfaces.',
-      twitter: '@jordi_twitter',
-      instagram: '@jordi_instagram',
-      tiktok: '@jordi_tiktok',
-      likes: '24',
-      matches: '89',
-      activities: '03',
-    );
-
-    _userInterests = [
+  List<Interest> _buildInterestCatalog() {
+    return [
       Interest(
         Icons.music_note,
         'Música',
@@ -111,19 +92,59 @@ class _ProfilePageState extends State<ProfilePage> {
       Interest(
         Icons.movie,
         'Películas',
-        subInterests: ['Acción', 'Comedia', 'Drama', 'Ciencia Ficción', 'Terror'],
+        subInterests: [
+          'Acción',
+          'Comedia',
+          'Drama',
+          'Ciencia Ficción',
+          'Terror',
+        ],
       ),
       Interest(
         Icons.book,
         'Lectura',
-        subInterests: ['Ficción', 'Misterio', 'Fantasía', 'Biografía', 'Tecnología'],
+        subInterests: [
+          'Ficción',
+          'Misterio',
+          'Fantasía',
+          'Biografía',
+          'Tecnología',
+        ],
       ),
       Interest(
         Icons.travel_explore,
         'Viajar',
-        subInterests: ['Playas', 'Montañas', 'Ciudades', 'Aventura', 'Cultural'],
+        subInterests: [
+          'Playas',
+          'Montañas',
+          'Ciudades',
+          'Aventura',
+          'Cultural',
+        ],
       ),
     ];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    images = profileImages.take(3).toList();
+    _avatarUrl = defaultAvatarUrl;
+
+    // Inicializar con valores por defecto - se reemplazarán con datos de Firebase en _loadProfileFromFirestore()
+    _userData = UserData(
+      name: '',
+      email: FirebaseAuth.instance.currentUser?.email ?? '',
+      bio: '',
+      twitter: '',
+      instagram: '',
+      tiktok: '',
+      likes: '0',
+      matches: '0',
+      activities: '0',
+    );
+
+    _userInterests = _buildInterestCatalog();
 
     _nameController = TextEditingController(text: _userData.name);
     _bioController = TextEditingController(text: _userData.bio);
@@ -142,18 +163,29 @@ class _ProfilePageState extends State<ProfilePage> {
       if (profile == null || !mounted) return;
 
       final displayName = profile['displayName'] as String?;
+      final email = profile['email'] as String?;
       final bio = profile['bio'] as String?;
       final photoURL = profile['photoURL'] as String?;
       final twitter = profile['twitter'] as String?;
       final instagram = profile['instagram'] as String?;
       final tiktok = profile['tiktok'] as String?;
-      final gallery = (profile['gallery'] as List?)?.whereType<String>().toList();
-      final interests = (profile['interests'] as List?)?.whereType<String>().toList();
+      final gallery = (profile['gallery'] as List?)
+          ?.whereType<String>()
+          .toList();
+      final interests = (profile['interests'] as List?)
+          ?.whereType<String>()
+          .toList();
+      final likes = profile['likes'];
+      final matches = profile['matches'];
+      final activities = profile['activities'];
 
       setState(() {
         if (displayName != null && displayName.isNotEmpty) {
           _userData.name = displayName;
           _nameController.text = displayName;
+        }
+        if (email != null && email.isNotEmpty) {
+          _userData.email = email;
         }
         if (bio != null) {
           _userData.bio = bio;
@@ -176,6 +208,15 @@ class _ProfilePageState extends State<ProfilePage> {
         }
         if (gallery != null && gallery.isNotEmpty) {
           images = gallery.take(3).toList();
+        }
+        if (likes != null) {
+          _userData.likes = '$likes';
+        }
+        if (matches != null) {
+          _userData.matches = '$matches';
+        }
+        if (activities != null) {
+          _userData.activities = '$activities';
         }
         if (interests != null && interests.isNotEmpty) {
           for (final i in _userInterests) {
@@ -230,7 +271,7 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     final selectedInterests = _userInterests
-      .where((i) => i.selected)
+        .where((i) => i.selected)
         .map((i) => i.label)
         .toList();
 
@@ -509,10 +550,16 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 child: Container(
                                                   width: 20,
                                                   height: 20,
-                                                  decoration: const BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: Color.fromARGB(255, 255, 0, 0),
-                                                  ),
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: Color.fromARGB(
+                                                          255,
+                                                          255,
+                                                          0,
+                                                          0,
+                                                        ),
+                                                      ),
                                                   child: const Icon(
                                                     Icons.close,
                                                     size: 18,
@@ -530,7 +577,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                       );
                                     } else {
                                       return GestureDetector(
-                                        onTap: _isEditing ? _handleAddImage : null,
+                                        onTap: _isEditing
+                                            ? _handleAddImage
+                                            : null,
                                         child: Container(
                                           decoration: BoxDecoration(
                                             borderRadius: BorderRadius.circular(
@@ -634,12 +683,15 @@ class _ProfilePageState extends State<ProfilePage> {
                             Center(
                               child: ElevatedButton.icon(
                                 onPressed: () async {
-                                  final result = await Navigator.push<List<Interest>>(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => InterestScreen(currentInterests: _userInterests),
-                                    ),
-                                  );
+                                  final result =
+                                      await Navigator.push<List<Interest>>(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => InterestScreen(
+                                            currentInterests: _userInterests,
+                                          ),
+                                        ),
+                                      );
                                   if (result != null) {
                                     setState(() {
                                       _userInterests = result;
@@ -649,9 +701,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                         .where((i) => i.selected)
                                         .map((i) => i.label)
                                         .toList();
-                                    ProfileService.instance.updateCurrentUserProfile(
-                                      interests: selectedInterests,
-                                    );
+                                    ProfileService.instance
+                                        .updateCurrentUserProfile(
+                                          interests: selectedInterests,
+                                        );
                                   }
                                 },
                                 icon: const Icon(Icons.edit),
@@ -667,7 +720,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             const SizedBox(height: 16),
                             if (_userInterests.where((i) => i.selected).isEmpty)
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
                                 child: Text(
                                   'No hay intereses seleccionados',
                                   style: TextStyle(color: Colors.grey.shade500),
@@ -677,14 +732,18 @@ class _ProfilePageState extends State<ProfilePage> {
                               ListView.separated(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _userInterests.where((i) => i.selected).length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                itemCount: _userInterests
+                                    .where((i) => i.selected)
+                                    .length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 16),
                                 itemBuilder: (context, index) {
                                   final interest = _userInterests
                                       .where((i) => i.selected)
                                       .toList()[index];
                                   return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
@@ -692,7 +751,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                             width: 36,
                                             height: 36,
                                             decoration: BoxDecoration(
-                                              color: Colors.deepPurple.withOpacity(0.1),
+                                              color: Colors.deepPurple
+                                                  .withOpacity(0.1),
                                               shape: BoxShape.circle,
                                             ),
                                             child: Icon(
@@ -719,11 +779,18 @@ class _ProfilePageState extends State<ProfilePage> {
                                             .map(
                                               (sub) => Chip(
                                                 label: Text(sub),
-                                                deleteIcon: const Icon(Icons.close, size: 16),
+                                                deleteIcon: const Icon(
+                                                  Icons.close,
+                                                  size: 16,
+                                                ),
                                                 onDeleted: () {
                                                   setState(() {
-                                                    interest.selectedSubInterests.remove(sub);
-                                                    if (interest.selectedSubInterests.isEmpty) {
+                                                    interest
+                                                        .selectedSubInterests
+                                                        .remove(sub);
+                                                    if (interest
+                                                        .selectedSubInterests
+                                                        .isEmpty) {
                                                       interest.selected = false;
                                                     }
                                                   });
