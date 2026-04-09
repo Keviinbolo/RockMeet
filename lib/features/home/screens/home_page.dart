@@ -203,64 +203,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // NUEVO: Función para manejar acciones del menú de la tarjeta
-  void _handleCardMenuAction(String action, Profile profile) {
-    switch (action) {
-      case 'report':
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Denunci usuario'),
-            content: Text('¿Estás seguro de que quieres denunciar a ${profile.name}?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-              TextButton(
-                onPressed: () {
-                  // Aquí iría la lógica de reporte
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Usuario reportado. Gracias por tu ayuda.')),
-                  );
-                  Navigator.pop(context);
-                  _nextProfile(); // Opcional: pasar al siguiente perfil
-                },
-                child: const Text('Reportar'),
-              ),
-            ],
-          ),
-        );
-        break;
-      case 'block':
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Bloquear usuario'),
-            content: Text('¿Quieres bloquear a ${profile.name}? No volverás a ver su perfil.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-              TextButton(
-                onPressed: () {
-                  // Lógica de bloqueo
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${profile.name} ha sido bloqueado.')),
-                  );
-                  Navigator.pop(context);
-                  _nextProfile();
-                },
-                child: const Text('Bloquear'),
-              ),
-            ],
-          ),
-        );
-        break;
-    }
-  }
-
   void _resetFlip() {
     setState(() {
       _isProfileFlipped = false;
@@ -411,20 +353,7 @@ class _HomePageState extends State<HomePage> {
                           child: Container(color: Colors.transparent),
                         ),
                       ),
-                    ),
-                  ),
-                SwipeableCard(
-                  key: ValueKey(currentIndex),
-                  profile: profiles[currentIndex],
-                  onSwipeLeft: _nextProfile,
-                  onSwipeRight: _showMatchModal,
-                  onSwipeUp: _nextProfile,
-                  onFlipChanged: (isFlipped) =>
-                      setState(() => _isProfileFlipped = isFlipped),
-                  onDragDownProgress: (progress) =>
-                      setState(() => _dragDownProgress = progress),
-                  // NUEVO: Pasamos el callback del menú
-                  onMenuAction: (action) => _handleCardMenuAction(action, profiles[currentIndex]),
+                  ],
                 ),
               ),
               const SizedBox(height: 20),
@@ -523,8 +452,6 @@ class SwipeableCard extends StatefulWidget {
   final VoidCallback onSwipeUp;
   final Function(bool) onFlipChanged;
   final Function(double) onDragDownProgress;
-  // NUEVO: Callback para acciones del menú de tres puntos
-  final Function(String) onMenuAction;
 
   const SwipeableCard({
     super.key,
@@ -534,7 +461,6 @@ class SwipeableCard extends StatefulWidget {
     required this.onSwipeUp,
     required this.onFlipChanged,
     required this.onDragDownProgress,
-    required this.onMenuAction, // NUEVO
   });
 
   @override
@@ -705,71 +631,32 @@ class _SwipeableCardState extends State<SwipeableCard>
             ),
           ],
         ),
-        child: Stack(
+        child: Column(
           children: [
-            // NUEVO: Botón de menú (tres puntos) en la esquina superior derecha
-            Positioned(
-              top: -10,
-              right: -16,
-              child: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
-                onSelected: (value) {
-                  widget.onMenuAction(value);
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'report',
-                    child: Text('Denunciar'),
+            Icon(Icons.person_pin, size: 60, color: AppColors.primary),
+            const SizedBox(height: 10),
+            Text(widget.profile.name, style: AppTextStyles.headlineSmall),
+            const Divider(height: 30, color: AppColors.divider),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  widget.profile.bio,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: AppColors.textPrimary,
                   ),
-                  const PopupMenuItem(
-                    value: 'block',
-                    child: Text('Bloquear usuario'),
-                  ),
-                ],
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
-            // Contenido principal centrado
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.person_pin,
-                    size: 60,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.profile.name,
-                    style: AppTextStyles.headlineSmall,
-                  ),
-                  const Divider(height: 30, color: AppColors.divider),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Text(
-                        widget.profile.bio,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextButton.icon(
-                    onPressed: _toggleFlip,
-                    icon: Icon(
-                      Icons.flip_to_front,
-                      color: AppColors.primary,
-                    ),
-                    label: Text(
-                      "Cerrar info",
-                      style: AppTextStyles.labelMedium.copyWith(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: _toggleFlip,
+              icon: Icon(Icons.flip_to_front, color: AppColors.primary),
+              label: Text(
+                "Cerrar info",
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: AppColors.primary,
+                ),
               ),
             ),
           ],
