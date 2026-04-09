@@ -46,7 +46,16 @@ class Chat {
 }
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  const ChatScreen({
+    super.key,
+    this.initialPeerUid,
+    this.initialPeerName,
+    this.initialPeerAvatarUrl,
+  });
+
+  final String? initialPeerUid;
+  final String? initialPeerName;
+  final String? initialPeerAvatarUrl;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -61,14 +70,58 @@ class _ChatScreenState extends State<ChatScreen> {
   StreamSubscription<List<ChatMessage>>? _messagesSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _chatsSubscription;
   bool _hasEnteredChat = false;
+  bool _hasHandledInitialPeer = false;
+  bool _isEnsuringInitialChat = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeData();
-    activeChat = chats.first;
+    // TODO: Datos de chats ahora se cargan de Firestore mediante _subscribeToUserChats()
+    // _initializeData() eliminado - ya no usar datos mock locales
+    chats = [];
     _subscribeToUserChats();
-    _hydrateChatsFromFirestore();
+  }
+
+  Future<void> _tryOpenInitialPeerChat(List<Chat> updatedChats) async {
+    final initialPeerUid = widget.initialPeerUid;
+    if (initialPeerUid == null || initialPeerUid.isEmpty) {
+      return;
+    }
+
+    if (_hasHandledInitialPeer) {
+      return;
+    }
+
+    Chat? matchedChat;
+    for (final chat in updatedChats) {
+      if (chat.peerUid == initialPeerUid) {
+        matchedChat = chat;
+        break;
+      }
+    }
+
+    if (matchedChat != null) {
+      _hasHandledInitialPeer = true;
+      _handleChatSelect(matchedChat);
+      return;
+    }
+
+    if (_isEnsuringInitialChat) {
+      return;
+    }
+
+    _isEnsuringInitialChat = true;
+    try {
+      await ChatService.instance.ensureDirectChat(
+        peerUid: initialPeerUid,
+        peerName: widget.initialPeerName ?? 'Usuario',
+        peerAvatarUrl: widget.initialPeerAvatarUrl,
+      );
+    } catch (_) {
+      // Si falla la creación, el usuario aún puede entrar manualmente a chats existentes.
+    } finally {
+      _isEnsuringInitialChat = false;
+    }
   }
 
   @override
@@ -85,91 +138,105 @@ class _ChatScreenState extends State<ChatScreen> {
     if (currentUserId == null) return;
 
     _chatsSubscription?.cancel();
-    _chatsSubscription = ChatService.instance.streamCurrentUserChats().listen((snapshot) {
-      if (!mounted) return;
+    _chatsSubscription = ChatService.instance.streamCurrentUserChats().listen(
+      (snapshot) {
+        if (!mounted) return;
 
-      if (snapshot.docs.isEmpty) {
-        setState(() {
-          chats = [];
-          _hasEnteredChat = false;
-        });
-        return;
-      }
+        if (snapshot.docs.isEmpty) {
+          setState(() {
+            chats = [];
+            _hasEnteredChat = false;
+          });
+          return;
+        }
 
-      final previousByChatId = <String, Chat>{
-        for (final chat in chats)
-          if (chat.chatId != null) chat.chatId!: chat,
-      };
+        final previousByChatId = <String, Chat>{
+          for (final chat in chats)
+            if (chat.chatId != null) chat.chatId!: chat,
+        };
 
-      final updatedChats = <Chat>[];
-      for (var index = 0; index < snapshot.docs.length; index++) {
-        final doc = snapshot.docs[index];
-        final data = doc.data();
+        final updatedChats = <Chat>[];
+        for (var index = 0; index < snapshot.docs.length; index++) {
+          final doc = snapshot.docs[index];
+          final data = doc.data();
 
-        final participants =
-            (data['participants'] as List?)?.whereType<String>().toList() ?? const <String>[];
-        final peerUid = participants.firstWhere(
-          (uid) => uid != currentUserId,
-          orElse: () => 'unknown_peer',
-        );
+          final participants =
+              (data['participants'] as List?)?.whereType<String>().toList() ??
+              const <String>[];
+          final peerUid = participants.firstWhere(
+            (uid) => uid != currentUserId,
+            orElse: () => 'unknown_peer',
+          );
 
-        final participantProfiles = data['participantProfiles'] as Map<String, dynamic>?;
-        final peerProfile = participantProfiles != null
-            ? participantProfiles[peerUid] as Map<String, dynamic>?
-            : null;
+          final participantProfiles =
+              data['participantProfiles'] as Map<String, dynamic>?;
+          final peerProfile = participantProfiles != null
+              ? participantProfiles[peerUid] as Map<String, dynamic>?
+              : null;
 
-        final previous = previousByChatId[doc.id];
-        updatedChats.add(
-          Chat(
-            id: index + 1,
-            peerUid: peerUid,
-            username: (peerProfile?['displayName'] as String?)?.trim().isNotEmpty == true
-                ? (peerProfile!['displayName'] as String)
-                : 'Usuario',
-            avatar: (peerProfile?['photoURL'] as String?) ??
-                'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1080',
-            lastMessage: (data['lastMessage'] as String?) ?? '',
-            lastMessageTime:
-                (data['lastMessageTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
-            unread: previous?.unread ?? 0,
-            online: previous?.online ?? false,
-            messages: previous?.messages ?? <Message>[],
-            chatId: doc.id,
-          ),
-        );
-      }
+          final previous = previousByChatId[doc.id];
+          updatedChats.add(
+            Chat(
+              id: index + 1,
+              peerUid: peerUid,
+              username:
+                  (peerProfile?['displayName'] as String?)?.trim().isNotEmpty ==
+                      true
+                  ? (peerProfile!['displayName'] as String)
+                  : 'Usuario',
+              avatar:
+                  (peerProfile?['photoURL'] as String?) ??
+                  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1080',
+              lastMessage: (data['lastMessage'] as String?) ?? '',
+              lastMessageTime:
+                  (data['lastMessageTime'] as Timestamp?)?.toDate() ??
+                  DateTime.now(),
+              unread: previous?.unread ?? 0,
+              online: previous?.online ?? false,
+              messages: previous?.messages ?? <Message>[],
+              chatId: doc.id,
+            ),
+          );
+        }
 
-      if (!_hasEnteredChat) {
+        if (!_hasEnteredChat) {
+          setState(() {
+            chats = updatedChats;
+            // Inicializar activeChat con el primer chat cuando se cargan por primera vez
+            if (updatedChats.isNotEmpty) {
+              activeChat = updatedChats.first;
+            }
+          });
+          _tryOpenInitialPeerChat(updatedChats);
+          return;
+        }
+
+        final activeChatId = activeChat.chatId;
+        var nextActive = updatedChats.first;
+        for (final chat in updatedChats) {
+          if (chat.chatId == activeChatId) {
+            nextActive = chat;
+            break;
+          }
+        }
+
+        final changedActiveChat = nextActive.chatId != activeChat.chatId;
         setState(() {
           chats = updatedChats;
+          activeChat = nextActive;
         });
-        return;
-      }
 
-      final activeChatId = activeChat.chatId;
-      var nextActive = updatedChats.first;
-      for (final chat in updatedChats) {
-        if (chat.chatId == activeChatId) {
-          nextActive = chat;
-          break;
+        if (changedActiveChat) {
+          _subscribeToActiveChat();
         }
-      }
-
-      final changedActiveChat = nextActive.chatId != activeChat.chatId;
-      setState(() {
-        chats = updatedChats;
-        activeChat = nextActive;
-      });
-
-      if (changedActiveChat) {
-        _subscribeToActiveChat();
-      }
-    }, onError: (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error cargando chats: $error')),
-      );
-    });
+      },
+      onError: (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error cargando chats: $error')));
+      },
+    );
   }
 
   Future<void> _subscribeToActiveChat() async {
@@ -185,71 +252,44 @@ class _ChatScreenState extends State<ChatScreen> {
 
     activeChat.chatId = chatId;
     await _messagesSubscription?.cancel();
-    _messagesSubscription = ChatService.instance.streamMessages(chatId).listen((items) {
-      if (!mounted) return;
+    _messagesSubscription = ChatService.instance
+        .streamMessages(chatId)
+        .listen(
+          (items) {
+            if (!mounted) return;
 
-      final mapped = items
-          .map(
-            (m) => Message(
-              id: m.timestamp.millisecondsSinceEpoch,
-              text: m.text,
-              sender: m.senderId == uid ? 'user' : 'other',
-              timestamp: m.timestamp,
-            ),
-          )
-          .toList();
+            final mapped = items
+                .map(
+                  (m) => Message(
+                    id: Object.hash(
+                      m.senderId,
+                      m.timestamp.millisecondsSinceEpoch,
+                      m.text,
+                    ),
+                    text: m.text,
+                    sender: m.senderId == uid ? 'user' : 'other',
+                    timestamp: m.timestamp,
+                  ),
+                )
+                .toList();
 
-      setState(() {
-        activeChat.messages = mapped;
-        if (mapped.isNotEmpty) {
-          activeChat.lastMessage = mapped.last.text;
-          activeChat.lastMessageTime = mapped.last.timestamp;
-        }
-      });
+            setState(() {
+              activeChat.messages = mapped;
+              if (mapped.isNotEmpty) {
+                activeChat.lastMessage = mapped.last.text;
+                activeChat.lastMessageTime = mapped.last.timestamp;
+              }
+            });
 
-      _scrollToBottom();
-    }, onError: (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error cargando mensajes: $error')),
-      );
-    });
-  }
-
-  Future<void> _hydrateChatsFromFirestore() async {
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    if (currentUserId == null) return;
-
-    for (final chat in chats) {
-      final chatId = await ChatService.instance.ensureDirectChat(
-        peerUid: chat.peerUid,
-        peerName: chat.username,
-        peerAvatarUrl: chat.avatar,
-      );
-
-      final recentMessages = await ChatService.instance.fetchRecentMessages(chatId);
-      if (!mounted) return;
-
-      final mapped = recentMessages
-          .map(
-            (m) => Message(
-              id: m.timestamp.millisecondsSinceEpoch,
-              text: m.text,
-              sender: m.senderId == currentUserId ? 'user' : 'other',
-              timestamp: m.timestamp,
-            ),
-          )
-          .toList();
-
-      setState(() {
-        chat.chatId = chatId;
-        chat.messages = mapped;
-        if (mapped.isNotEmpty) {
-          chat.lastMessage = mapped.last.text;
-          chat.lastMessageTime = mapped.last.timestamp;
-        }
-      });
-    }
+            _scrollToBottom();
+          },
+          onError: (error) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error cargando mensajes: $error')),
+            );
+          },
+        );
   }
 
   void _scrollToBottom() {
@@ -308,45 +348,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _subscribeToActiveChat();
     _scrollToBottom();
-  }
-
-  void _initializeData() {
-    final now = DateTime.now();
-    chats = [
-      Chat(
-        id: 1,
-        peerUid: 'peer_001',
-        username: 'Sofia',
-        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1080',
-        lastMessage: 'Hola! Como estas?',
-        lastMessageTime: now.subtract(const Duration(minutes: 5)),
-        unread: 0,
-        online: true,
-        messages: [],
-      ),
-      Chat(
-        id: 2,
-        peerUid: 'peer_002',
-        username: 'Carlos',
-        avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1080',
-        lastMessage: 'Nos vemos en el evento',
-        lastMessageTime: now.subtract(const Duration(hours: 1)),
-        unread: 0,
-        online: false,
-        messages: [],
-      ),
-      Chat(
-        id: 3,
-        peerUid: 'peer_003',
-        username: 'Lucia',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1080',
-        lastMessage: 'Te escribo luego',
-        lastMessageTime: now.subtract(const Duration(days: 1)),
-        unread: 0,
-        online: true,
-        messages: [],
-      ),
-    ];
   }
 
   String _formatTime(DateTime value) {
@@ -428,17 +429,28 @@ class _ChatScreenState extends State<ChatScreen> {
                 final message = activeChat.messages[index];
                 final mine = message.sender == 'user';
                 return Align(
-                  alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: mine
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color: mine ? colorScheme.primary : colorScheme.surfaceVariant,
+                      color: mine
+                          ? colorScheme.primary
+                          : colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
-                      crossAxisAlignment:
-                          mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                      crossAxisAlignment: mine
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
                       children: [
                         Text(
                           message.text,
@@ -453,10 +465,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           _formatTime(message.timestamp),
                           style: TextStyle(
                             fontSize: 11,
-                            color: (mine
-                                    ? colorScheme.onPrimary
-                                    : colorScheme.onSurfaceVariant)
-                                .withOpacity(0.8),
+                            color:
+                                (mine
+                                        ? colorScheme.onPrimary
+                                        : colorScheme.onSurfaceVariant)
+                                    .withOpacity(0.8),
                           ),
                         ),
                       ],
