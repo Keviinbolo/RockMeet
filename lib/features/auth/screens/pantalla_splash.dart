@@ -49,22 +49,31 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     //Simulación de validación (reemplazaremos luego esto con la lógica real)
     _initializeApp();
   }
-  
-  
-  void _initializeApp() {
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() => _validationState = ValidationState.success);
 
-        Future.delayed(const Duration(seconds: 1), () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => widget.nextScreen),
-          );
-        });
-      }
-    });
+  Future<void> _initializeApp() async {
+    // Esperar a que se verifique la conexión de Firestore
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Si ya hay error de Firestore, no navegar
+    if (_validationState == ValidationState.error) {
+      return;
+    }
+
+    // Si la conexión fue exitosa, marcar como éxito
+    if (mounted) {
+      setState(() => _validationState = ValidationState.success);
+    }
+
+    // Dar tiempo para ver el mensaje de éxito antes de navegar
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (mounted) {
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => widget.nextScreen));
+    }
   }
-  
+
   void _retryInitialization() {
     setState(() {
       _validationState = ValidationState.loading;
@@ -104,13 +113,14 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                     width: 150,
                     height: 150,
                     decoration: AppTheme.primaryGradientBox,
-                    child: const Icon(Icons.apps_sharp, size: 80, color: Colors.white),
+                    child: const Icon(
+                      Icons.apps_sharp,
+                      size: 80,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    'RockMeet',
-                    style: AppTextStyles.headlineLarge,
-                  ),
+                  Text('RockMeet', style: AppTextStyles.headlineLarge),
                 ],
               ),
             ),
@@ -122,7 +132,9 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
               right: 0,
               child: ValidationStateWidget(
                 state: _validationState,
-                errorMessage: _errorMessage.isEmpty ? "Error al cargar la app" : _errorMessage,
+                errorMessage: _errorMessage.isEmpty
+                    ? "Error al cargar la app"
+                    : _errorMessage,
                 successMessage: "¡Bienvenido a RockMeet!",
                 onRetry: _retryInitialization,
               ),
@@ -131,13 +143,29 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
       ),
     );
   }
-  
+
   Future<void> _checkFireStoreConnection() async {
     try {
-      await FirebaseFirestore.instance.collection('test').get();
+      // Usa una colección que sí existe y tiene lectura permitida en reglas.
+      await FirebaseFirestore.instance.collection('events').limit(1).get();
       debugPrint('Conexión a Firestore exitosa');
+      // Si llegamos aquí, la conexión fue exitosa (el estado se actualiza en _initializeApp)
+    } on FirebaseException catch (e) {
+      debugPrint(
+        'Error Firebase al conectar a Firestore: ${e.code} - ${e.message}',
+      );
+      if (!mounted) return;
+      setState(() {
+        _validationState = ValidationState.error;
+        _errorMessage = 'No se pudo conectar con la base de datos';
+      });
     } catch (e) {
       debugPrint('Error al conectar a Firestore: $e');
+      if (!mounted) return;
+      setState(() {
+        _validationState = ValidationState.error;
+        _errorMessage = 'Error inesperado al iniciar';
+      });
     }
   }
 }
