@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/features/profile/interest_screen.dart';
 import 'package:myapp/core/services/profile_service.dart';
+import 'package:myapp/models/user_data.dart';
 
 // Datos del usuario (iniciales)
 const String defaultAvatarUrl =
@@ -15,29 +16,7 @@ const List<String> profileImages = [
   'https://images.unsplash.com/photo-1709287253135-865c51892771?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMG5hdHVyZSUyMG91dGRvb3JzfGVufDF8fHx8MTc3MjEyMDk3Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
 ];
 
-class UserData {
-  String name;
-  String email;
-  String bio;
-  String twitter;
-  String instagram;
-  String tiktok;
-  String likes;
-  String matches;
-  String activities;
 
-  UserData({
-    required this.name,
-    required this.email,
-    required this.bio,
-    required this.twitter,
-    required this.instagram,
-    required this.tiktok,
-    required this.likes,
-    required this.matches,
-    required this.activities,
-  });
-}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -441,8 +420,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               )
                             : Text(_userData.name),
-                        const SizedBox(height: 4),
-                        Text(_userData.email), // email no editable
+                       
+                        
                       ],
                     ),
                     const SizedBox(height: 24),
