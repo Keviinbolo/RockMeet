@@ -1,9 +1,7 @@
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:myapp/core/services/auth_service.dart';
-
 
 class RegistroPage extends StatelessWidget {
   const RegistroPage({super.key});
@@ -26,22 +24,30 @@ class _RegistroScreenState extends State<RegistroScreen> {
   
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _ageController = TextEditingController();
   final _courseController = TextEditingController();
   final _tutorCodeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  
+  final TextEditingController _birthDateController = TextEditingController();
+  DateTime? _selectedBirthDate;
 
-  bool _showPassword = false;
-  bool _showConfirmPassword = false;
   bool _acceptedTerms = false;
   String? _ageError;
+
+  @override
+  void initState() {
+    super.initState();
+    _birthDateController.addListener(() {
+      if (_ageError != null) setState(() => _ageError = null);
+    });
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _ageController.dispose();
+    _birthDateController.dispose();
     _courseController.dispose();
     _tutorCodeController.dispose();
     _passwordController.dispose();
@@ -49,8 +55,169 @@ class _RegistroScreenState extends State<RegistroScreen> {
     super.dispose();
   }
 
+  int _getDaysInMonth(int month, int year) {
+    if (month == 2) {
+      return (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) ? 29 : 28;
+    }
+    const days31 = [1, 3, 5, 7, 8, 10, 12];
+    return days31.contains(month) ? 31 : 30;
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    // Iniciar sin valores preseleccionados
+    int tempDay = 1;
+    int tempMonth = 1;
+    int tempYear = 2000;
+
+    final List<String> monthNames = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+
+    final DateTime? picked = await showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            int maxDays = _getDaysInMonth(tempMonth, tempYear);
+            if (tempDay > maxDays) tempDay = maxDays;
+
+            return AlertDialog(
+              title: const Text('Selecciona tu fecha de nacimiento'),
+              content: SizedBox(
+                width: 300,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const Text('Día'),
+                              DropdownButton<int>(
+                                value: tempDay,
+                                items: List.generate(maxDays, (i) => i + 1)
+                                    .map((day) => DropdownMenuItem(
+                                          value: day,
+                                          child: Text(day.toString()),
+                                        ))
+                                    .toList(),
+                                onChanged: (newDay) {
+                                  setStateDialog(() {
+                                    tempDay = newDay!;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const Text('Mes'),
+                              DropdownButton<int>(
+                                value: tempMonth,
+                                items: List.generate(12, (i) => i + 1)
+                                    .map((month) => DropdownMenuItem(
+                                          value: month,
+                                          child: Text(monthNames[month - 1]),
+                                        ))
+                                    .toList(),
+                                onChanged: (newMonth) {
+                                  setStateDialog(() {
+                                    tempMonth = newMonth!;
+                                    int newMax = _getDaysInMonth(tempMonth, tempYear);
+                                    if (tempDay > newMax) tempDay = newMax;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const Text('Año'),
+                              DropdownButton<int>(
+                                value: tempYear,
+                                items: List.generate(
+                                  DateTime.now().year - 1900 + 1,
+                                  (i) => 1900 + i,
+                                ).map((year) => DropdownMenuItem(
+                                      value: year,
+                                      child: Text(year.toString()),
+                                    )).toList(),
+                                onChanged: (newYear) {
+                                  setStateDialog(() {
+                                    tempYear = newYear!;
+                                    int newMax = _getDaysInMonth(tempMonth, tempYear);
+                                    if (tempDay > newMax) tempDay = newMax;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancelar'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final selectedDate = DateTime(tempYear, tempMonth, tempDay);
+                    Navigator.pop(dialogContext, selectedDate);
+                  },
+                  child: const Text('Aceptar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedBirthDate = picked;
+        // Formatear la fecha y asignarla al controlador
+        String fechaFormateada = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+        _birthDateController.text = fechaFormateada;
+        _ageError = null;
+      });
+      // Depuración: imprime en consola para verificar
+      print("Fecha seleccionada: ${_birthDateController.text}");
+    }
+  }
+
+  int _calculateAge(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    if (now.month < birthDate.month || 
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+    return age;
+  }
+
   void _handleSubmit() {
-    final age = int.tryParse(_ageController.text) ?? 0;
+    if (_selectedBirthDate == null) {
+      setState(() {
+        _ageError = 'Debes seleccionar tu fecha de nacimiento';
+      });
+      return;
+    }
+
+    final age = _calculateAge(_selectedBirthDate!);
     if (age < 18) {
       setState(() {
         _ageError = 'Debes ser mayor de 18 años para crear una cuenta';
@@ -69,7 +236,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     }
     
     AuthService().register(_emailController.text, _passwordController.text, _nameController.text);
-    //FirebaseAuth.instance.currentUser!.email;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -105,7 +271,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
                   children: [
                     _buildHeader(theme),
                     const SizedBox(height: 32),
-                    
                     Container(
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surface,
@@ -127,7 +292,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                             const SizedBox(height: 20),
                             _buildEmailField(),
                             const SizedBox(height: 20),
-                            _buildAgeField(),
+                            _buildBirthDateField(), // Aquí está el campo de fecha
                             const SizedBox(height: 20),
                             _buildCourseField(),
                             const SizedBox(height: 20),
@@ -160,6 +325,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 
+  // Header sin fecha (solo ícono y texto)
   Widget _buildHeader(ThemeData theme) {
     return Column(
       children: [
@@ -185,7 +351,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          'Crear Cuenta',
+          'Crear cuenta',
           style: theme.textTheme.headlineLarge,
         ),
         const SizedBox(height: 8),
@@ -233,37 +399,38 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 
-  Widget _buildAgeField() {
+  Widget _buildBirthDateField() {
     final theme = Theme.of(context);
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Edad',
-          style: theme.textTheme.labelMedium,
-        ),
+        Text('Fecha de nacimiento', style: theme.textTheme.labelMedium),
         const SizedBox(height: 8),
         TextFormField(
-          controller: _ageController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(
-            hintText: 'Tu edad',
-            prefixIcon: const Icon(Icons.calendar_today, size: 20),
+          controller: _birthDateController,
+          readOnly: true,          
+          onTap: () => _selectDate(context),
+          decoration: const InputDecoration(
+            hintText: 'DD/MM/AAAA',
+            prefixIcon: Icon(Icons.calendar_today, size: 20),
           ),
-          onChanged: (value) {
-            setState(() {
-              _ageError = null;
-            });
-          },
           validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Este campo es requerido';
+            if (_selectedBirthDate == null) {
+              return 'Selecciona tu fecha de nacimiento';
             }
             return null;
           },
         ),
+        // Texto de depuración para ver la fecha (opcional, luego lo eliminas)
+        if (_selectedBirthDate != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Fecha guardada: ${_birthDateController.text}',
+              style: const TextStyle(fontSize: 12, color: Colors.green),
+            ),
+          ),
         if (_ageError != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -327,21 +494,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _passwordController,
-          obscureText: !_showPassword,
-          decoration: InputDecoration(
+          obscureText: true,
+          decoration: const InputDecoration(
             hintText: 'Mínimo 8 caracteres',
-            prefixIcon: const Icon(Icons.lock, size: 20),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _showPassword ? Icons.visibility_off : Icons.visibility,
-                size: 20,
-              ),
-              onPressed: () {
-                setState(() {
-                  _showPassword = !_showPassword;
-                });
-              },
-            ),
+            prefixIcon: Icon(Icons.lock, size: 20),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -367,21 +523,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _confirmPasswordController,
-          obscureText: !_showConfirmPassword,
-          decoration: InputDecoration(
+          obscureText: true,
+          decoration: const InputDecoration(
             hintText: 'Repite tu contraseña',
-            prefixIcon: const Icon(Icons.lock, size: 20),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _showConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                size: 20,
-              ),
-              onPressed: () {
-                setState(() {
-                  _showConfirmPassword = !_showConfirmPassword;
-                });
-              },
-            ),
+            prefixIcon: Icon(Icons.lock, size: 20),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -427,8 +572,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                     color: theme.colorScheme.primary,
                     decoration: TextDecoration.underline,
                   ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () {},
+                  recognizer: TapGestureRecognizer()..onTap = () {},
                 ),
                 const TextSpan(text: ' y la '),
                 TextSpan(
@@ -437,8 +581,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                     color: theme.colorScheme.primary,
                     decoration: TextDecoration.underline,
                   ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () {},
+                  recognizer: TapGestureRecognizer()..onTap = () {},
                 ),
               ],
             ),
@@ -579,4 +722,3 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 }
-
