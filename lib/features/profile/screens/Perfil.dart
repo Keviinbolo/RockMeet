@@ -72,6 +72,9 @@ class _ProfilePageState extends State<ProfilePage> {
   late List<Interest> _userInterests;
   late String _avatarUrl;
 
+  // Amigos que sigue
+  String _friendsCount = '0';
+
   // Controladores para edición
   late TextEditingController _nameController;
   late TextEditingController _bioController;
@@ -172,16 +175,12 @@ class _ProfilePageState extends State<ProfilePage> {
       final twitter = profile['twitter'] as String?;
       final instagram = profile['instagram'] as String?;
       final tiktok = profile['tiktok'] as String?;
-      final gallery = (profile['gallery'] as List?)
-          ?.whereType<String>()
-          .toList();
-      final interests = (profile['interests'] as List?)
-          ?.whereType<String>()
-          .toList();
+      final gallery = (profile['gallery'] as List?)?.whereType<String>().toList();
+      final interests = (profile['interests'] as List?)?.whereType<String>().toList();
       final likes = profile['likes'];
       final matches = profile['matches'];
       final activities = profile['activities'];
-      final friends = profile['friends']; // Cargar total de amigos
+      final friends = profile['friends'];
 
       setState(() {
         if (displayName != null && displayName.isNotEmpty) {
@@ -446,7 +445,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               )
                             : Text(_userData.name),
-                        // El correo ha sido eliminado
                       ],
                     ),
                     const SizedBox(height: 24),
