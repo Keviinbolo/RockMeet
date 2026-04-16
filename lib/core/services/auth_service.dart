@@ -12,7 +12,6 @@ class AuthService {
 
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
 
   // Stream para escuchar cambios de autenticación
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
@@ -98,6 +97,16 @@ class AuthService {
       return doc.data() as Map<String, dynamic>?;
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<String> getUserTypeById(String uid) async {
+    try {
+      final data = await getUserDataById(uid);
+      final type = data?['type'] as String?;
+      return (type != null && type.trim().isNotEmpty) ? type.trim() : 'user';
+    } catch (e) {
+      return 'user';
     }
   }
 }

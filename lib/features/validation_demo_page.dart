@@ -16,7 +16,7 @@ class _ValidationDemoPageState extends State<ValidationDemoPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Demo de Validaciones Visuales'),
+        title: const Text('Validaciones Visuales'),
       ),
       body: SingleChildScrollView(
         child: Padding(
