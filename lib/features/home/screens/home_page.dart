@@ -139,6 +139,10 @@ class _HomePageState extends State<HomePage> {
 
       final snapshot = await query.get();
       final docs = snapshot.docs;
+      final visibleDocs = docs.where((doc) {
+        final data = doc.data();
+        return (data['type'] as String?) != 'staff';
+      }).toList(growable: false);
 
       if (!mounted) return;
       setState(() {
@@ -146,7 +150,7 @@ class _HomePageState extends State<HomePage> {
           _hasMoreProfiles = false;
         } else {
           final knownIds = _profileDocs.map((doc) => doc.id).toSet();
-          for (final doc in docs) {
+          for (final doc in visibleDocs) {
             if (!knownIds.contains(doc.id)) {
               _profileDocs.add(doc);
             }
@@ -489,6 +493,7 @@ class _HomePageState extends State<HomePage> {
             .where(
               (doc) =>
                   (currentUserId == null || doc.id != currentUserId) &&
+                  (doc.data()['type'] as String?) != 'staff' &&
                   !interactedUserIds.contains(doc.id),
             )
             .toList(growable: false);
