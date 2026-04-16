@@ -25,15 +25,31 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
   int _selectedNavIndex = 0;
-  bool _isProfileFlipped = false;
   double _dragDownProgress = 0;
+  bool _showCardHints = true;
+  static const int _profilesPageSize = 20;
+  bool _isResettingInteractions = false;
+  bool _isLoadingProfiles = false;
+  bool _hasMoreProfiles = true;
+  String? _profilesError;
+  DocumentSnapshot<Map<String, dynamic>>? _lastProfileDoc;
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> _profileDocs = [];
   List<Profile> _visibleProfiles = [];
   String? _pendingChatPeerUid;
   String? _pendingChatPeerName;
   String? _pendingChatPeerAvatarUrl;
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> _profilesStream() {
-    return FirebaseFirestore.instance.collection('users').limit(50).snapshots();
+  @override
+  void initState() {
+    super.initState();
+    _loadMoreProfiles(reset: true);
+  }
+
+  Query<Map<String, dynamic>> _profilesBaseQuery() {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .orderBy(FieldPath.documentId)
+        .limit(_profilesPageSize);
   }
 
   Profile _mapDocToProfile(
@@ -45,9 +61,39 @@ class _HomePageState extends State<HomePage> {
     final displayName = (data['displayName'] as String?)?.trim();
     final bio = (data['bio'] as String?)?.trim();
     final age = data['age'];
+    final twitter = (data['twitter'] as String?)?.trim();
+    final instagram = (data['instagram'] as String?)?.trim();
+    final tiktok = (data['tiktok'] as String?)?.trim();
+    final interests =
+        (data['interests'] as List?)?.whereType<String>().toList() ??
+        <String>[];
     final gallery =
         (data['gallery'] as List?)?.whereType<String>().toList() ?? <String>[];
     final photoUrl = (data['photoURL'] as String?)?.trim();
+
+    final detailsParts = <String>[];
+    if (bio != null && bio.isNotEmpty) {
+      detailsParts.add(bio);
+    }
+    if (age != null) {
+      detailsParts.add('Edad: $age');
+    }
+    if (interests.isNotEmpty) {
+      detailsParts.add('Intereses: ${interests.join(', ')}');
+    }
+    if (twitter != null && twitter.isNotEmpty) {
+      detailsParts.add('X/Twitter: $twitter');
+    }
+    if (instagram != null && instagram.isNotEmpty) {
+      detailsParts.add('Instagram: $instagram');
+    }
+    if (tiktok != null && tiktok.isNotEmpty) {
+      detailsParts.add('TikTok: $tiktok');
+    }
+
+    final details = detailsParts.isNotEmpty
+        ? detailsParts.join('\n\n')
+        : 'Este usuario aun no ha completado su perfil.';
 
     final photos = <String>[
       if (photoUrl != null && photoUrl.isNotEmpty) photoUrl,
@@ -66,10 +112,73 @@ class _HomePageState extends State<HomePage> {
           : <String>[
               'https://images.unsplash.com/photo-1521119989659-a83eee488004?q=80&w=1080',
             ],
-      bio: (bio != null && bio.isNotEmpty)
-          ? bio
-          : 'Este usuario aun no ha agregado una biografia.',
+      bio: details,
     );
+  }
+
+  Future<void> _loadMoreProfiles({bool reset = false}) async {
+    if (_isLoadingProfiles) return;
+    if (!reset && !_hasMoreProfiles) return;
+
+    setState(() {
+      _isLoadingProfiles = true;
+      _profilesError = null;
+      if (reset) {
+        _profileDocs.clear();
+        _lastProfileDoc = null;
+        _hasMoreProfiles = true;
+        currentIndex = 0;
+      }
+    });
+
+    try {
+      Query<Map<String, dynamic>> query = _profilesBaseQuery();
+      if (_lastProfileDoc != null && !reset) {
+        query = query.startAfterDocument(_lastProfileDoc!);
+      }
+
+      final snapshot = await query.get();
+      final docs = snapshot.docs;
+
+      if (!mounted) return;
+      setState(() {
+        if (docs.isEmpty) {
+          _hasMoreProfiles = false;
+        } else {
+          final knownIds = _profileDocs.map((doc) => doc.id).toSet();
+          for (final doc in docs) {
+            if (!knownIds.contains(doc.id)) {
+              _profileDocs.add(doc);
+            }
+          }
+          _lastProfileDoc = docs.last;
+          _hasMoreProfiles = docs.length == _profilesPageSize;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _profilesError = 'No se pudieron cargar perfiles: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProfiles = false;
+        });
+      }
+    }
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _interactionsStream() {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) {
+      return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+    }
+
+    return FirebaseFirestore.instance
+        .collection('interactions')
+        .where('fromUserId', isEqualTo: currentUserId)
+        .snapshots();
   }
 
   Future<void> _saveInteraction({
@@ -125,6 +234,80 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _resetInteractions() async {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null || _isResettingInteractions) return;
+
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Reiniciar perfiles'),
+              content: const Text(
+                'Se eliminaran tus likes/passes guardados y volveras a ver perfiles ya evaluados.\n\n¿Quieres continuar?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Reiniciar'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    setState(() {
+      _isResettingInteractions = true;
+    });
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('interactions')
+          .where('fromUserId', isEqualTo: currentUserId)
+          .get();
+
+      final docs = snapshot.docs;
+      for (var i = 0; i < docs.length; i += 450) {
+        final batch = FirebaseFirestore.instance.batch();
+        final chunk = docs.skip(i).take(450);
+        for (final doc in chunk) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+
+      if (!mounted) return;
+      setState(() {
+        currentIndex = 0;
+        _dragDownProgress = 0;
+      });
+      await _loadMoreProfiles(reset: true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Interacciones reiniciadas.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo reiniciar interacciones.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isResettingInteractions = false;
+        });
+      }
+    }
+  }
+
   Future<void> _handlePass(Profile currentProfile, int profilesLength) async {
     try {
       await _saveInteraction(profile: currentProfile, type: 'pass');
@@ -171,7 +354,6 @@ class _HomePageState extends State<HomePage> {
     if (profilesLength == 0) return;
     setState(() {
       currentIndex = (currentIndex + 1) % profilesLength;
-      _isProfileFlipped = false;
       _dragDownProgress = 0;
     });
   }
@@ -203,19 +385,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _resetFlip() {
-    setState(() {
-      _isProfileFlipped = false;
-      _dragDownProgress = 0;
-    });
-  }
-
-  void _toggleCardFlip() {
-    setState(() {
-      _isProfileFlipped = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -230,6 +399,20 @@ class _HomePageState extends State<HomePage> {
                 centerTitle: true,
                 automaticallyImplyLeading: false,
                 actions: [
+                  IconButton(
+                    onPressed: _isResettingInteractions
+                        ? null
+                        : _resetInteractions,
+                    icon: _isResettingInteractions
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh),
+                    color: AppColors.textPrimary,
+                    tooltip: 'Reiniciar perfiles',
+                  ),
                   IconButton(
                     onPressed: () => Navigator.push(
                       context,
@@ -268,42 +451,86 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildExplore() {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _profilesStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+      stream: _interactionsStream(),
+      builder: (context, interactionsSnapshot) {
+        if (interactionsSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (snapshot.hasError) {
+        if (_profilesError != null && _profileDocs.isEmpty) {
           return Center(
-            child: Text(
-              'No se pudieron cargar perfiles.\n${snapshot.error}',
-              textAlign: TextAlign.center,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_profilesError!, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _loadMoreProfiles(reset: true),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reintentar'),
+                  ),
+                ],
+              ),
             ),
           );
         }
 
+        final interactedUserIds =
+            interactionsSnapshot.data?.docs
+                .map((doc) => doc.data()['toUserId'] as String?)
+                .whereType<String>()
+                .toSet() ??
+            <String>{};
+
         final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-        final docs =
-            (snapshot.data?.docs ??
-                    <QueryDocumentSnapshot<Map<String, dynamic>>>[])
-                .where(
-                  (doc) => currentUserId == null || doc.id != currentUserId,
-                )
-                .toList(growable: false);
+        final docs = _profileDocs
+            .where(
+              (doc) =>
+                  (currentUserId == null || doc.id != currentUserId) &&
+                  !interactedUserIds.contains(doc.id),
+            )
+            .toList(growable: false);
+
         final profiles = <Profile>[
           for (var i = 0; i < docs.length; i++)
             _mapDocToProfile(docs[i], i + 1),
         ];
         _visibleProfiles = profiles;
 
+        if (currentIndex >= profiles.length && profiles.isNotEmpty) {
+          currentIndex = 0;
+        }
+
         if (profiles.isEmpty) {
-          return const Center(
+          return Center(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Todavia no hay perfiles disponibles para mostrar.',
-                textAlign: TextAlign.center,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'No hay mas perfiles nuevos por ahora.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _isLoadingProfiles ? null : _loadMoreProfiles,
+                    icon: _isLoadingProfiles
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.expand_more),
+                    label: Text(
+                      _hasMoreProfiles
+                          ? 'Cargar mas perfiles'
+                          : 'No hay perfiles disponibles',
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -336,33 +563,38 @@ class _HomePageState extends State<HomePage> {
                     SwipeableCard(
                       key: ValueKey('$safeIndex-${currentProfile.id}'),
                       profile: currentProfile,
+                      showHints: _showCardHints,
+                      onDismissHints: () {
+                        if (!_showCardHints) return;
+                        setState(() {
+                          _showCardHints = false;
+                        });
+                      },
                       onSwipeLeft: () =>
                           _handlePass(currentProfile, profiles.length),
                       onSwipeRight: () =>
                           _handleLike(currentProfile, profiles.length),
-                      onSwipeUp: () => _nextProfile(profiles.length),
-                      onFlipChanged: (isFlipped) =>
-                          setState(() => _isProfileFlipped = isFlipped),
                       onDragDownProgress: (progress) =>
                           setState(() => _dragDownProgress = progress),
                     ),
-                    if (_isProfileFlipped)
-                      Positioned.fill(
-                        child: GestureDetector(
-                          onTap: _toggleCardFlip,
-                          child: Container(color: Colors.transparent),
-                        ),
-                      ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
-              Stack(
+              Column(
                 children: [
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 300),
-                    opacity: _isProfileFlipped ? 0.0 : 1.0,
-                    child: _buildActionButtons(),
+                  _buildActionButtons(),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: _isLoadingProfiles ? null : _loadMoreProfiles,
+                    icon: _isLoadingProfiles
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.expand_more),
+                    label: const Text('Cargar mas'),
                   ),
                 ],
               ),
@@ -447,19 +679,19 @@ class _HomePageState extends State<HomePage> {
 
 class SwipeableCard extends StatefulWidget {
   final Profile profile;
+  final bool showHints;
+  final VoidCallback onDismissHints;
   final VoidCallback onSwipeLeft;
   final VoidCallback onSwipeRight;
-  final VoidCallback onSwipeUp;
-  final Function(bool) onFlipChanged;
   final Function(double) onDragDownProgress;
 
   const SwipeableCard({
     super.key,
     required this.profile,
+    required this.showHints,
+    required this.onDismissHints,
     required this.onSwipeLeft,
     required this.onSwipeRight,
-    required this.onSwipeUp,
-    required this.onFlipChanged,
     required this.onDragDownProgress,
   });
 
@@ -471,39 +703,149 @@ class _SwipeableCardState extends State<SwipeableCard>
     with SingleTickerProviderStateMixin {
   Offset _position = Offset.zero;
   bool _isDragging = false;
-  bool _isFlipped = false;
-  late AnimationController _flipController;
+  int _currentPhotoIndex = 0;
+  bool _isAnimatingSwipe = false;
+  late final AnimationController _swipeController;
+  Animation<Offset>? _swipeAnimation;
+  VoidCallback? _pendingSwipeAction;
 
   @override
   void initState() {
     super.initState();
-    _flipController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
+    _swipeController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 260),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            final action = _pendingSwipeAction;
+            _pendingSwipeAction = null;
+
+            if (action != null) {
+              action();
+            }
+
+            if (!mounted) return;
+            setState(() {
+              _position = Offset.zero;
+              _isAnimatingSwipe = false;
+            });
+          }
+        });
   }
 
   @override
   void dispose() {
-    _flipController.dispose();
+    _swipeController.dispose();
     super.dispose();
   }
 
-  void _toggleFlip() {
+  void _nextPhoto() {
+    final total = widget.profile.photos.length;
+    if (total <= 1) return;
+    if (_currentPhotoIndex >= total - 1) return;
     setState(() {
-      _isFlipped = !_isFlipped;
-      _isFlipped ? _flipController.forward() : _flipController.reverse();
-      widget.onFlipChanged(_isFlipped);
+      _currentPhotoIndex = _currentPhotoIndex + 1;
+    });
+    widget.onDismissHints();
+  }
+
+  void _previousPhoto() {
+    final total = widget.profile.photos.length;
+    if (total <= 1) return;
+    if (_currentPhotoIndex <= 0) return;
+    setState(() {
+      _currentPhotoIndex = _currentPhotoIndex - 1;
+    });
+    widget.onDismissHints();
+  }
+
+  void _handleTapUp(TapUpDetails details, BoxConstraints constraints) {
+    if (_isAnimatingSwipe || _isDragging) return;
+
+    final dx = details.localPosition.dx;
+    final width = constraints.maxWidth;
+    if (width <= 0) {
+      return;
+    }
+
+    final leftZone = width * 0.33;
+    final rightZone = width * 0.67;
+
+    if (dx < leftZone) {
+      _previousPhoto();
+      return;
+    }
+    if (dx > rightZone) {
+      _nextPhoto();
+      return;
+    }
+  }
+
+  double _clamp01(double value) {
+    if (value < 0) return 0;
+    if (value > 1) return 1;
+    return value;
+  }
+
+  double get _likeProgress => _clamp01(_position.dx / 120);
+  double get _nopeProgress => _clamp01((-_position.dx) / 120);
+
+  void _animateSwipeOut({required bool like}) {
+    if (_isAnimatingSwipe) return;
+
+    final width = MediaQuery.of(context).size.width;
+    final targetX = like ? width * 1.25 : -width * 1.25;
+    final target = Offset(targetX, _position.dy * 0.15);
+
+    _swipeAnimation = Tween<Offset>(begin: _position, end: target).animate(
+      CurvedAnimation(parent: _swipeController, curve: Curves.easeOutCubic),
+    );
+
+    _pendingSwipeAction = like ? widget.onSwipeRight : widget.onSwipeLeft;
+
+    setState(() {
+      _isAnimatingSwipe = true;
+    });
+
+    _swipeController.forward(from: 0);
+  }
+
+  void _animateBackToCenter() {
+    if (_isAnimatingSwipe) return;
+
+    _swipeAnimation = Tween<Offset>(begin: _position, end: Offset.zero).animate(
+      CurvedAnimation(parent: _swipeController, curve: Curves.easeOutCubic),
+    );
+
+    setState(() {
+      _isAnimatingSwipe = true;
+    });
+
+    _swipeController.forward(from: 0).then((_) {
+      if (!mounted) return;
+      setState(() {
+        _isAnimatingSwipe = false;
+        _position = Offset.zero;
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    double angleDrag = (_position.dx / 20) * (math.pi / 180);
+    final activePosition = _isAnimatingSwipe && _swipeAnimation != null
+        ? _swipeAnimation!.value
+        : _position;
+    double angleDrag = (activePosition.dx / 20) * (math.pi / 180);
 
     return GestureDetector(
-      onPanStart: (_) => setState(() => _isDragging = true),
+      behavior: HitTestBehavior.opaque,
+      onPanStart: (_) {
+        if (_isAnimatingSwipe) return;
+        setState(() => _isDragging = true);
+      },
       onPanUpdate: (details) {
+        if (_isAnimatingSwipe) return;
         setState(() {
           _position += details.delta;
           double dragProgress = (_position.dy > 0)
@@ -513,97 +855,290 @@ class _SwipeableCardState extends State<SwipeableCard>
         });
       },
       onPanEnd: (details) {
+        if (_isAnimatingSwipe) return;
+
         setState(() => _isDragging = false);
 
-        if (_position.dx < -140) {
-          widget.onSwipeLeft();
+        final dx = _position.dx;
+        final dy = _position.dy;
+        const trigger = 90.0;
+
+        // Priorizar gesto horizontal: izquierda = pass, derecha = like.
+        if (dx.abs() >= trigger && dx.abs() > dy.abs()) {
+          if (dx < 0) {
+            widget.onDismissHints();
+            _animateSwipeOut(like: false);
+          } else {
+            widget.onDismissHints();
+            _animateSwipeOut(like: true);
+          }
+        } else if (_position.dx < -140) {
+          widget.onDismissHints();
+          _animateSwipeOut(like: false);
         } else if (_position.dx > 140) {
-          widget.onSwipeRight();
-        } else if (_position.dy < -140) {
-          widget.onSwipeUp();
-        } else if (_position.dy > 100) {
-          _toggleFlip();
+          widget.onDismissHints();
+          _animateSwipeOut(like: true);
+        } else {
+          _animateBackToCenter();
         }
 
-        setState(() {
-          _position = Offset.zero;
-          widget.onDragDownProgress(0);
-        });
+        widget.onDragDownProgress(0);
       },
       child: AnimatedBuilder(
-        animation: _flipController,
+        animation: _swipeController,
         builder: (context, child) {
-          final angleFlip = _flipController.value * math.pi;
+          final renderPosition = _isAnimatingSwipe && _swipeAnimation != null
+              ? _swipeAnimation!.value
+              : _position;
 
           return Transform(
             transform: Matrix4.identity()
               ..setEntry(3, 2, 0.001)
-              ..translate(_position.dx, _position.dy)
-              ..rotateZ(angleDrag)
-              ..rotateY(angleFlip),
+              ..translate(renderPosition.dx, renderPosition.dy)
+              ..rotateZ((renderPosition.dx / 20) * (math.pi / 180)),
             alignment: Alignment.center,
-            child: angleFlip < math.pi / 2
-                ? _buildFront()
-                : Transform(
-                    transform: Matrix4.identity()..rotateY(math.pi),
-                    alignment: Alignment.center,
-                    child: _buildBack(),
-                  ),
+            child: _buildCard(),
           );
         },
       ),
     );
   }
 
-  Widget _buildFront() {
-    return AspectRatio(
-      aspectRatio: 0.75,
+  Widget _buildCard() {
+    final photos = widget.profile.photos;
+    final titleText = '${widget.profile.name}, ${widget.profile.age}';
+    final photoCount = photos.length;
+    final currentPhoto = photos[_currentPhotoIndex.clamp(0, photos.length - 1)];
+    final likeProgress = _likeProgress;
+    final nopeProgress = _nopeProgress;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(25),
-          image: DecorationImage(
-            image: NetworkImage(widget.profile.photos[0]),
-            fit: BoxFit.cover,
-          ),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.26),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+              color: Colors.black.withOpacity(0.24),
+              blurRadius: 14,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: Stack(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(25),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      AppColors.background.withOpacity(0.8),
-                    ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(titleText, style: AppTextStyles.displayMedium),
                   ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: AspectRatio(
+                aspectRatio: 1.2,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              );
+                            },
+                            child: Image.network(
+                              currentPhoto,
+                              key: ValueKey(currentPhoto),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withOpacity(0.35),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 10,
+                            left: 10,
+                            right: 10,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: Row(
+                                children: [
+                                  for (var i = 0; i < photoCount; i++)
+                                    Expanded(
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 180,
+                                        ),
+                                        height: 3,
+                                        margin: EdgeInsets.only(
+                                          right: i == photoCount - 1 ? 0 : 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: i == _currentPhotoIndex
+                                              ? Colors.white
+                                              : Colors.white.withOpacity(0.35),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onTapUp: (details) =>
+                                  _handleTapUp(details, constraints),
+                            ),
+                          ),
+                          Positioned(
+                            left: 14,
+                            top: 22,
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 90),
+                              opacity: nopeProgress,
+                              child: Transform.rotate(
+                                angle: -0.20,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: AppColors.error,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: Colors.black.withOpacity(0.25),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    child: Text(
+                                      'NOPE',
+                                      style: AppTextStyles.labelLarge.copyWith(
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 14,
+                            top: 22,
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 90),
+                              opacity: likeProgress,
+                              child: Transform.rotate(
+                                angle: 0.20,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: AppColors.success,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: Colors.black.withOpacity(0.25),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    child: Text(
+                                      'LIKE',
+                                      style: AppTextStyles.labelLarge.copyWith(
+                                        color: AppColors.success,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 10,
+                            right: 10,
+                            bottom: 10,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (widget.showHints)
+                                  _NavHintChip(
+                                    icon: Icons.chevron_left,
+                                    text: 'Anterior',
+                                  )
+                                else
+                                  const SizedBox.shrink(),
+                                if (widget.showHints)
+                                  _NavHintChip(
+                                    icon: Icons.chevron_right,
+                                    text: 'Derecha',
+                                  )
+                                else
+                                  const SizedBox.shrink(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
-            Positioned(
-              bottom: 20,
-              left: 20,
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: widget.showHints
+                    ? Text(
+                        'Desliza la carta: derecha para match, izquierda para rechazar.\nTap izquierda/derecha en la foto para navegar.',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text('Detalles del perfil', style: AppTextStyles.titleMedium),
+                  const SizedBox(height: 10),
                   Text(
-                    "${widget.profile.name}, ${widget.profile.age}",
-                    style: AppTextStyles.displayMedium,
-                  ),
-                  Text(
-                    "Desliza abajo para detalles",
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                    widget.profile.bio,
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -614,50 +1149,31 @@ class _SwipeableCardState extends State<SwipeableCard>
       ),
     );
   }
+}
 
-  Widget _buildBack() {
-    return AspectRatio(
-      aspectRatio: 0.75,
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.26),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
+class _NavHintChip extends StatelessWidget {
+  const _NavHintChip({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_pin, size: 60, color: AppColors.primary),
-            const SizedBox(height: 10),
-            Text(widget.profile.name, style: AppTextStyles.headlineSmall),
-            const Divider(height: 30, color: AppColors.divider),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Text(
-                  widget.profile.bio,
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextButton.icon(
-              onPressed: _toggleFlip,
-              icon: Icon(Icons.flip_to_front, color: AppColors.primary),
-              label: Text(
-                "Cerrar info",
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
+            Icon(icon, size: 14, color: Colors.white),
+            const SizedBox(width: 2),
+            Text(
+              text,
+              style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
             ),
           ],
         ),
