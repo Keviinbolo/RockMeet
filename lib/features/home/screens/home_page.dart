@@ -38,6 +38,8 @@ class _HomePageState extends State<HomePage> {
   String? _pendingChatPeerUid;
   String? _pendingChatPeerName;
   String? _pendingChatPeerAvatarUrl;
+  static const String _fallbackPhotoUrl =
+      'https://images.unsplash.com/photo-1521119989659-a83eee488004?q=80&w=1080';
 
   @override
   void initState() {
@@ -70,13 +72,17 @@ class _HomePageState extends State<HomePage> {
     final gallery =
         (data['gallery'] as List?)?.whereType<String>().toList() ?? <String>[];
     final photoUrl = (data['photoURL'] as String?)?.trim();
+    final parsedAge = age is int ? age : int.tryParse('$age');
+    final safeAge = (parsedAge != null && parsedAge >= 18 && parsedAge <= 99)
+        ? parsedAge
+        : 18;
 
     final detailsParts = <String>[];
     if (bio != null && bio.isNotEmpty) {
       detailsParts.add(bio);
     }
-    if (age != null) {
-      detailsParts.add('Edad: $age');
+    if (parsedAge != null) {
+      detailsParts.add('Edad: $safeAge');
     }
     if (interests.isNotEmpty) {
       detailsParts.add('Intereses: ${interests.join(', ')}');
@@ -95,10 +101,10 @@ class _HomePageState extends State<HomePage> {
         ? detailsParts.join('\n\n')
         : 'Este usuario aun no ha completado su perfil.';
 
-    final photos = <String>[
+    final photos = <String>{
       if (photoUrl != null && photoUrl.isNotEmpty) photoUrl,
-      ...gallery.where((url) => url.trim().isNotEmpty),
-    ];
+      ...gallery.map((url) => url.trim()).where((url) => url.isNotEmpty),
+    }.toList(growable: false);
 
     return Profile(
       id: index,
@@ -106,12 +112,8 @@ class _HomePageState extends State<HomePage> {
       name: (displayName != null && displayName.isNotEmpty)
           ? displayName
           : 'Usuario',
-      age: age is int ? age : int.tryParse('$age') ?? 18,
-      photos: photos.isNotEmpty
-          ? photos
-          : <String>[
-              'https://images.unsplash.com/photo-1521119989659-a83eee488004?q=80&w=1080',
-            ],
+      age: safeAge,
+      photos: photos.isNotEmpty ? photos : <String>[_fallbackPhotoUrl],
       bio: details,
     );
   }
@@ -139,10 +141,12 @@ class _HomePageState extends State<HomePage> {
 
       final snapshot = await query.get();
       final docs = snapshot.docs;
-      final visibleDocs = docs.where((doc) {
-        final data = doc.data();
-        return (data['type'] as String?) != 'staff';
-      }).toList(growable: false);
+      final visibleDocs = docs
+          .where((doc) {
+            final data = doc.data();
+            return (data['type'] as String?) != 'staff';
+          })
+          .toList(growable: false);
 
       if (!mounted) return;
       setState(() {
@@ -364,16 +368,16 @@ class _HomePageState extends State<HomePage> {
 
   void _showMatchModal(Profile currentProfile, int profilesLength) {
     if (profilesLength == 0) return;
+    final imageForModal = currentProfile.photos
+        .map((url) => url.trim())
+        .firstWhere((url) => url.isNotEmpty, orElse: () => _fallbackPhotoUrl);
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return MatchModal(
-          profile: {
-            'name': currentProfile.name,
-            'image': currentProfile.photos.first,
-          },
+          profile: {'name': currentProfile.name, 'image': imageForModal},
           onSendMessage: () {
             Navigator.of(context).pop();
             setState(() {
@@ -969,6 +973,31 @@ class _SwipeableCardState extends State<SwipeableCard>
                               currentPhoto,
                               key: ValueKey(currentPhoto),
                               fit: BoxFit.cover,
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      color: Colors.black12,
+                                      alignment: Alignment.center,
+                                      child: const SizedBox(
+                                        width: 28,
+                                        height: 28,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.2,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.black12,
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.broken_image_outlined,
+                                    size: 36,
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           Positioned.fill(
@@ -1142,6 +1171,8 @@ class _SwipeableCardState extends State<SwipeableCard>
                   const SizedBox(height: 10),
                   Text(
                     widget.profile.bio,
+                    maxLines: 6,
+                    overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyLarge.copyWith(
                       color: AppColors.textPrimary,
                     ),

@@ -130,6 +130,19 @@ class _ProfilePageState extends State<ProfilePage> {
     ];
   }
 
+  String _safeStatValue(dynamic value) {
+    if (value == null) return '0';
+    final parsed = int.tryParse('$value');
+    if (parsed == null || parsed < 0) return '0';
+    return parsed.toString();
+  }
+
+  String _textOrFallback(String? value, String fallback) {
+    if (value == null) return fallback;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? fallback : trimmed;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -138,9 +151,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
     // Inicializar con valores por defecto
     _userData = UserData(
-      name: '',
+      name: 'Usuario',
       email: FirebaseAuth.instance.currentUser?.email ?? '',
-      bio: '',
+      bio: 'Completa tu perfil para que otros usuarios te conozcan mejor.',
       twitter: '',
       instagram: '',
       tiktok: '',
@@ -212,18 +225,9 @@ class _ProfilePageState extends State<ProfilePage> {
         if (gallery != null && gallery.isNotEmpty) {
           images = gallery.take(3).toList();
         }
-        if (likes != null) {
-          _userData.likes = '$likes';
-        }
-        if (matches != null) {
-          _userData.matches = '$matches';
-        }
-        if (activities != null) {
-          _userData.activities = '$activities';
-        }
-        if (friends != null) {
-          _userData.friends = '$friends';
-        }
+        _userData.likes = _safeStatValue(likes);
+        _userData.matches = _safeStatValue(matches);
+        _userData.activities = _safeStatValue(activities);
         if (interests != null && interests.isNotEmpty) {
           for (final i in _userInterests) {
             i.selected = interests.contains(i.label);
@@ -412,7 +416,35 @@ class _ProfilePageState extends State<ProfilePage> {
                             children: [
                               CircleAvatar(
                                 radius: 70,
-                                backgroundImage: NetworkImage(_avatarUrl),
+                                backgroundColor: Colors.grey.shade200,
+                                child: ClipOval(
+                                  child: Image.network(
+                                    _avatarUrl,
+                                    width: 140,
+                                    height: 140,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                          if (loadingProgress == null) {
+                                            return child;
+                                          }
+                                          return const SizedBox(
+                                            width: 26,
+                                            height: 26,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          );
+                                        },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.person,
+                                        size: 56,
+                                        color: Colors.grey,
+                                      );
+                                    },
+                                  ),
+                                ),
                               ),
                               if (_isEditing)
                                 Positioned(
@@ -444,7 +476,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                   border: OutlineInputBorder(),
                                 ),
                               )
-                            : Text(_userData.name),
+                            : Text(_textOrFallback(_userData.name, 'Usuario')),
+                        const SizedBox(height: 4),
+                        Text(_userData.email), // email no editable
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -545,6 +579,44 @@ class _ProfilePageState extends State<ProfilePage> {
                                               fit: BoxFit.cover,
                                               width: double.infinity,
                                               height: double.infinity,
+                                              loadingBuilder:
+                                                  (
+                                                    context,
+                                                    child,
+                                                    loadingProgress,
+                                                  ) {
+                                                    if (loadingProgress ==
+                                                        null) {
+                                                      return child;
+                                                    }
+                                                    return Container(
+                                                      color:
+                                                          Colors.grey.shade200,
+                                                      alignment:
+                                                          Alignment.center,
+                                                      child: const SizedBox(
+                                                        width: 20,
+                                                        height: 20,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                              strokeWidth: 2,
+                                                            ),
+                                                      ),
+                                                    );
+                                                  },
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                    return Container(
+                                                      color:
+                                                          Colors.grey.shade200,
+                                                      alignment:
+                                                          Alignment.center,
+                                                      child: const Icon(
+                                                        Icons
+                                                            .broken_image_outlined,
+                                                      ),
+                                                    );
+                                                  },
                                             ),
                                           ),
                                           if (_isEditing)
@@ -672,7 +744,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                         border: OutlineInputBorder(),
                                       ),
                                     )
-                                  : Text(_userData.bio),
+                                  : Text(
+                                      _textOrFallback(
+                                        _userData.bio,
+                                        'Completa tu perfil para que otros usuarios te conozcan mejor.',
+                                      ),
+                                    ),
                             ],
                           ),
                         ),
@@ -896,7 +973,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           border: OutlineInputBorder(),
                         ),
                       )
-                    : Text(value),
+                    : Text(_textOrFallback(value, '-')),
               ],
             ),
           ),
@@ -920,6 +997,8 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safeValue = value.trim().isEmpty ? '0' : value;
+
     return Expanded(
       child: Column(
         children: [
@@ -930,7 +1009,7 @@ class StatCard extends StatelessWidget {
             child: Icon(icon),
           ),
           const SizedBox(height: 8),
-          Text(value),
+          Text(safeValue),
           const SizedBox(height: 2),
           Text(label),
         ],

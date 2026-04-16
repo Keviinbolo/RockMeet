@@ -126,22 +126,30 @@ class EventService {
         );
   }
 
-  // Marcar usuario como asistente
+  // Marcar usuario como asistente (con transacción).
   Future<void> markUserAsAttendee(String eventId, String userId) async {
     try {
-      final event = await getEventById(eventId);
-      if (event == null) throw Exception('Evento no encontrado');
+      await _firestore.runTransaction((transaction) async {
+        final eventRef = _firestore.collection('events').doc(eventId);
+        final eventSnapshot = await transaction.get(eventRef);
 
-      if (event.attendeeIds.length >= event.maxAttendees) {
-        throw Exception('El evento está lleno');
-      }
+        if (!eventSnapshot.exists) {
+          throw Exception('Evento no encontrado');
+        }
 
-      if (!event.attendeeIds.contains(userId)) {
-        await _firestore.collection('events').doc(eventId).update({
-          'attendeeIds': FieldValue.arrayUnion([userId]),
-          'updatedAt': Timestamp.now(),
-        });
-      }
+        final event = _eventFromMap(eventSnapshot.data()!, eventSnapshot.id);
+
+        if (event.attendeeIds.length >= event.maxAttendees) {
+          throw Exception('El evento está lleno');
+        }
+
+        if (!event.attendeeIds.contains(userId)) {
+          transaction.update(eventRef, {
+            'attendeeIds': FieldValue.arrayUnion([userId]),
+            'updatedAt': Timestamp.now(),
+          });
+        }
+      });
     } catch (e) {
       print('Error marcando asistente: $e');
       rethrow;
