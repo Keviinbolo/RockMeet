@@ -477,8 +477,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               )
                             : Text(_textOrFallback(_userData.name, 'Usuario')),
-                        const SizedBox(height: 4),
-                        Text(_userData.email), // email no editable
                       ],
                     ),
                     const SizedBox(height: 24),
