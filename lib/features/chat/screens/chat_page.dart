@@ -5,6 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:myapp/core/services/chat_service.dart';
 
+// Asume que existe esta pantalla; si no, créala o cambia la ruta.
+// import 'package:myapp/ui/screens/profile_screen.dart';
+
 class Message {
   final int id;
   final String text;
@@ -76,8 +79,6 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // TODO: Datos de chats ahora se cargan de Firestore mediante _subscribeToUserChats()
-    // _initializeData() eliminado - ya no usar datos mock locales
     chats = [];
     _subscribeToUserChats();
   }
@@ -202,7 +203,6 @@ class _ChatScreenState extends State<ChatScreen> {
         if (!_hasEnteredChat) {
           setState(() {
             chats = updatedChats;
-            // Inicializar activeChat con el primer chat cuando se cargan por primera vez
             if (updatedChats.isNotEmpty) {
               activeChat = updatedChats.first;
             }
@@ -350,6 +350,29 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
+  /// Navega a la pantalla de perfil del usuario con el que se está chateando.
+  void _goToProfile() {
+    if (activeChat.peerUid.isEmpty) return;
+
+    // Ajusta esta línea según el nombre real de tu pantalla de perfil y sus parámetros.
+    // Ejemplo: ProfileScreen(uid: activeChat.peerUid, username: activeChat.username, avatarUrl: activeChat.avatar)
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileScreen(
+          uid: activeChat.peerUid,
+          username: activeChat.username,
+          avatarUrl: activeChat.avatar,
+          photos: [
+            'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?q=80&w=1080',
+            'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1080',
+            'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?q=80&w=1080',
+          ],
+        ),
+      ),
+    );
+  }
+
   String _formatTime(DateTime value) {
     return '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
   }
@@ -419,7 +442,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 });
               },
             ),
-            title: Text(activeChat.username),
+            // 👇 Aquí se agrega el tap al nombre del usuario
+            title: GestureDetector(
+              onTap: _goToProfile,
+              child: Text(activeChat.username),
+            ),
           ),
           Expanded(
             child: ListView.builder(
@@ -505,6 +532,313 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Define esta pantalla en tu proyecto o ajusta la importación.
+class ProfileScreen extends StatefulWidget {
+  final String uid;
+  final String username;
+  final String avatarUrl;
+  final List<String> photos;
+
+  const ProfileScreen({
+    super.key,
+    required this.uid,
+    required this.username,
+    required this.avatarUrl,
+    required this.photos,
+  });
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  Map<String, dynamic>? userProfile;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.uid)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          userProfile = userDoc.data();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.username),
+        elevation: 0,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Header con avatar
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          colorScheme.primary.withOpacity(0.1),
+                          colorScheme.surface,
+                        ],
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 60,
+                          backgroundImage: NetworkImage(widget.avatarUrl),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          widget.username,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        if (userProfile?['displayName'] != null &&
+                            userProfile!['displayName'] != widget.username)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              userProfile!['displayName'] ?? '',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: colorScheme.onSurface
+                                        .withOpacity(0.7),
+                                  ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Información del perfil
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Bio o descripción
+                        if (userProfile?['bio'] != null &&
+                            (userProfile!['bio'] as String).isNotEmpty)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Acerca de',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                userProfile!['bio'],
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        // Edad y Localización
+                        if (userProfile?['age'] != null ||
+                            userProfile?['location'] != null)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  if (userProfile?['age'] != null)
+                                    Expanded(
+                                      child: _buildInfoCard(
+                                        context,
+                                        Icons.cake,
+                                        'Edad',
+                                        '${userProfile!['age']} años',
+                                      ),
+                                    ),
+                                  if (userProfile?['location'] != null)
+                                    const SizedBox(width: 12),
+                                  if (userProfile?['location'] != null)
+                                    Expanded(
+                                      child: _buildInfoCard(
+                                        context,
+                                        Icons.location_on,
+                                        'Ubicación',
+                                        userProfile!['location'],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        // Intereses
+                        if (userProfile?['interests'] != null &&
+                            (userProfile!['interests'] as List).isNotEmpty)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Intereses',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final interest
+                                      in userProfile!['interests'] as List)
+                                    Chip(
+                                      label: Text(interest),
+                                      backgroundColor:
+                                          colorScheme.primaryContainer,
+                                      labelStyle: TextStyle(
+                                        color: colorScheme.onPrimaryContainer,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Fotos
+                  if (widget.photos.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'Galería',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            children: [
+                              for (final photo in widget.photos)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: GestureDetector(
+                                      onTap: () => _showImagePreview(
+                                        context,
+                                        photo,
+                                      ),
+                                      child: Image.network(
+                                        photo,
+                                        width: 150,
+                                        height: 150,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                            Container(
+                                          width: 150,
+                                          height: 150,
+                                          color: colorScheme.surfaceVariant,
+                                          child: const Icon(Icons.image),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildInfoCard(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceVariant.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showImagePreview(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Image.network(imageUrl, fit: BoxFit.contain),
+        ),
       ),
     );
   }
