@@ -19,8 +19,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _pushNotifications = true;
   bool _emailNotifications = false;
-  bool _publicProfile = true;
-  bool _shareLocation = false;
 
   @override
   Widget build(BuildContext context) {
@@ -112,27 +110,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
 
-                // Desplegable Privacidad
+                // Desplegable Seguridad
                 CustomExpansionTile(
-                  icon: Icons.lock,
-                  title: 'Privacidad',
-                  subtitle: 'Controla tu privacidad',
+                  icon: Icons.security,
+                  title: 'Seguridad',
+                  subtitle: 'Información de seguridad',
                   children: [
-                    _buildSwitchTile(
-                      icon: Icons.visibility,
-                      title: 'Perfil público',
-                      value: _publicProfile,
-                      onChanged: (value) {
-                        setState(() => _publicProfile = value);
-                      },
+                    _buildAccountTile(
+                      icon: Icons.shield,
+                      title: 'Consejos de seguridad',
+                      onTap: () => _showSecurityTipsDialog(),
                     ),
-                    _buildSwitchTile(
-                      icon: Icons.location_on,
-                      title: 'Compartir ubicación',
-                      value: _shareLocation,
-                      onChanged: (value) {
-                        setState(() => _shareLocation = value);
-                      },
+                    _buildAccountTile(
+                      icon: Icons.groups,
+                      title: 'Reglas de la comunidad',
+                      onTap: () => _showCommunityRulesDialog(),
                     ),
                   ],
                 ),
@@ -209,6 +201,143 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const LogoutButton(),
                 const SizedBox(height: 20),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSecurityTipsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? AppColors.surface : Colors.white,
+          title: Text(
+            'Consejos de seguridad',
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildSecurityTip('🔐', 'Usa una contraseña fuerte y única para tu cuenta.'),
+                _buildSecurityTip('🚫', 'Nunca compartas tu contraseña con nadie.'),
+                _buildSecurityTip('📸', 'Verifica que las fotos de otros usuarios sean reales antes de interactuar.'),
+                _buildSecurityTip('💬', 'No compartas información personal en los primeros mensajes.'),
+                _buildSecurityTip('⚠️', 'Reporta perfiles sospechosos o con contenido inapropiado.'),
+                _buildSecurityTip('🔔', 'Mantén tus notificaciones activadas para alertas de seguridad.'),
+                _buildSecurityTip('📍', 'No compartas tu ubicación exacta en el perfil.'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cerrar',
+                style: GoogleFonts.outfit(color: AppColors.primary),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCommunityRulesDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? AppColors.surface : Colors.white,
+          title: Text(
+            'Reglas de la comunidad',
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildRuleTile('1. Respeto', 'Trata a todos los usuarios con respeto y consideración.'),
+                _buildRuleTile('2. Autenticidad', 'Usa fotos reales y proporciona información verídica.'),
+                _buildRuleTile('3. Prohibiciones', 'No se permite contenido sexual, violento o discriminatorio.'),
+                _buildRuleTile('4. Privacidad', 'Respeta la privacidad de otros usuarios.'),
+                _buildRuleTile('5. Acoso', 'No está permitido el acoso, amenazas o difamación.'),
+                _buildRuleTile('6. Spam', 'No envíes mensajes spam o promocionales.'),
+                _buildRuleTile('7. Incumplimiento', 'El incumplimiento puede resultar en la suspensión de la cuenta.'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cerrar',
+                style: GoogleFonts.outfit(color: AppColors.primary),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSecurityTip(String emoji, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRuleTile(String title, String description) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              color: isDark ? Colors.white70 : Colors.black87,
             ),
           ),
         ],
