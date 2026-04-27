@@ -39,6 +39,7 @@ class AuthService {
         'photoURL': '',
         'bio': '',
         'type': 'user',
+        'blockedBy': <String>[],
         'createdAt': DateTime.now(),
         'updatedAt': DateTime.now(),
       });

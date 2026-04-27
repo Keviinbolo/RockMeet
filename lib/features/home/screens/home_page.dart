@@ -144,7 +144,11 @@ class _HomePageState extends State<HomePage> {
       final visibleDocs = docs
           .where((doc) {
             final data = doc.data();
-            return (data['type'] as String?) != 'staff';
+            final isStaff = (data['type'] as String?) == 'staff';
+            final blockedBy = List<String>.from(
+              data['blockedBy'] as List? ?? const <String>[],
+            );
+            return !isStaff && blockedBy.isEmpty;
           })
           .toList(growable: false);
 
@@ -446,7 +450,7 @@ class _HomePageState extends State<HomePage> {
                     : _selectedNavIndex == 3
                     ? const EventScreen()
                     : _selectedNavIndex == 4
-                    ? const ProfilePage(uid: '',)
+                    ? const ProfilePage(uid: '')
                     : const Center(child: Text("Página no encontrada")),
               ),
               _buildBottomNav(),
@@ -494,12 +498,15 @@ class _HomePageState extends State<HomePage> {
 
         final currentUserId = FirebaseAuth.instance.currentUser?.uid;
         final docs = _profileDocs
-            .where(
-              (doc) =>
-                  (currentUserId == null || doc.id != currentUserId) &&
+            .where((doc) {
+              final blockedBy = List<String>.from(
+                doc.data()['blockedBy'] as List? ?? const <String>[],
+              );
+              return (currentUserId == null || doc.id != currentUserId) &&
                   (doc.data()['type'] as String?) != 'staff' &&
-                  !interactedUserIds.contains(doc.id),
-            )
+                  blockedBy.isEmpty &&
+                  !interactedUserIds.contains(doc.id);
+            })
             .toList(growable: false);
 
         final profiles = <Profile>[
