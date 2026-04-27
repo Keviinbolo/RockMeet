@@ -29,8 +29,8 @@ class PortalAuth extends StatelessWidget {
               return const AnimatedSplashScreen(nextScreen: LoginPage());
             }
 
-            return FutureBuilder<Map<String, dynamic>?>(
-              future: AuthService().getUserDataById(currentUser.uid),
+            return StreamBuilder<Map<String, dynamic>?>(
+              stream: AuthService().getUserDataStream(currentUser.uid),
               builder: (context, userDataSnapshot) {
                 if (userDataSnapshot.connectionState ==
                     ConnectionState.waiting) {
@@ -38,14 +38,18 @@ class PortalAuth extends StatelessWidget {
                 }
 
                 final userData = userDataSnapshot.data;
+                if (userData == null) {
+                  return const AnimatedSplashScreen(nextScreen: LoginPage());
+                }
+
                 final blockedBy = List<String>.from(
-                  userData?['blockedBy'] as List? ?? const <String>[],
+                  userData['blockedBy'] as List? ?? const <String>[],
                 );
                 if (blockedBy.isNotEmpty) {
                   return const BlockedUserScreen();
                 }
 
-                final userType = (userData?['type'] as String?) ?? 'user';
+                final userType = (userData['type'] as String?) ?? 'user';
                 final nextScreen = userType == 'staff'
                     ? const HomeStaffPage()
                     : const HomePage();

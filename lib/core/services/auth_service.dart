@@ -101,6 +101,14 @@ class AuthService {
     }
   }
 
+  Stream<Map<String, dynamic>?> getUserDataStream(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map((snapshot) => snapshot.data() as Map<String, dynamic>?);
+  }
+
   Future<String> getUserTypeById(String uid) async {
     try {
       final data = await getUserDataById(uid);
