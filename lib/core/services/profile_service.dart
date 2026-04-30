@@ -56,4 +56,25 @@ class ProfileService {
       await _auth.currentUser?.updatePhotoURL(photoURL);
     }
   }
+
+  /// Incrementa el contador de amigos del usuario actual en +1
+  Future<void> incrementFriendsCount() async {
+    final uid = currentUserId;
+    if (uid == null) {
+      throw StateError('Usuario no autenticado');
+    }
+
+    await _firestore.collection('users').doc(uid).update({
+      'friends': FieldValue.increment(1),
+      'updatedAt': Timestamp.now(),
+    });
+  }
+
+  /// Incrementa el contador de amigos de un usuario específico
+  Future<void> incrementFriendsCountForUser(String userId) async {
+    await _firestore.collection('users').doc(userId).update({
+      'friends': FieldValue.increment(1),
+      'updatedAt': Timestamp.now(),
+    });
+  }
 }

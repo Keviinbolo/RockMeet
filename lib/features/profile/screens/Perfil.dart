@@ -228,6 +228,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _userData.likes = _safeStatValue(likes);
         _userData.matches = _safeStatValue(matches);
         _userData.activities = _safeStatValue(activities);
+        _userData.friends = _safeStatValue(friends);
         if (interests != null && interests.isNotEmpty) {
           for (final i in _userInterests) {
             i.selected = interests.contains(i.label);

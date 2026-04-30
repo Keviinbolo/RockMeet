@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:myapp/core/services/chat_service.dart';
+import 'package:myapp/core/services/profile_service.dart';
 import 'package:myapp/features/profile/screens/Perfil.dart';
 import 'package:myapp/features/chat/screens/chat_page.dart';
 import 'package:myapp/features/settings/screens/ajustes.dart';
@@ -343,6 +344,13 @@ class _HomePageState extends State<HomePage> {
 
       if (isMutualLike) {
         await _prepareChatForMatch(currentProfile);
+        // Incrementar contador de amigos para ambos usuarios
+        try {
+          await ProfileService.instance.incrementFriendsCount();
+          await ProfileService.instance.incrementFriendsCountForUser(currentProfile.uid);
+        } catch (e) {
+          debugPrint('Error al incrementar contador de amigos: $e');
+        }
       }
     } catch (_) {
       if (mounted) {
