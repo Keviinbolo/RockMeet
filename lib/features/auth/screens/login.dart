@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:myapp/config/Routes/approutes.dart';
 import 'package:myapp/core/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -39,7 +40,16 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+      final currentUser = AuthService().currentUser;
+      final userType = currentUser == null
+          ? 'user'
+          : await AuthService().getUserTypeById(currentUser.uid);
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        userType == 'staff' ? AppRoutes.homestaff : AppRoutes.home,
+      );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       final message = switch (e.code) {
@@ -50,9 +60,9 @@ class _LoginPageState extends State<LoginPage> {
         _ => 'No se pudo iniciar sesión (${e.code}).',
       };
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -67,7 +77,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,10 +90,7 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(
-                    Icons.lock_outline,
-                    size: 80,
-                  ),
+                  const Icon(Icons.lock_outline, size: 80),
                   const SizedBox(height: 20),
 
                   const Text(
@@ -110,8 +116,9 @@ class _LoginPageState extends State<LoginPage> {
                       if (value == null || value.isEmpty) {
                         return 'Por favor ingresa tu email';
                       }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                          .hasMatch(value)) {
+                      if (!RegExp(
+                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                      ).hasMatch(value)) {
                         return 'Ingresa un email válido';
                       }
                       return null;

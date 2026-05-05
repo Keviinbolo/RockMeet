@@ -3,8 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:myapp/core/services/auth_service.dart';
 import 'package:myapp/core/services/event_service.dart';
 import 'package:myapp/features/events/class_event.dart';
+import 'package:myapp/features/settings/screens/ajustes.dart';
 import 'package:intl/intl.dart';
 
 class HomeStaffPage extends StatefulWidget {
@@ -327,9 +329,88 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           context,
           icon: Icons.settings,
           title: 'Configuración',
-          onTap: () => _showSnackBar('Configuración'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SettingsScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildOptionButton(
+          context,
+          icon: Icons.logout,
+          title: 'Cerrar sesión',
+          onTap: () => _showLogoutConfirmationDialog(context),
         ),
       ],
+    );
+  }
+
+  void _showLogoutConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Cerrar sesión',
+            style: GoogleFonts.outfit(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Text(
+            '¿Estás seguro de que quieres cerrar sesión?',
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.outfit(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Sesión cerrada exitosamente',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    backgroundColor: Colors.grey.shade800,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+                await AuthService().logout();
+                if (!mounted) return;
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+              child: Text(
+                'Cerrar sesión',
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFFF6B6B),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

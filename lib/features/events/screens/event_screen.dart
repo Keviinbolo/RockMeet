@@ -49,27 +49,36 @@ class _EventScreenState extends State<EventScreen> {
   void _toggleAttendance(String eventId) async {
     final currentUserId = _currentUserId;
     if (currentUserId == null) {
-      _showSnackBar('Debes iniciar sesion para apuntarte a eventos', isError: true);
+      _showSnackBar('Debes iniciar sesión para apuntarte a eventos',
+          isError: true);
       return;
     }
 
     try {
       final event = await _eventService.getEventById(eventId);
+      if (!mounted) return;
       if (event != null) {
         if (event.attendeeIds.contains(currentUserId)) {
           await _eventService.removeUserAsAttendee(eventId, currentUserId);
+          if (!mounted) return;
           _showSnackBar('Te has desapuntado del evento');
         } else {
-          if (event.attendeeIds.length >= event.maxAttendees) {
-            _showSnackBar('Error: El evento está lleno', isError: true);
-            return;
-          }
+          // No pre-check; let transaction handle capacity validation
           await _eventService.markUserAsAttendee(eventId, currentUserId);
+          if (!mounted) return;
           _showSnackBar('¡Te has apuntado al evento!');
         }
       }
     } catch (e) {
-      _showSnackBar('Error: ${e.toString()}', isError: true);
+      if (!mounted) return;
+      final errorMsg = e.toString();
+      if (errorMsg.contains('lleno')) {
+        _showSnackBar('El evento está lleno', isError: true);
+      } else if (errorMsg.contains('no encontrado')) {
+        _showSnackBar('El evento no existe', isError: true);
+      } else {
+        _showSnackBar('Error: $errorMsg', isError: true);
+      }
     }
   }
 
@@ -158,7 +167,7 @@ class _EventScreenState extends State<EventScreen> {
     );
   }
 
-  void _showCreateEventDialog() {
+  Future<void> _showCreateEventDialog() async {
     _titleController.clear();
     _descriptionController.clear();
     _locationController.clear();
@@ -303,14 +312,36 @@ class _EventScreenState extends State<EventScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (_titleController.text.isEmpty ||
-                  _descriptionController.text.isEmpty ||
-                  _locationController.text.isEmpty ||
+            onPressed: () async {
+              final title = _titleController.text.trim();
+              final description = _descriptionController.text.trim();
+              final location = _locationController.text.trim();
+              final maxAttendeesStr = _maxAttendeesController.text.trim();
+
+              // Validaciones
+              if (title.isEmpty ||
+                  description.isEmpty ||
+                  location.isEmpty ||
                   _selectedDate == null ||
                   _selectedTime == null) {
                 _showSnackBar(
                   'Por favor completa todos los campos',
+                  isError: true,
+                );
+                return;
+              }
+
+              if (title.length < 5) {
+                _showSnackBar(
+                  'El título debe tener al menos 5 caracteres',
+                  isError: true,
+                );
+                return;
+              }
+
+              if (description.length < 10) {
+                _showSnackBar(
+                  'La descripción debe tener al menos 10 caracteres',
                   isError: true,
                 );
                 return;
@@ -324,17 +355,58 @@ class _EventScreenState extends State<EventScreen> {
                 _selectedTime!.minute,
               );
 
-              _eventService.createSuggestedEvent(
-                title: _titleController.text,
-                description: _descriptionController.text,
-                dateTime: dateTime,
-                location: _locationController.text,
-                suggestedByUserId: _currentUserId ?? '',
-                maxAttendees: int.parse(_maxAttendeesController.text),
-              );
+              if (dateTime.isBefore(DateTime.now())) {
+                _showSnackBar(
+                  'El evento debe ser en el futuro',
+                  isError: true,
+                );
+                return;
+              }
 
-              Navigator.pop(context);
-              _showSnackBar('¡Evento sugerido! Espera la aprobación del staff');
+              int? maxAttendees;
+              try {
+                maxAttendees = int.parse(maxAttendeesStr);
+                if (maxAttendees <= 0) {
+                  _showSnackBar(
+                    'El máximo de asistentes debe ser mayor a 0',
+                    isError: true,
+                  );
+                  return;
+                }
+                if (maxAttendees > 1000) {
+                  _showSnackBar(
+                    'El máximo de asistentes no puede superar 1000',
+                    isError: true,
+                  );
+                  return;
+                }
+              } catch (e) {
+                _showSnackBar(
+                  'El máximo de asistentes debe ser un número válido',
+                  isError: true,
+                );
+                return;
+              }
+
+              try {
+                await _eventService.createSuggestedEvent(
+                  title: title,
+                  description: description,
+                  dateTime: dateTime,
+                  location: location,
+                  suggestedByUserId: _currentUserId ?? '',
+                  maxAttendees: maxAttendees,
+                );
+
+                if (!mounted) return;
+                Navigator.pop(context);
+                _showSnackBar('¡Evento sugerido! Espera la aprobación del staff');
+              } catch (e) {
+                _showSnackBar(
+                  'Error al crear el evento: ${e.toString()}',
+                  isError: true,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Crear'),

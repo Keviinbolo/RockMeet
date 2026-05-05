@@ -25,6 +25,7 @@ class UserData {
   String likes;
   String matches;
   String activities;
+  String friends; // Nuevo campo: total de amigos
 
   UserData({
     required this.name,
@@ -36,6 +37,7 @@ class UserData {
     required this.likes,
     required this.matches,
     required this.activities,
+    required this.friends,
   });
 }
 
@@ -47,13 +49,13 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       title: 'Perfil',
       debugShowCheckedModeBanner: false,
-      home: ProfilePage(),
+      home: ProfilePage(uid: ''),
     );
   }
 }
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({super.key, required String uid});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -69,6 +71,9 @@ class _ProfilePageState extends State<ProfilePage> {
   late UserData _userData;
   late List<Interest> _userInterests;
   late String _avatarUrl;
+
+  // Amigos que sigue
+  String _friendsCount = '0';
 
   // Controladores para edición
   late TextEditingController _nameController;
@@ -125,23 +130,37 @@ class _ProfilePageState extends State<ProfilePage> {
     ];
   }
 
+  String _safeStatValue(dynamic value) {
+    if (value == null) return '0';
+    final parsed = int.tryParse('$value');
+    if (parsed == null || parsed < 0) return '0';
+    return parsed.toString();
+  }
+
+  String _textOrFallback(String? value, String fallback) {
+    if (value == null) return fallback;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? fallback : trimmed;
+  }
+
   @override
   void initState() {
     super.initState();
     images = profileImages.take(3).toList();
     _avatarUrl = defaultAvatarUrl;
 
-    // Inicializar con valores por defecto - se reemplazarán con datos de Firebase en _loadProfileFromFirestore()
+    // Inicializar con valores por defecto
     _userData = UserData(
-      name: '',
+      name: 'Usuario',
       email: FirebaseAuth.instance.currentUser?.email ?? '',
-      bio: '',
+      bio: 'Completa tu perfil para que otros usuarios te conozcan mejor.',
       twitter: '',
       instagram: '',
       tiktok: '',
       likes: '0',
       matches: '0',
       activities: '0',
+      friends: '0',
     );
 
     _userInterests = _buildInterestCatalog();
@@ -169,15 +188,12 @@ class _ProfilePageState extends State<ProfilePage> {
       final twitter = profile['twitter'] as String?;
       final instagram = profile['instagram'] as String?;
       final tiktok = profile['tiktok'] as String?;
-      final gallery = (profile['gallery'] as List?)
-          ?.whereType<String>()
-          .toList();
-      final interests = (profile['interests'] as List?)
-          ?.whereType<String>()
-          .toList();
+      final gallery = (profile['gallery'] as List?)?.whereType<String>().toList();
+      final interests = (profile['interests'] as List?)?.whereType<String>().toList();
       final likes = profile['likes'];
       final matches = profile['matches'];
       final activities = profile['activities'];
+      final friends = profile['friends'];
 
       setState(() {
         if (displayName != null && displayName.isNotEmpty) {
@@ -209,15 +225,9 @@ class _ProfilePageState extends State<ProfilePage> {
         if (gallery != null && gallery.isNotEmpty) {
           images = gallery.take(3).toList();
         }
-        if (likes != null) {
-          _userData.likes = '$likes';
-        }
-        if (matches != null) {
-          _userData.matches = '$matches';
-        }
-        if (activities != null) {
-          _userData.activities = '$activities';
-        }
+        _userData.likes = _safeStatValue(likes);
+        _userData.matches = _safeStatValue(matches);
+        _userData.activities = _safeStatValue(activities);
         if (interests != null && interests.isNotEmpty) {
           for (final i in _userInterests) {
             i.selected = interests.contains(i.label);
@@ -397,17 +407,44 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     const SizedBox(height: 16),
 
-                    // Cabecera del perfil - solo avatar sin botón de edición ni hover
+                    // Cabecera del perfil (sin correo)
                     Column(
                       children: [
-                        // Avatar simple sin funcionalidades adicionales
                         GestureDetector(
                           onTap: _isEditing ? _showAvatarSelector : null,
                           child: Stack(
                             children: [
                               CircleAvatar(
                                 radius: 70,
-                                backgroundImage: NetworkImage(_avatarUrl),
+                                backgroundColor: Colors.grey.shade200,
+                                child: ClipOval(
+                                  child: Image.network(
+                                    _avatarUrl,
+                                    width: 140,
+                                    height: 140,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                          if (loadingProgress == null) {
+                                            return child;
+                                          }
+                                          return const SizedBox(
+                                            width: 26,
+                                            height: 26,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          );
+                                        },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.person,
+                                        size: 56,
+                                        color: Colors.grey,
+                                      );
+                                    },
+                                  ),
+                                ),
                               ),
                               if (_isEditing)
                                 Positioned(
@@ -430,8 +467,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20), // Espacio ajustado
-                        // Nombre y email
+                        const SizedBox(height: 20),
                         _isEditing
                             ? TextFormField(
                                 controller: _nameController,
@@ -440,9 +476,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   border: OutlineInputBorder(),
                                 ),
                               )
-                            : Text(_userData.name),
-                        const SizedBox(height: 4),
-                        Text(_userData.email), // email no editable
+                            : Text(_textOrFallback(_userData.name, 'Usuario')),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -461,7 +495,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
 
                     const SizedBox(height: 24),
-                    // Tarjeta de estadísticas (no editables)
+                    // Tarjeta de estadísticas (ahora con 4 elementos)
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -482,6 +516,11 @@ class _ProfilePageState extends State<ProfilePage> {
                               icon: Icons.calendar_today,
                               label: 'Actividades',
                               value: _userData.activities,
+                            ),
+                            StatCard(
+                              icon: Icons.group,
+                              label: 'Amigos',
+                              value: _userData.friends,
                             ),
                           ],
                         ),
@@ -538,6 +577,44 @@ class _ProfilePageState extends State<ProfilePage> {
                                               fit: BoxFit.cover,
                                               width: double.infinity,
                                               height: double.infinity,
+                                              loadingBuilder:
+                                                  (
+                                                    context,
+                                                    child,
+                                                    loadingProgress,
+                                                  ) {
+                                                    if (loadingProgress ==
+                                                        null) {
+                                                      return child;
+                                                    }
+                                                    return Container(
+                                                      color:
+                                                          Colors.grey.shade200,
+                                                      alignment:
+                                                          Alignment.center,
+                                                      child: const SizedBox(
+                                                        width: 20,
+                                                        height: 20,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                              strokeWidth: 2,
+                                                            ),
+                                                      ),
+                                                    );
+                                                  },
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                    return Container(
+                                                      color:
+                                                          Colors.grey.shade200,
+                                                      alignment:
+                                                          Alignment.center,
+                                                      child: const Icon(
+                                                        Icons
+                                                            .broken_image_outlined,
+                                                      ),
+                                                    );
+                                                  },
                                             ),
                                           ),
                                           if (_isEditing)
@@ -665,7 +742,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                         border: OutlineInputBorder(),
                                       ),
                                     )
-                                  : Text(_userData.bio),
+                                  : Text(
+                                      _textOrFallback(
+                                        _userData.bio,
+                                        'Completa tu perfil para que otros usuarios te conozcan mejor.',
+                                      ),
+                                    ),
                             ],
                           ),
                         ),
@@ -673,7 +755,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // --- SECCIÓN INTERESES (Sin título/icono en la cabecera) ---
+                    // Intereses
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -889,7 +971,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           border: OutlineInputBorder(),
                         ),
                       )
-                    : Text(value),
+                    : Text(_textOrFallback(value, '-')),
               ],
             ),
           ),
@@ -913,6 +995,8 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safeValue = value.trim().isEmpty ? '0' : value;
+
     return Expanded(
       child: Column(
         children: [
@@ -923,7 +1007,7 @@ class StatCard extends StatelessWidget {
             child: Icon(icon),
           ),
           const SizedBox(height: 8),
-          Text(value),
+          Text(safeValue),
           const SizedBox(height: 2),
           Text(label),
         ],
