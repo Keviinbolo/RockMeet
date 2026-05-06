@@ -7,12 +7,12 @@ class ValidationTextField extends StatefulWidget {
   final IconData? prefixIcon;
 
   const ValidationTextField({
-    Key? key,
+    super.key,
     required this.label,
     this.validator,
     this.showValidation = false,
     this.prefixIcon,
-  }) : super(key: key);
+  });
 
   @override
   State<ValidationTextField> createState() => _ValidationTextFieldState();

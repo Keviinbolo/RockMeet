@@ -6,8 +6,7 @@ import 'package:myapp/config/Theme/constants/text_styles.dart';
 import 'package:myapp/core/widgets/validation_state_widget.dart';
 
 class AnimatedSplashScreen extends StatefulWidget {
-  const AnimatedSplashScreen({Key? key, required this.nextScreen})
-    : super(key: key);
+  const AnimatedSplashScreen({super.key, required this.nextScreen});
   final Widget nextScreen;
   @override
   _AnimatedSplashScreenState createState() => _AnimatedSplashScreenState();

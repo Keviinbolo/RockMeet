@@ -4,7 +4,7 @@ import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 
 class PreguntasFrecuentesScreen extends StatefulWidget {
-  const PreguntasFrecuentesScreen({Key? key}) : super(key: key);
+  const PreguntasFrecuentesScreen({super.key});
 
   @override
   State<PreguntasFrecuentesScreen> createState() =>

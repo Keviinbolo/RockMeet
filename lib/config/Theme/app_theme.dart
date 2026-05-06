@@ -167,7 +167,6 @@ class AppTheme {
       onSecondary: Colors.white,
       surface: Colors.white,
       error: AppColors.error,
-      background: const Color(0xFFF5F5F5),
     ),
     appBarTheme: AppBarTheme(
       elevation: 2,
@@ -235,8 +234,8 @@ class AppTheme {
         color: Colors.grey.shade700,
         fontWeight: FontWeight.w600,
       ),
-      prefixIconColor: MaterialStateColor.resolveWith((states) {
-        if (states.contains(MaterialState.focused)) {
+      prefixIconColor: WidgetStateColor.resolveWith((states) {
+        if (states.contains(WidgetState.focused)) {
           return AppColors.primary;
         }
         return Colors.grey.shade600;
@@ -263,7 +262,6 @@ class AppTheme {
       onSecondary: Colors.white,
       surface: AppColors.surface,
       error: AppColors.error,
-      background: AppColors.background,
     ),
     appBarTheme: AppBarTheme(
       elevation: 0,
@@ -331,8 +329,8 @@ class AppTheme {
       hintStyle: GoogleFonts.outfit(
         color: Colors.grey.shade600,
       ),
-      prefixIconColor: MaterialStateColor.resolveWith((states) {
-        if (states.contains(MaterialState.focused)) {
+      prefixIconColor: WidgetStateColor.resolveWith((states) {
+        if (states.contains(WidgetState.focused)) {
           return AppColors.primary;
         }
         return Colors.grey.shade500;

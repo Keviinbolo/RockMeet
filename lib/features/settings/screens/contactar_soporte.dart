@@ -4,7 +4,7 @@ import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 
 class ContactarSoporteScreen extends StatefulWidget {
-  const ContactarSoporteScreen({Key? key}) : super(key: key);
+  const ContactarSoporteScreen({super.key});
 
   @override
   State<ContactarSoporteScreen> createState() => _ContactarSoporteScreenState();

@@ -14,13 +14,13 @@ class ValidationStateWidget extends StatelessWidget {
   final Widget? child;
 
   const ValidationStateWidget({
-    Key? key,
+    super.key,
     required this.state,
     this.errorMessage,
     this.successMessage,
     this.onRetry,
     this.child,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

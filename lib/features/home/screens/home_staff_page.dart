@@ -10,7 +10,7 @@ import 'package:myapp/features/settings/screens/ajustes.dart';
 import 'package:intl/intl.dart';
 
 class HomeStaffPage extends StatefulWidget {
-  const HomeStaffPage({Key? key}) : super(key: key);
+  const HomeStaffPage({super.key});
 
   @override
   State<HomeStaffPage> createState() => _HomeStaffPageState();

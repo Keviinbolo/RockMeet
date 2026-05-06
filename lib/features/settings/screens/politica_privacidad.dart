@@ -4,7 +4,7 @@ import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 
 class PoliticaPrivacidadScreen extends StatelessWidget {
-  const PoliticaPrivacidadScreen({Key? key}) : super(key: key);
+  const PoliticaPrivacidadScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

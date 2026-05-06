@@ -3,7 +3,7 @@ import '../core/widgets/validation_state_widget.dart';
 import '../core/widgets/validation_text_field.dart';
 
 class ValidationDemoPage extends StatefulWidget {
-  const ValidationDemoPage({Key? key}) : super(key: key);
+  const ValidationDemoPage({super.key});
 
   @override
   State<ValidationDemoPage> createState() => _ValidationDemoPageState();

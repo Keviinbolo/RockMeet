@@ -4,7 +4,7 @@ import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 
 class TerminosCondicionesScreen extends StatelessWidget {
-  const TerminosCondicionesScreen({Key? key}) : super(key: key);
+  const TerminosCondicionesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

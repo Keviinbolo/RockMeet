@@ -10,7 +10,7 @@ import 'contactar_soporte.dart';
 import 'preguntas_frecuentes.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -435,7 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           value: value,
           onChanged: onChanged,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
         ),
       ),
     );
@@ -479,12 +479,12 @@ class CustomExpansionTile extends StatefulWidget {
   final List<Widget> children;
 
   const CustomExpansionTile({
-    Key? key,
+    super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.children,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomExpansionTile> createState() => _CustomExpansionTileState();
@@ -549,10 +549,10 @@ class _CustomExpansionTileState extends State<CustomExpansionTile> {
                 fontWeight: FontWeight.w400,
               ),
             ),
-            children: widget.children,
             tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             expandedCrossAxisAlignment: CrossAxisAlignment.start,
+            children: widget.children,
           ),
         ),
       ),
@@ -561,7 +561,7 @@ class _CustomExpansionTileState extends State<CustomExpansionTile> {
 }
 
 class LogoutButton extends StatelessWidget {
-  const LogoutButton({Key? key}) : super(key: key);
+  const LogoutButton({super.key});
 
   @override
   Widget build(BuildContext context) {

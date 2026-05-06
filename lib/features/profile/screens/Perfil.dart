@@ -73,7 +73,7 @@ class _ProfilePageState extends State<ProfilePage> {
   late String _avatarUrl;
 
   // Amigos que sigue
-  String _friendsCount = '0';
+  final String _friendsCount = '0';
 
   // Controladores para edición
   late TextEditingController _nameController;

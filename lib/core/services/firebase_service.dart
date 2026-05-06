@@ -43,7 +43,7 @@ class FirebaseService {
   // Stream de documentos en tiempo real
   Stream<List<Map<String, dynamic>>> getDocumentsStream(String collection) {
     return _firestore.collection(collection).snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList());
+        snapshot.docs.map((doc) => doc.data()).toList());
   }
   
   // Crear documento

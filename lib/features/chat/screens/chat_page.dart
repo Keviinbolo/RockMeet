@@ -327,7 +327,7 @@ class _ChatScreenState extends State<ChatScreen> {
     await ChatService.instance.sendMessage(
       chatId: chatId,
       receiverId: activeChat.peerUid,
-      text: text,
+      text: text, receiverUid: '',
     );
 
     setState(() {
@@ -471,7 +471,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     decoration: BoxDecoration(
                       color: mine
                           ? colorScheme.primary
-                          : colorScheme.surfaceVariant,
+                          : colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -774,7 +774,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             Container(
                                           width: 150,
                                           height: 150,
-                                          color: colorScheme.surfaceVariant,
+                                          color: colorScheme.surfaceContainerHighest,
                                           child: const Icon(Icons.image),
                                         ),
                                       ),
@@ -803,7 +803,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.5),
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

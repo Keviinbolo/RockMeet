@@ -4,7 +4,7 @@ import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 
 class CambiarContraseniaScreen extends StatefulWidget {
-  const CambiarContraseniaScreen({Key? key}) : super(key: key);
+  const CambiarContraseniaScreen({super.key});
 
   @override
   State<CambiarContraseniaScreen> createState() => _CambiarContraseniaScreenState();
