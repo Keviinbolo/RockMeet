@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/config/Routes/approutes.dart';
 import 'package:myapp/core/services/auth_service.dart';
+import 'package:myapp/features/auth/screens/blocked_user_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -41,9 +42,25 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
       final currentUser = AuthService().currentUser;
-      final userType = currentUser == null
-          ? 'user'
-          : await AuthService().getUserTypeById(currentUser.uid);
+      final userData = currentUser == null
+          ? null
+          : await AuthService().getUserDataById(currentUser.uid);
+
+      if (!mounted) return;
+      final blockedBy = List<String>.from(
+        userData?['blockedBy'] as List? ?? const <String>[],
+      );
+      if (blockedBy.isNotEmpty) {
+        await AuthService().logout();
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const BlockedUserScreen()),
+        );
+        return;
+      }
+
+      final userType = (userData?['type'] as String?) ?? 'user';
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(

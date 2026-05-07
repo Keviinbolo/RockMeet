@@ -23,6 +23,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   final _formKey = GlobalKey<FormState>();
   
   final _nameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _courseController = TextEditingController();
   final _tutorCodeController = TextEditingController();
@@ -46,6 +47,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _birthDateController.dispose();
     _courseController.dispose();
@@ -64,7 +66,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    // Iniciar sin valores preseleccionados
     int tempDay = 1;
     int tempMonth = 1;
     int tempYear = 2000;
@@ -189,12 +190,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
     if (picked != null) {
       setState(() {
         _selectedBirthDate = picked;
-        // Formatear la fecha y asignarla al controlador
         String fechaFormateada = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
         _birthDateController.text = fechaFormateada;
         _ageError = null;
       });
-      // Depuración: imprime en consola para verificar
       print("Fecha seleccionada: ${_birthDateController.text}");
     }
   }
@@ -290,9 +289,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
                           children: [
                             _buildNameField(),
                             const SizedBox(height: 20),
+                            _buildLastNameField(), // Campo Apellidos añadido aquí
+                            const SizedBox(height: 20),
                             _buildEmailField(),
                             const SizedBox(height: 20),
-                            _buildBirthDateField(), // Aquí está el campo de fecha
+                            _buildBirthDateField(),
                             const SizedBox(height: 20),
                             _buildCourseField(),
                             const SizedBox(height: 20),
@@ -325,7 +326,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 
-  // Header sin fecha (solo ícono y texto)
   Widget _buildHeader(ThemeData theme) {
     return Column(
       children: [
@@ -367,9 +367,24 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   Widget _buildNameField() {
     return _buildInputField(
-      label: 'Nombre completo',
+      label: 'Nombre',
       hint: 'Tu nombre',
       controller: _nameController,
+      icon: Icons.person,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Este campo es requerido';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildLastNameField() {
+    return _buildInputField(
+      label: 'Apellidos',
+      hint: 'Tus apellidos',
+      controller: _lastNameController,
       icon: Icons.person,
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -422,7 +437,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
             return null;
           },
         ),
-        // Texto de depuración para ver la fecha (opcional, luego lo eliminas)
         if (_selectedBirthDate != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),

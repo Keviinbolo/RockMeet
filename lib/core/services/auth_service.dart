@@ -39,6 +39,7 @@ class AuthService {
         'photoURL': '',
         'bio': '',
         'type': 'user',
+        'blockedBy': <String>[],
         'createdAt': DateTime.now(),
         'updatedAt': DateTime.now(),
       });
@@ -98,6 +99,14 @@ class AuthService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  Stream<Map<String, dynamic>?> getUserDataStream(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map((snapshot) => snapshot.data() as Map<String, dynamic>?);
   }
 
   Future<String> getUserTypeById(String uid) async {

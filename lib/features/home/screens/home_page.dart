@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:myapp/core/services/chat_service.dart';
+import 'package:myapp/core/services/profile_service.dart';
 import 'package:myapp/features/profile/screens/Perfil.dart';
 import 'package:myapp/features/chat/screens/chat_page.dart';
 import 'package:myapp/features/settings/screens/ajustes.dart';
@@ -144,7 +145,11 @@ class _HomePageState extends State<HomePage> {
       final visibleDocs = docs
           .where((doc) {
             final data = doc.data();
-            return (data['type'] as String?) != 'staff';
+            final isStaff = (data['type'] as String?) == 'staff';
+            final blockedBy = List<String>.from(
+              data['blockedBy'] as List? ?? const <String>[],
+            );
+            return !isStaff && blockedBy.isEmpty;
           })
           .toList(growable: false);
 
@@ -246,29 +251,28 @@ class _HomePageState extends State<HomePage> {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null || _isResettingInteractions) return;
 
-    final confirmed =
-        await showDialog<bool>(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: const Text('Reiniciar perfiles'),
-              content: const Text(
-                'Se eliminaran tus likes/passes guardados y volveras a ver perfiles ya evaluados.\n\n¿Quieres continuar?',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Reiniciar'),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reiniciar perfiles'),
+          content: const Text(
+            'Se eliminaran tus likes/passes guardados y volveras a ver perfiles ya evaluados.\n\n¿Quieres continuar?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Reiniciar'),
+            ),
+          ],
+        );
+      },
+    ) ??
+    false;
 
     if (!confirmed) return;
 
@@ -290,6 +294,15 @@ class _HomePageState extends State<HomePage> {
           batch.delete(doc.reference);
         }
         await batch.commit();
+      }
+
+      // Reiniciar contador de amigos en Firestore directamente
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .update({'friends': '0'});
       }
 
       if (!mounted) return;
@@ -337,8 +350,24 @@ class _HomePageState extends State<HomePage> {
       await _saveInteraction(profile: currentProfile, type: 'like');
       isMutualLike = await _isMutualLike(currentProfile);
 
+      // Incrementar el contador de likes de la otra persona
+      print('❤️ Incrementando likes para el usuario ${currentProfile.uid}');
+      try {
+        await ProfileService.instance.incrementLikesCountForUser(currentProfile.uid);
+        print('✅ Like contado exitosamente para ${currentProfile.name}');
+      } catch (e) {
+        print('❌ Error al contar like: $e');
+      }
+
       if (isMutualLike) {
         await _prepareChatForMatch(currentProfile);
+        // Incrementar contador de amigos para ambos usuarios
+        try {
+          await ProfileService.instance.incrementFriendsCount();
+          await ProfileService.instance.incrementFriendsCountForUser(currentProfile.uid);
+        } catch (e) {
+          debugPrint('Error al incrementar contador de amigos: $e');
+        }
       }
     } catch (_) {
       if (mounted) {
@@ -446,7 +475,7 @@ class _HomePageState extends State<HomePage> {
                     : _selectedNavIndex == 3
                     ? const EventScreen()
                     : _selectedNavIndex == 4
-                    ? const ProfilePage(uid: '',)
+                    ? const ProfilePage(uid: '')
                     : const Center(child: Text("Página no encontrada")),
               ),
               _buildBottomNav(),
@@ -494,12 +523,15 @@ class _HomePageState extends State<HomePage> {
 
         final currentUserId = FirebaseAuth.instance.currentUser?.uid;
         final docs = _profileDocs
-            .where(
-              (doc) =>
-                  (currentUserId == null || doc.id != currentUserId) &&
+            .where((doc) {
+              final blockedBy = List<String>.from(
+                doc.data()['blockedBy'] as List? ?? const <String>[],
+              );
+              return (currentUserId == null || doc.id != currentUserId) &&
                   (doc.data()['type'] as String?) != 'staff' &&
-                  !interactedUserIds.contains(doc.id),
-            )
+                  blockedBy.isEmpty &&
+                  !interactedUserIds.contains(doc.id);
+            })
             .toList(growable: false);
 
         final profiles = <Profile>[
@@ -721,26 +753,25 @@ class _SwipeableCardState extends State<SwipeableCard>
   @override
   void initState() {
     super.initState();
-    _swipeController =
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 260),
-        )..addStatusListener((status) {
-          if (status == AnimationStatus.completed) {
-            final action = _pendingSwipeAction;
-            _pendingSwipeAction = null;
+    _swipeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        final action = _pendingSwipeAction;
+        _pendingSwipeAction = null;
 
-            if (action != null) {
-              action();
-            }
+        if (action != null) {
+          action();
+        }
 
-            if (!mounted) return;
-            setState(() {
-              _position = Offset.zero;
-              _isAnimatingSwipe = false;
-            });
-          }
+        if (!mounted) return;
+        setState(() {
+          _position = Offset.zero;
+          _isAnimatingSwipe = false;
         });
+      }
+    });
   }
 
   @override

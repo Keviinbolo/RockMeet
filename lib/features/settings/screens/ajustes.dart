@@ -70,6 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Cuenta',
                   subtitle: 'Información personal, email',
                   children: [
+                    _buildEmailInfoTile(),
                     _buildAccountTile(
                       icon: Icons.lock,
                       title: 'Cambiar contraseña',
@@ -464,6 +465,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
               fontSize: 13,
               color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
               fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmailInfoTile() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentUserEmail = AuthService().currentUser?.email ?? 'No disponible';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade800 : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200
+        ),
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(isDark ? 0.2 : 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.email, color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Email registrado',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  currentUserEmail,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
