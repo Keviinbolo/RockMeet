@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/core/models/profile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:myapp/core/models/user_profile.dart';
 import 'package:myapp/features/profile/interest_screen.dart';
 import 'package:myapp/core/services/profile_service.dart';
 
@@ -19,8 +20,8 @@ const List<String> profileImages = [
 
 
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class Perfil extends StatelessWidget {
+  const Perfil({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +32,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required String uid});
 
@@ -49,35 +49,86 @@ class _ProfilePageState extends State<ProfilePage> {
   late TextEditingController _instagramController;
   late TextEditingController _tiktokController;
 
-  // Variables temporales mientras se edita
+  // Variables temporales para cambios antes de guardar
   List<String> _tempImages = [];
   String _tempAvatarUrl = defaultAvatarUrl;
   List<Interest> _tempInterests = [];
 
   List<Interest> _buildInterestCatalog() {
     return [
-      Interest(Icons.music_note, 'Música',
-          subInterests: ['Rock', 'Pop', 'Jazz', 'Electrónica', 'Hip-Hop']),
-      Interest(Icons.sports_soccer, 'Deporte',
-          subInterests: ['Fútbol', 'Baloncesto', 'Tenis', 'Running', 'Natación']),
-      Interest(Icons.movie, 'Películas',
-          subInterests: ['Acción', 'Comedia', 'Drama', 'Ciencia Ficción', 'Terror']),
-      Interest(Icons.book, 'Lectura',
-          subInterests: ['Ficción', 'Misterio', 'Fantasía', 'Biografía', 'Tecnología']),
-      Interest(Icons.travel_explore, 'Viajar',
-          subInterests: ['Playas', 'Montañas', 'Ciudades', 'Aventura', 'Cultural']),
+      Interest(
+        Icons.music_note,
+        'Música',
+        subInterests: ['Rock', 'Pop', 'Jazz', 'Electrónica', 'Hip-Hop'],
+      ),
+      Interest(
+        Icons.sports_soccer,
+        'Deporte',
+        subInterests: ['Fútbol', 'Baloncesto', 'Tenis', 'Running', 'Natación'],
+      ),
+      Interest(
+        Icons.movie,
+        'Películas',
+        subInterests: ['Acción', 'Comedia', 'Drama', 'Ciencia Ficción', 'Terror'],
+      ),
+      Interest(
+        Icons.book,
+        'Lectura',
+        subInterests: ['Ficción', 'Misterio', 'Fantasía', 'Biografía', 'Tecnología'],
+      ),
+      Interest(
+        Icons.travel_explore,
+        'Viajar',
+        subInterests: ['Playas', 'Montañas', 'Ciudades', 'Aventura', 'Cultural'],
+      ),
     ];
+  }
+
+  List<Interest> _buildInterestsFromProfile(UserProfile profile) {
+    final catalog = _buildInterestCatalog();
+    final byLabel = <String, Interest>{
+      for (final item in catalog) item.label: item,
+    };
+
+    final selected = <String>{
+      ...(profile.interests ?? const <String>[])
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty),
+    };
+
+    final detail = profile.interestsDetail ?? const <String, List<String>>{};
+    for (final entry in detail.entries) {
+      final label = entry.key.trim();
+      if (label.isEmpty) continue;
+      if (!byLabel.containsKey(label)) {
+        byLabel[label] = Interest(Icons.interests, label, subInterests: entry.value);
+      } else {
+        final existing = byLabel[label]!;
+        final mergedSub = <String>{...existing.subInterests, ...entry.value}.toList();
+        byLabel[label] = Interest(existing.icon, existing.label, subInterests: mergedSub);
+      }
+    }
+
+    final labels = byLabel.keys.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return labels.map((label) {
+      final base = byLabel[label]!;
+      final savedSubs = detail[label] ?? const <String>[];
+      return Interest(
+        base.icon,
+        base.label,
+        selected: selected.contains(label),
+        subInterests: base.subInterests,
+        selectedSubInterests: Set<String>.from(savedSubs),
+      );
+    }).toList(growable: false);
   }
 
   String _safeStatValue(dynamic value) {
     if (value == null) return '0';
     final parsed = int.tryParse('$value');
     return (parsed != null && parsed >= 0) ? parsed.toString() : '0';
-  }
-
-  String _textOrFallback(String? value, String fallback) {
-    if (value == null || value.trim().isEmpty) return fallback;
-    return value;
   }
 
   @override
@@ -88,7 +139,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _twitterController = TextEditingController();
     _instagramController = TextEditingController();
     _tiktokController = TextEditingController();
-    _tempInterests = _buildInterestCatalog();
+    _tempInterests = [];
   }
 
   @override
@@ -136,7 +187,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✓ Cambios guardados exitosamente'),
+            content: Text('Cambios guardados exitosamente'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -234,34 +285,24 @@ class _ProfilePageState extends State<ProfilePage> {
             return const Center(child: Text('Error al cargar el perfil'));
           }
 
+          final profile = UserProfile.fromFirestore(snapshot.data!);
           final data = snapshot.data!.data()!;
 
-          final String displayName = (data['displayName'] as String?)?.trim() ?? 'Usuario';
-          final String email = (data['email'] as String?) ?? '';
-          final String bio = (data['bio'] as String?) ?? '';
-          final String avatarUrl = (data['photoURL'] as String?)?.trim() ?? defaultAvatarUrl;
-          final String twitter = (data['twitter'] as String?) ?? '';
-          final String instagram = (data['instagram'] as String?) ?? '';
-          final String tiktok = (data['tiktok'] as String?) ?? '';
-          final List<String> gallery = (data['gallery'] as List?)?.whereType<String>().toList() ?? [];
-          final String likes = _safeStatValue(data['likes']);
-        
-          final String activities = _safeStatValue(data['activities']);
-          final String friends = _safeStatValue(data['friends']);
-          final List<String> interestsList = (data['interests'] as List?)?.whereType<String>().toList() ?? [];
-          
-          // Cargar los sub-intereses guardados de forma segura
-          final Map<String, List<String>> savedInterestsDetail = {};
-          if (data['interestsDetail'] != null && data['interestsDetail'] is Map) {
-            final rawDetail = data['interestsDetail'] as Map;
-            for (final entry in rawDetail.entries) {
-              final key = entry.key.toString();
-              final value = entry.value;
-              if (value is List) {
-                savedInterestsDetail[key] = value.whereType<String>().toList();
-              }
-            }
-          }
+          final String displayName = profile.name.trim();
+          final String email = profile.email ?? '';
+          final String bio = profile.bio ?? '';
+          final String avatarUrl = (profile.photoURL?.trim().isNotEmpty == true)
+              ? profile.photoURL!.trim()
+              : defaultAvatarUrl;
+          final String twitter = profile.twitter ?? '';
+          final String instagram = profile.instagram ?? '';
+          final String tiktok = profile.tiktok ?? '';
+            final List<String> gallery =
+              (data['gallery'] as List?)?.whereType<String>().toList() ?? [];
+          final String likes = _safeStatValue(profile.likes);
+
+          final String activities = _safeStatValue(profile.activities);
+          final String friends = _safeStatValue(profile.friends);
 
           // Sincronizar datos si no estamos editando
           if (!_isEditing) {
@@ -272,15 +313,7 @@ class _ProfilePageState extends State<ProfilePage> {
             if (_tiktokController.text != tiktok) _tiktokController.text = tiktok;
             _tempAvatarUrl = avatarUrl;
             _tempImages = List.from(gallery);
-            _tempInterests = _buildInterestCatalog();
-            for (final interest in _tempInterests) {
-              interest.selected = interestsList.contains(interest.label);
-              // Restaurar los sub-intereses guardados
-              if (savedInterestsDetail.containsKey(interest.label)) {
-                interest.selectedSubInterests =
-                    Set.from(savedInterestsDetail[interest.label] ?? []);
-              }
-            }
+            _tempInterests = _buildInterestsFromProfile(profile);
           }
 
           return Stack(
@@ -351,7 +384,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       border: OutlineInputBorder(),
                                     ),
                                   )
-                                : Text(_textOrFallback(displayName, 'Usuario')),
+                                : Text(displayName),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -545,7 +578,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           maxLines: 3,
                                           decoration: const InputDecoration(border: OutlineInputBorder()),
                                         )
-                                      : Text(_textOrFallback(bio, 'Completa tu perfil para que otros usuarios te conozcan mejor.')),
+                                      : Text(bio),
                                 ],
                               ),
                             ),
@@ -731,7 +764,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         controller: controller,
                         decoration: const InputDecoration(border: OutlineInputBorder()),
                       )
-                    : Text(_textOrFallback(value, '-')),
+                    : Text(value),
               ],
             ),
           ),

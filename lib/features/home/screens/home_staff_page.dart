@@ -7,7 +7,7 @@ import 'package:myapp/core/services/auth_service.dart';
 import 'package:myapp/core/services/event_service.dart';
 import 'package:myapp/features/home/screens/staff_reports_page.dart';
 import 'package:myapp/features/home/screens/staff_user_management_page.dart';
-import 'package:myapp/features/events/class_event.dart';
+import 'package:myapp/core/models/class_event.dart';
 import 'package:myapp/features/settings/screens/ajustes.dart';
 import 'package:intl/intl.dart';
 

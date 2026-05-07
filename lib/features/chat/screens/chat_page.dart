@@ -9,7 +9,6 @@ import 'package:myapp/core/services/chat_service.dart';
 // Asume que existe esta pantalla; si no, créala o cambia la ruta.
 // import 'package:myapp/ui/screens/profile_screen.dart';
 
-
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
     super.key,
@@ -171,7 +170,9 @@ class _ChatScreenState extends State<ChatScreen> {
         }
 
         // Ordenar chats por último mensaje más reciente
-        updatedChats.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+        updatedChats.sort(
+          (a, b) => b.lastMessageTime.compareTo(a.lastMessageTime),
+        );
 
         if (!_hasEnteredChat) {
           setState(() {
@@ -356,8 +357,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final filtered = _searchQuery.isEmpty
         ? chats
         : chats.where((c) {
-            final name = (c.username ?? '').toLowerCase();
-            final last = (c.lastMessage ?? '').toLowerCase();
+            final name = c.username.toLowerCase();
+            final last = c.lastMessage.toLowerCase();
             return name.contains(_searchQuery) || last.contains(_searchQuery);
           }).toList();
 
@@ -367,13 +368,19 @@ class _ChatScreenState extends State<ChatScreen> {
           padding: const EdgeInsets.all(12.0),
           child: TextField(
             controller: _searchController,
-            decoration: const InputDecoration(hintText: 'Buscar...', prefixIcon: Icon(Icons.search)),
+            decoration: const InputDecoration(
+              hintText: 'Buscar...',
+              prefixIcon: Icon(Icons.search),
+            ),
           ),
         ),
         if (filtered.isEmpty)
           Expanded(
             child: Center(
-              child: Text('No tienes conversaciones aún', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7))),
+              child: Text(
+                'No tienes conversaciones aún',
+                style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+              ),
             ),
           )
         else
@@ -382,13 +389,26 @@ class _ChatScreenState extends State<ChatScreen> {
               itemCount: filtered.length,
               itemBuilder: (context, index) {
                 final chat = filtered[index];
-                final selected = chat.id == (chats.isNotEmpty ? activeChat.id : -1);
+                final selected =
+                    chat.id == (chats.isNotEmpty ? activeChat.id : -1);
                 return ListTile(
                   selected: selected,
                   selectedTileColor: colorScheme.primary.withOpacity(0.12),
-                  leading: CircleAvatar(backgroundImage: NetworkImage(chat.avatar)),
-                  title: Text(chat.username, style: TextStyle(color: colorScheme.onSurface)),
-                  subtitle: Text(chat.lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7))),
+                  leading: CircleAvatar(
+                    backgroundImage: NetworkImage(chat.avatar),
+                  ),
+                  title: Text(
+                    chat.username,
+                    style: TextStyle(color: colorScheme.onSurface),
+                  ),
+                  subtitle: Text(
+                    chat.lastMessage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
                   trailing: Text(_formatTime(chat.lastMessageTime)),
                   onTap: () {
                     _handleChatSelect(chat);
@@ -409,10 +429,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     if (!_hasEnteredChat) {
-      return Scaffold(
-        
-        body: _buildChatList(context),
-      );
+      return Scaffold(body: _buildChatList(context));
     }
 
     return Scaffold(
@@ -578,10 +595,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.username),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(widget.username), elevation: 0),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -618,12 +632,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               userProfile!['displayName'] ?? '',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
+                              style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
-                                    color: colorScheme.onSurface
-                                        .withOpacity(0.7),
+                                    color: colorScheme.onSurface.withOpacity(
+                                      0.7,
+                                    ),
                                   ),
                             ),
                           ),
@@ -745,23 +758,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
                                     child: GestureDetector(
-                                      onTap: () => _showImagePreview(
-                                        context,
-                                        photo,
-                                      ),
+                                      onTap: () =>
+                                          _showImagePreview(context, photo),
                                       child: Image.network(
                                         photo,
                                         width: 150,
                                         height: 150,
                                         fit: BoxFit.cover,
                                         errorBuilder:
-                                            (context, error, stackTrace) =>
-                                            Container(
-                                          width: 150,
-                                          height: 150,
-                                          color: colorScheme.surfaceVariant,
-                                          child: const Icon(Icons.image),
-                                        ),
+                                            (
+                                              context,
+                                              error,
+                                              stackTrace,
+                                            ) => Container(
+                                              width: 150,
+                                              height: 150,
+                                              color: colorScheme.surfaceVariant,
+                                              child: const Icon(Icons.image),
+                                            ),
                                       ),
                                     ),
                                   ),
@@ -798,18 +812,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Icon(icon, size: 16, color: colorScheme.primary),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
+              Text(label, style: Theme.of(context).textTheme.labelSmall),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),

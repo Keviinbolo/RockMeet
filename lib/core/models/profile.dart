@@ -8,7 +8,7 @@ class UserData {
   String likes;
   String matches;
   String activities;
-  String friends; // Nuevo campo: total de amigos
+  String friends; 
 
   UserData({
     required this.name,
