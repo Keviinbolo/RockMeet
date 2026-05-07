@@ -4,31 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:myapp/config/Theme/constants/text_styles.dart';
+import 'package:myapp/core/models/user_profile.dart';
 
 // 1. Modelo de Usuario
-class UserProfile {
-  final String uid;
-  final String name;
-  final int age;
-  final String? photoURL;
 
-  UserProfile({
-    required this.uid,
-    required this.name,
-    required this.age,
-    this.photoURL,
-  });
-
-  factory UserProfile.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return UserProfile(
-      uid: doc.id,
-      name: data['displayName'] ?? 'Usuario',
-      age: data['age'] ?? 0,
-      photoURL: data['photoURL'],
-    );
-  }
-}
 
 // 2. La Página Principal
 class LikesPage extends StatefulWidget {

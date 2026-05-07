@@ -3,50 +3,12 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:myapp/core/models/chat_message.dart';
 import 'package:myapp/core/services/chat_service.dart';
 
 // Asume que existe esta pantalla; si no, créala o cambia la ruta.
 // import 'package:myapp/ui/screens/profile_screen.dart';
 
-class Message {
-  final int id;
-  final String text;
-  final String sender; // user or other
-  final DateTime timestamp;
-
-  Message({
-    required this.id,
-    required this.text,
-    required this.sender,
-    required this.timestamp,
-  });
-}
-
-class Chat {
-  final int id;
-  final String peerUid;
-  final String username;
-  final String avatar;
-  String lastMessage;
-  DateTime lastMessageTime;
-  int unread;
-  final bool online;
-  List<Message> messages;
-  String? chatId;
-
-  Chat({
-    required this.id,
-    required this.peerUid,
-    required this.username,
-    required this.avatar,
-    required this.lastMessage,
-    required this.lastMessageTime,
-    required this.unread,
-    required this.online,
-    required this.messages,
-    this.chatId,
-  });
-}
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({

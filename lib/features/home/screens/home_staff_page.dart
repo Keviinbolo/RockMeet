@@ -5,7 +5,7 @@ import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:myapp/core/services/auth_service.dart';
 import 'package:myapp/core/services/event_service.dart';
-import 'package:myapp/features/events/class_event.dart';
+import 'package:myapp/core/models/class_event.dart';
 import 'package:myapp/features/settings/screens/ajustes.dart';
 import 'package:intl/intl.dart';
 
