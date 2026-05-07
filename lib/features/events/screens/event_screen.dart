@@ -6,7 +6,7 @@ import 'package:myapp/config/Theme/app_theme.dart';
 import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:myapp/core/services/event_service.dart';
 import 'package:myapp/core/widgets/event_card.dart';
-import 'package:myapp/features/events/class_event.dart';
+import 'package:myapp/core/models/class_event.dart';
 
 class EventScreen extends StatefulWidget {
   const EventScreen({super.key});

@@ -3,50 +3,11 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:myapp/core/models/chat_message.dart';
 import 'package:myapp/core/services/chat_service.dart';
 
 // Asume que existe esta pantalla; si no, créala o cambia la ruta.
 // import 'package:myapp/ui/screens/profile_screen.dart';
-
-class Message {
-  final int id;
-  final String text;
-  final String sender; // user or other
-  final DateTime timestamp;
-
-  Message({
-    required this.id,
-    required this.text,
-    required this.sender,
-    required this.timestamp,
-  });
-}
-
-class Chat {
-  final int id;
-  final String peerUid;
-  final String username;
-  final String avatar;
-  String lastMessage;
-  DateTime lastMessageTime;
-  int unread;
-  final bool online;
-  List<Message> messages;
-  String? chatId;
-
-  Chat({
-    required this.id,
-    required this.peerUid,
-    required this.username,
-    required this.avatar,
-    required this.lastMessage,
-    required this.lastMessageTime,
-    required this.unread,
-    required this.online,
-    required this.messages,
-    this.chatId,
-  });
-}
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
@@ -70,6 +31,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   StreamSubscription<List<ChatMessage>>? _messagesSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _chatsSubscription;
   bool _hasEnteredChat = false;
@@ -81,6 +44,11 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     chats = [];
     _subscribeToUserChats();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
   }
 
   Future<void> _tryOpenInitialPeerChat(List<Chat> updatedChats) async {
@@ -130,6 +98,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _chatsSubscription?.cancel();
     _messagesSubscription?.cancel();
     _inputController.dispose();
+    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -199,6 +168,11 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           );
         }
+
+        // Ordenar chats por último mensaje más reciente
+        updatedChats.sort(
+          (a, b) => b.lastMessageTime.compareTo(a.lastMessageTime),
+        );
 
         if (!_hasEnteredChat) {
           setState(() {
@@ -379,43 +353,74 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildChatList(BuildContext context, {bool closeOnSelect = false}) {
     final colorScheme = Theme.of(context).colorScheme;
+    // Filtrar por búsqueda (nombre o último mensaje)
+    final filtered = _searchQuery.isEmpty
+        ? chats
+        : chats.where((c) {
+            final name = c.username.toLowerCase();
+            final last = c.lastMessage.toLowerCase();
+            return name.contains(_searchQuery) || last.contains(_searchQuery);
+          }).toList();
 
-    if (chats.isEmpty) {
-      return Center(
-        child: Text(
-          'No tienes conversaciones aún',
-          style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(
+              hintText: 'Buscar...',
+              prefixIcon: Icon(Icons.search),
+            ),
+          ),
         ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: chats.length,
-      itemBuilder: (context, index) {
-        final chat = chats[index];
-        final selected = chat.id == activeChat.id;
-        return ListTile(
-          selected: selected,
-          selectedTileColor: colorScheme.primary.withOpacity(0.12),
-          leading: CircleAvatar(backgroundImage: NetworkImage(chat.avatar)),
-          title: Text(
-            chat.username,
-            style: TextStyle(color: colorScheme.onSurface),
+        if (filtered.isEmpty)
+          Expanded(
+            child: Center(
+              child: Text(
+                'No tienes conversaciones aún',
+                style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+              ),
+            ),
+          )
+        else
+          Expanded(
+            child: ListView.builder(
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final chat = filtered[index];
+                final selected =
+                    chat.id == (chats.isNotEmpty ? activeChat.id : -1);
+                return ListTile(
+                  selected: selected,
+                  selectedTileColor: colorScheme.primary.withOpacity(0.12),
+                  leading: CircleAvatar(
+                    backgroundImage: NetworkImage(chat.avatar),
+                  ),
+                  title: Text(
+                    chat.username,
+                    style: TextStyle(color: colorScheme.onSurface),
+                  ),
+                  subtitle: Text(
+                    chat.lastMessage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                  trailing: Text(_formatTime(chat.lastMessageTime)),
+                  onTap: () {
+                    _handleChatSelect(chat);
+                    if (closeOnSelect) {
+                      Navigator.pop(context);
+                    }
+                  },
+                );
+              },
+            ),
           ),
-          subtitle: Text(
-            chat.lastMessage,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
-          ),
-          onTap: () {
-            _handleChatSelect(chat);
-            if (closeOnSelect) {
-              Navigator.pop(context);
-            }
-          },
-        );
-      },
+      ],
     );
   }
 
@@ -424,10 +429,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     if (!_hasEnteredChat) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Selecciona un usuario')),
-        body: _buildChatList(context),
-      );
+      return Scaffold(body: _buildChatList(context));
     }
 
     return Scaffold(
@@ -593,10 +595,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.username),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(widget.username), elevation: 0),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -633,12 +632,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               userProfile!['displayName'] ?? '',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
+                              style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
-                                    color: colorScheme.onSurface
-                                        .withOpacity(0.7),
+                                    color: colorScheme.onSurface.withOpacity(
+                                      0.7,
+                                    ),
                                   ),
                             ),
                           ),
@@ -760,23 +758,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
                                     child: GestureDetector(
-                                      onTap: () => _showImagePreview(
-                                        context,
-                                        photo,
-                                      ),
+                                      onTap: () =>
+                                          _showImagePreview(context, photo),
                                       child: Image.network(
                                         photo,
                                         width: 150,
                                         height: 150,
                                         fit: BoxFit.cover,
                                         errorBuilder:
-                                            (context, error, stackTrace) =>
-                                            Container(
-                                          width: 150,
-                                          height: 150,
-                                          color: colorScheme.surfaceVariant,
-                                          child: const Icon(Icons.image),
-                                        ),
+                                            (
+                                              context,
+                                              error,
+                                              stackTrace,
+                                            ) => Container(
+                                              width: 150,
+                                              height: 150,
+                                              color: colorScheme.surfaceVariant,
+                                              child: const Icon(Icons.image),
+                                            ),
                                       ),
                                     ),
                                   ),
@@ -813,18 +812,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Icon(icon, size: 16, color: colorScheme.primary),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
+              Text(label, style: Theme.of(context).textTheme.labelSmall),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myapp/core/services/profile_service.dart';
 
 class InterestScreen extends StatefulWidget {
   // AÑADIDO: Recibir la lista de intereses desde el perfil para poder editarla
@@ -28,11 +29,66 @@ class Interest {
 class _InterestScreenState extends State<InterestScreen> {
   // Usamos la lista que nos pasan desde fuera
   late List<Interest> _interests;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _interests = widget.currentInterests;
+    _interests = widget.currentInterests
+        .map(
+          (interest) => Interest(
+            interest.icon,
+            interest.label,
+            selected: interest.selected,
+            subInterests: List<String>.from(interest.subInterests),
+            selectedSubInterests: Set<String>.from(
+              interest.selectedSubInterests,
+            ),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> _saveInterests() async {
+    if (_isSaving) return;
+
+    final selectedInterests = _interests
+        .where((interest) => interest.selected)
+        .map((interest) => interest.label)
+        .toList();
+
+    final interestsWithSubInterests = <String, List<String>>{};
+    for (final interest in _interests) {
+      if (interest.selected && interest.selectedSubInterests.isNotEmpty) {
+        interestsWithSubInterests[interest.label] =
+            interest.selectedSubInterests.toList();
+      }
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await ProfileService.instance.updateCurrentUserProfile(
+        interests: selectedInterests,
+        interestsWithSubInterests: interestsWithSubInterests,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context, _interests);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudieron guardar los intereses: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   // --- FUNCIÓN QUE MUESTRA EL MENÚ DESPLEGABLE TIPO IMAGEN ---
@@ -250,6 +306,19 @@ class _InterestScreenState extends State<InterestScreen> {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context, _interests),
           ),
+          actions: [
+            TextButton.icon(
+              onPressed: _isSaving ? null : _saveInterests,
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save),
+              label: const Text('Guardar'),
+            ),
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),

@@ -5,7 +5,9 @@ import 'package:myapp/config/Theme/constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:myapp/core/services/auth_service.dart';
 import 'package:myapp/core/services/event_service.dart';
-import 'package:myapp/features/events/class_event.dart';
+import 'package:myapp/features/home/screens/staff_reports_page.dart';
+import 'package:myapp/features/home/screens/staff_user_management_page.dart';
+import 'package:myapp/core/models/class_event.dart';
 import 'package:myapp/features/settings/screens/ajustes.dart';
 import 'package:intl/intl.dart';
 
@@ -315,14 +317,31 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           context,
           icon: Icons.people,
           title: 'Gestionar Usuarios',
-          onTap: () => _showSnackBar('Gestionar usuarios'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const StaffUserManagementPage(),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 12),
         _buildOptionButton(
           context,
           icon: Icons.bar_chart,
           title: 'Reportes',
-          onTap: () => _showSnackBar('Reportes'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StaffReportsPage(
+                  staffId: _staffId!,
+                  eventService: _eventService,
+                ),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 12),
         _buildOptionButton(
@@ -332,9 +351,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const SettingsScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
             );
           },
         ),
@@ -354,7 +371,9 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Text(
             'Cerrar sesión',
             style: GoogleFonts.outfit(

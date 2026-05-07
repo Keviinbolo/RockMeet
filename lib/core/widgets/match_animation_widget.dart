@@ -27,7 +27,7 @@ class MatchModal extends StatelessWidget {
       body: Stack(
         children: [
           // ============================================================
-          // EFECTO 1: CORAZONES CAYENDO (Confetti)
+          // EFECTO 1:  CAYENDO (Confetti)
           // ============================================================
           ...List.generate(20, (index) => const _FallingHeart()),
 
@@ -227,7 +227,7 @@ class _FallingHeart extends StatelessWidget {
                 value * MediaQuery.of(context).size.height * 1.2,
               ),
               child: const Icon(
-                Icons.stars,
+                Icons.auto_awesome,
                 color: AppColors.primary,
                 size: 30,
               ),
