@@ -32,6 +32,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   StreamSubscription<List<ChatMessage>>? _messagesSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _chatsSubscription;
   bool _hasEnteredChat = false;
@@ -43,6 +45,11 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     chats = [];
     _subscribeToUserChats();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
   }
 
   Future<void> _tryOpenInitialPeerChat(List<Chat> updatedChats) async {
@@ -92,6 +99,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _chatsSubscription?.cancel();
     _messagesSubscription?.cancel();
     _inputController.dispose();
+    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -161,6 +169,9 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           );
         }
+
+        // Ordenar chats por último mensaje más reciente
+        updatedChats.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
 
         if (!_hasEnteredChat) {
           setState(() {
@@ -341,43 +352,55 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildChatList(BuildContext context, {bool closeOnSelect = false}) {
     final colorScheme = Theme.of(context).colorScheme;
+    // Filtrar por búsqueda (nombre o último mensaje)
+    final filtered = _searchQuery.isEmpty
+        ? chats
+        : chats.where((c) {
+            final name = (c.username ?? '').toLowerCase();
+            final last = (c.lastMessage ?? '').toLowerCase();
+            return name.contains(_searchQuery) || last.contains(_searchQuery);
+          }).toList();
 
-    if (chats.isEmpty) {
-      return Center(
-        child: Text(
-          'No tienes conversaciones aún',
-          style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(hintText: 'Buscar...', prefixIcon: Icon(Icons.search)),
+          ),
         ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: chats.length,
-      itemBuilder: (context, index) {
-        final chat = chats[index];
-        final selected = chat.id == activeChat.id;
-        return ListTile(
-          selected: selected,
-          selectedTileColor: colorScheme.primary.withOpacity(0.12),
-          leading: CircleAvatar(backgroundImage: NetworkImage(chat.avatar)),
-          title: Text(
-            chat.username,
-            style: TextStyle(color: colorScheme.onSurface),
+        if (filtered.isEmpty)
+          Expanded(
+            child: Center(
+              child: Text('No tienes conversaciones aún', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7))),
+            ),
+          )
+        else
+          Expanded(
+            child: ListView.builder(
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final chat = filtered[index];
+                final selected = chat.id == (chats.isNotEmpty ? activeChat.id : -1);
+                return ListTile(
+                  selected: selected,
+                  selectedTileColor: colorScheme.primary.withOpacity(0.12),
+                  leading: CircleAvatar(backgroundImage: NetworkImage(chat.avatar)),
+                  title: Text(chat.username, style: TextStyle(color: colorScheme.onSurface)),
+                  subtitle: Text(chat.lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7))),
+                  trailing: Text(_formatTime(chat.lastMessageTime)),
+                  onTap: () {
+                    _handleChatSelect(chat);
+                    if (closeOnSelect) {
+                      Navigator.pop(context);
+                    }
+                  },
+                );
+              },
+            ),
           ),
-          subtitle: Text(
-            chat.lastMessage,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
-          ),
-          onTap: () {
-            _handleChatSelect(chat);
-            if (closeOnSelect) {
-              Navigator.pop(context);
-            }
-          },
-        );
-      },
+      ],
     );
   }
 
