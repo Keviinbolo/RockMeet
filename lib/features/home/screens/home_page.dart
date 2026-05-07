@@ -251,29 +251,28 @@ class _HomePageState extends State<HomePage> {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null || _isResettingInteractions) return;
 
-    final confirmed =
-        await showDialog<bool>(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: const Text('Reiniciar perfiles'),
-              content: const Text(
-                'Se eliminaran tus likes/passes guardados y volveras a ver perfiles ya evaluados.\n\n¿Quieres continuar?',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Reiniciar'),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reiniciar perfiles'),
+          content: const Text(
+            'Se eliminaran tus likes/passes guardados y volveras a ver perfiles ya evaluados.\n\n¿Quieres continuar?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Reiniciar'),
+            ),
+          ],
+        );
+      },
+    ) ??
+    false;
 
     if (!confirmed) return;
 
@@ -295,6 +294,15 @@ class _HomePageState extends State<HomePage> {
           batch.delete(doc.reference);
         }
         await batch.commit();
+      }
+
+      // Reiniciar contador de amigos en Firestore directamente
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .update({'friends': '0'});
       }
 
       if (!mounted) return;
@@ -341,6 +349,15 @@ class _HomePageState extends State<HomePage> {
     try {
       await _saveInteraction(profile: currentProfile, type: 'like');
       isMutualLike = await _isMutualLike(currentProfile);
+
+      // Incrementar el contador de likes de la otra persona
+      print('❤️ Incrementando likes para el usuario ${currentProfile.uid}');
+      try {
+        await ProfileService.instance.incrementLikesCountForUser(currentProfile.uid);
+        print('✅ Like contado exitosamente para ${currentProfile.name}');
+      } catch (e) {
+        print('❌ Error al contar like: $e');
+      }
 
       if (isMutualLike) {
         await _prepareChatForMatch(currentProfile);
@@ -736,26 +753,25 @@ class _SwipeableCardState extends State<SwipeableCard>
   @override
   void initState() {
     super.initState();
-    _swipeController =
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 260),
-        )..addStatusListener((status) {
-          if (status == AnimationStatus.completed) {
-            final action = _pendingSwipeAction;
-            _pendingSwipeAction = null;
+    _swipeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        final action = _pendingSwipeAction;
+        _pendingSwipeAction = null;
 
-            if (action != null) {
-              action();
-            }
+        if (action != null) {
+          action();
+        }
 
-            if (!mounted) return;
-            setState(() {
-              _position = Offset.zero;
-              _isAnimatingSwipe = false;
-            });
-          }
+        if (!mounted) return;
+        setState(() {
+          _position = Offset.zero;
+          _isAnimatingSwipe = false;
         });
+      }
+    });
   }
 
   @override

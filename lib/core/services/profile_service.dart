@@ -28,6 +28,7 @@ class ProfileService {
     String? tiktok,
     List<String>? gallery,
     List<String>? interests,
+    Map<String, List<String>>? interestsWithSubInterests,
   }) async {
     final uid = currentUserId;
     if (uid == null) {
@@ -46,6 +47,7 @@ class ProfileService {
     if (tiktok != null) updates['tiktok'] = tiktok;
     if (gallery != null) updates['gallery'] = gallery;
     if (interests != null) updates['interests'] = interests;
+    if (interestsWithSubInterests != null) updates['interestsDetail'] = interestsWithSubInterests;
 
     await _firestore.collection('users').doc(uid).set(updates, SetOptions(merge: true));
 
@@ -76,5 +78,97 @@ class ProfileService {
       'friends': FieldValue.increment(1),
       'updatedAt': Timestamp.now(),
     });
+  }
+
+  /// Incrementa el contador de actividades (eventos) del usuario actual en +1
+  Future<void> incrementActivitiesCount() async {
+    final uid = currentUserId;
+    if (uid == null) {
+      throw StateError('Usuario no autenticado');
+    }
+
+    await _firestore.collection('users').doc(uid).set(
+      {
+        'activities': FieldValue.increment(1),
+        'updatedAt': Timestamp.now(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Decrementa el contador de actividades (eventos) del usuario actual en -1
+  Future<void> decrementActivitiesCount() async {
+    final uid = currentUserId;
+    if (uid == null) {
+      throw StateError('Usuario no autenticado');
+    }
+
+    await _firestore.collection('users').doc(uid).set(
+      {
+        'activities': FieldValue.increment(-1),
+        'updatedAt': Timestamp.now(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Incrementa el contador de actividades (eventos) de un usuario específico
+  Future<void> incrementActivitiesCountForUser(String userId) async {
+    await _firestore.collection('users').doc(userId).set(
+      {
+        'activities': FieldValue.increment(1),
+        'updatedAt': Timestamp.now(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Decrementa el contador de actividades (eventos) de un usuario específico
+  Future<void> decrementActivitiesCountForUser(String userId) async {
+    await _firestore.collection('users').doc(userId).set(
+      {
+        'activities': FieldValue.increment(-1),
+        'updatedAt': Timestamp.now(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Incrementa el contador de "me gusta" del usuario actual en +1
+  Future<void> incrementLikesCount() async {
+    final uid = currentUserId;
+    if (uid == null) {
+      throw StateError('Usuario no autenticado');
+    }
+
+    await _firestore.collection('users').doc(uid).set(
+      {
+        'likes': FieldValue.increment(1),
+        'updatedAt': Timestamp.now(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Incrementa el contador de "me gusta" de un usuario específico en +1
+  Future<void> incrementLikesCountForUser(String userId) async {
+    await _firestore.collection('users').doc(userId).set(
+      {
+        'likes': FieldValue.increment(1),
+        'updatedAt': Timestamp.now(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Decrementa el contador de "me gusta" de un usuario específico en -1
+  Future<void> decrementLikesCountForUser(String userId) async {
+    await _firestore.collection('users').doc(userId).set(
+      {
+        'likes': FieldValue.increment(-1),
+        'updatedAt': Timestamp.now(),
+      },
+      SetOptions(merge: true),
+    );
   }
 }
