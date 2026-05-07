@@ -107,7 +107,7 @@ class ChatService {
   Future<void> sendMessage({
     required String chatId,
     required String receiverId,
-    required String text,
+    required String text, required String receiverUid,
   }) async {
     final uid = currentUserId;
     if (uid == null) {
@@ -150,4 +150,8 @@ class ChatService {
         .where('participants', arrayContains: uid)
         .snapshots();
   }
+
+  Stream<QuerySnapshot<Object?>>? getConversations() {}
+
+  Stream<QuerySnapshot<Object?>>? getMessages(String s) {}
 }

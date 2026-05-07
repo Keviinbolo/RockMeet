@@ -429,22 +429,24 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
               Expanded(
-                child: _selectedNavIndex == 0
-                    ? _buildExplore()
-                    : _selectedNavIndex == 1
-                    ? const LikesPage()
-                    : _selectedNavIndex == 2
-                    ? ChatScreen(
-                        key: ValueKey('chat-${_pendingChatPeerUid ?? 'none'}'),
-                        initialPeerUid: _pendingChatPeerUid,
-                        initialPeerName: _pendingChatPeerName,
-                        initialPeerAvatarUrl: _pendingChatPeerAvatarUrl,
-                      )
-                    : _selectedNavIndex == 3
-                    ? const EventScreen()
-                    : _selectedNavIndex == 4
-                    ? const ProfilePage(uid: '')
-                    : const Center(child: Text("Página no encontrada")),
+                child: IndexedStack(
+                  // Recomendado usar IndexedStack para mantener el estado de las páginas
+                  index: _selectedNavIndex,
+                  children: [
+                    _buildExplore(),
+                    const LikesPage(),
+                    // CHAT SCREEN
+                    ChatScreen(
+                      // El ValueKey es vital: si _pendingChatPeerUid cambia, Flutter recrea el widget
+                      key: ValueKey('chat_${_pendingChatPeerUid ?? "list"}'),
+                      initialPeerUid: _pendingChatPeerUid,
+                      initialPeerName: _pendingChatPeerName,
+                      initialPeerAvatarUrl: _pendingChatPeerAvatarUrl,
+                    ),
+                    const EventScreen(),
+                    const ProfilePage(uid: ''),
+                  ],
+                ),
               ),
               _buildBottomNav(),
             ],
