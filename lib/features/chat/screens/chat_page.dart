@@ -425,7 +425,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (!_hasEnteredChat) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Selecciona un usuario')),
+        
         body: _buildChatList(context),
       );
     }
