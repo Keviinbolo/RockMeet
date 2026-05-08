@@ -43,20 +43,18 @@ flutter run
 | Perfil   | Información del estudiante       | Diseño        |
 | Ajustes  | Configuración de cuenta          | Planificada   |
 
-🏗️ Arquitectura
+##🏗️ Arquitectura
 La aplicación sigue una arquitectura basada en features, organizando el código por módulos funcionales
 (por ejemplo: auth, home, chat, profile, etc.) para facilitar la escalabilidad y el mantenimiento.
 
 Consulta docs/ARCHITECTURE.md para más detalles.
 
-👥 Público objetivo
+##👥 Público objetivo
 Estudiantes del Instituto Roca
 
 Diferentes ciclos formativos (DAM, DAW, otros)
 
-
-
-📞 Contacto
+##📞 Contacto
 Para reportar bugs o sugerencias, utiliza el apartado de Issues del repositorio:
 https://github.com/Keviinbolo/rockmeet/issues
 
