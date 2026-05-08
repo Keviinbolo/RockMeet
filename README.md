@@ -29,7 +29,7 @@ cd rockmeet
 flutter pub get
 cp .env.example .env    # Opcional, según configuración del proyecto
 flutter run
-
+```
 
 ## 📱 Pantallas principales
 
