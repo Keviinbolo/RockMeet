@@ -17,11 +17,13 @@ class UserProfile {
   final int age;
   final String? photoURL;
   final List<String>? photos;
+  final bool isStaff;
 
   UserProfile({
     required this.uid,
     required this.name,
     required this.age,
+    required this.isStaff,
     this.interests,
     this.interestsDetail,
     this.photoURL,
@@ -45,8 +47,11 @@ class UserProfile {
       return text.isEmpty ? null : text;
     }
 
-    final gallery = (data['gallery'] as List?)?.whereType<String>().toList() ?? <String>[];
-    final interests = (data['interests'] as List?)?.whereType<String>().toList();
+    final gallery =
+        (data['gallery'] as List?)?.whereType<String>().toList() ?? <String>[];
+    final interests = (data['interests'] as List?)
+        ?.whereType<String>()
+        .toList();
     final interestsDetail = <String, List<String>>{};
     final rawInterestsDetail = data['interestsDetail'];
     if (rawInterestsDetail is Map) {
@@ -70,9 +75,9 @@ class UserProfile {
       uid: doc.id,
       name: asNullableString(data['displayName']) ?? '',
       age: parsedAge,
+      isStaff: data['isStaff'] as bool? ?? false,
       interests: interests,
-        interestsDetail:
-          interestsDetail.isNotEmpty ? interestsDetail : null,
+      interestsDetail: interestsDetail.isNotEmpty ? interestsDetail : null,
       photoURL: asNullableString(data['photoURL']),
       photos: photos.isNotEmpty ? photos : null,
       email: asNullableString(data['email']),

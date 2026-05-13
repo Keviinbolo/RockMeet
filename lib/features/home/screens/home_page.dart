@@ -141,7 +141,7 @@ class _HomePageState extends State<HomePage> {
           : 'Usuario',
       age: safeAge,
       photos: photos.isNotEmpty ? photos : <String>[_fallbackPhotoUrl],
-      bio: details,
+      bio: details, isStaff: data['isStaff'] as bool? ?? false,
     );
   }
 

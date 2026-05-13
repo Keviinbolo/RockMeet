@@ -130,8 +130,6 @@ class EventService {
   // Marcar usuario como asistente (con transacción).
   Future<void> markUserAsAttendee(String eventId, String userId) async {
     try {
-      print('📝 Intentando apuntar usuario $userId al evento $eventId');
-      
       await _firestore.runTransaction((transaction) async {
         final eventRef = _firestore.collection('events').doc(eventId);
         final eventSnapshot = await transaction.get(eventRef);
@@ -151,23 +149,15 @@ class EventService {
             'attendeeIds': FieldValue.arrayUnion([userId]),
             'updatedAt': Timestamp.now(),
           });
-          print('✅ Usuario agregado a attendeeIds');
-        } else {
-          print('⚠️ Usuario ya estaba en attendeeIds');
         }
       });
 
-      // Incrementar el contador de actividades después de la transacción exitosa
-      print('📊 Incrementando contador de actividades para $userId');
       try {
         await ProfileService.instance.incrementActivitiesCountForUser(userId);
-        print('✅ Contador de actividades incrementado exitosamente');
       } catch (e) {
-        print('❌ Error al incrementar contador: $e');
         rethrow;
       }
     } catch (e) {
-      print('❌ Error marcando asistente: $e');
       rethrow;
     }
   }
@@ -175,25 +165,17 @@ class EventService {
   // Remover usuario como asistente
   Future<void> removeUserAsAttendee(String eventId, String userId) async {
     try {
-      print('📝 Intentando desapuntar usuario $userId del evento $eventId');
-      
       await _firestore.collection('events').doc(eventId).update({
         'attendeeIds': FieldValue.arrayRemove([userId]),
         'updatedAt': Timestamp.now(),
       });
-      print('✅ Usuario removido de attendeeIds');
 
-      // Decrementar el contador de actividades después de la actualización exitosa
-      print('📊 Decrementando contador de actividades para $userId');
       try {
         await ProfileService.instance.decrementActivitiesCountForUser(userId);
-        print('✅ Contador de actividades decrementado exitosamente');
       } catch (e) {
-        print('❌ Error al decrementar contador: $e');
         rethrow;
       }
     } catch (e) {
-      print('❌ Error removiendo asistente: $e');
       rethrow;
     }
   }
@@ -230,10 +212,10 @@ class EventService {
     try {
       await _firestore.collection('events').doc(eventId).update({
         'status': EventStatus.active.toString(),
+        'staffOrganizerId': staffId,
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error aprobando evento: $e');
       rethrow;
     }
   }
@@ -246,7 +228,6 @@ class EventService {
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error rechazando evento: $e');
       rethrow;
     }
   }
@@ -259,7 +240,6 @@ class EventService {
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error activando evento: $e');
       rethrow;
     }
   }
@@ -272,7 +252,6 @@ class EventService {
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error desactivando evento: $e');
       rethrow;
     }
   }
@@ -285,7 +264,6 @@ class EventService {
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error cancelando evento: $e');
       rethrow;
     }
   }
@@ -350,7 +328,6 @@ class EventService {
       });
       return eventId;
     } catch (e) {
-      print('Error creando evento sugerido: $e');
       rethrow;
     }
   }
