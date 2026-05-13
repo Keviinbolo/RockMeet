@@ -1,8 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/core/services/user_moderation_service.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
+import 'package:RockMeet/core/services/user_moderation_service.dart';
 
 class StaffUserManagementPage extends StatefulWidget {
   const StaffUserManagementPage({super.key});

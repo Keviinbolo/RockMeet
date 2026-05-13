@@ -1,8 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:myapp/config/Routes/approutes.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/core/api/firebase_options.dart';
+import 'package:RockMeet/config/Routes/approutes.dart';
+import 'package:RockMeet/config/Theme/app_theme.dart';
+import 'package:RockMeet/core/api/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

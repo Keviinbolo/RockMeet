@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/core/services/portal_auth.dart';
-import 'package:myapp/features/home/screens/home_staff_page.dart';
-import 'package:myapp/features/like/screens/like_page.dart';
-import 'package:myapp/features/settings/screens/ajustes.dart';
-import 'package:myapp/features/home/screens/home_page.dart';
-import 'package:myapp/features/auth/screens/login.dart';
-import 'package:myapp/features/auth/screens/registro_page.dart';
-import 'package:myapp/features/validation_demo_page.dart';
+import 'package:RockMeet/core/services/portal_auth.dart';
+import 'package:RockMeet/features/home/screens/home_staff_page.dart';
+import 'package:RockMeet/features/like/screens/like_page.dart';
+import 'package:RockMeet/features/settings/screens/ajustes.dart';
+import 'package:RockMeet/features/home/screens/home_page.dart';
+import 'package:RockMeet/features/auth/screens/login.dart';
+import 'package:RockMeet/features/auth/screens/registro_page.dart';
+import 'package:RockMeet/features/validation_demo_page.dart';
 
 class AppRoutes {
   static const String splash = '/splash';

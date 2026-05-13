@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/app_theme.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
 
 class CambiarContraseniaScreen extends StatefulWidget {
   const CambiarContraseniaScreen({Key? key}) : super(key: key);
@@ -124,17 +124,18 @@ class _CambiarContraseniaScreenState extends State<CambiarContraseniaScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(isDark ? 0.15 : 0.1),
+                    color: AppColors.primary.withOpacity(isDark ? 0.15 : 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Colors.blue.withOpacity(0.3),
+                      color: AppColors.primary.withOpacity(0.3),
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: Colors.blue.shade600,
+                        color: AppColors.primary,
+
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -143,7 +144,7 @@ class _CambiarContraseniaScreenState extends State<CambiarContraseniaScreen> {
                           'Tu contraseña debe tener al menos 8 caracteres',
                           style: GoogleFonts.outfit(
                             fontSize: 12,
-                            color: isDark ? Colors.blue.shade300 : Colors.blue.shade700,
+                            color: isDark ? AppColors.primary : AppColors.primary,
                           ),
                         ),
                       ),

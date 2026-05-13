@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:myapp/core/models/user_profile.dart';
-import 'package:myapp/features/events/screens/event_screen.dart';
-import 'package:myapp/features/like/screens/like_page.dart';
+import 'package:RockMeet/core/models/user_profile.dart';
+import 'package:RockMeet/features/events/screens/event_screen.dart';
+import 'package:RockMeet/features/like/screens/like_page.dart';
 import 'dart:ui';
 import 'dart:math' as math;
-
-import 'package:myapp/core/services/chat_service.dart';
-import 'package:myapp/features/profile/screens/Perfil.dart';
-import 'package:myapp/features/chat/screens/chat_page.dart';
-import 'package:myapp/features/settings/screens/ajustes.dart';
-import 'package:myapp/core/widgets/match_animation_widget.dart';
-
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/config/Theme/constants/text_styles.dart';
+import 'package:RockMeet/core/services/chat_service.dart';
+import 'package:RockMeet/features/profile/screens/Perfil.dart';
+import 'package:RockMeet/features/chat/screens/chat_page.dart';
+import 'package:RockMeet/features/settings/screens/ajustes.dart';
+import 'package:RockMeet/core/widgets/match_animation_widget.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

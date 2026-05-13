@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/config/Theme/constants/text_styles.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 
 
 enum ValidationState { idle, loading, error, success }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/core/models/class_event.dart';
+import 'package:RockMeet/config/Theme/app_theme.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
+import 'package:RockMeet/core/models/class_event.dart';
 
 class EventCard extends StatelessWidget {
   final Event event;

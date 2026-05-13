@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:myapp/core/services/auth_service.dart';
-import 'package:myapp/features/auth/screens/login.dart';
+import 'package:RockMeet/core/services/auth_service.dart';
+import 'package:RockMeet/features/auth/screens/login.dart';
 
 class BlockedUserScreen extends StatelessWidget {
   const BlockedUserScreen({super.key});

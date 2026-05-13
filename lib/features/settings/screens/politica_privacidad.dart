@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/app_theme.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
 
 class PoliticaPrivacidadScreen extends StatelessWidget {
   const PoliticaPrivacidadScreen({Key? key}) : super(key: key);

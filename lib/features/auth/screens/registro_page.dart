@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:myapp/core/services/auth_service.dart';
+import 'package:RockMeet/core/services/auth_service.dart';
 
 class RegistroPage extends StatelessWidget {
   const RegistroPage({super.key});

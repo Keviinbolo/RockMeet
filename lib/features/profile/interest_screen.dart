@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/core/services/profile_service.dart';
+import 'package:RockMeet/core/services/profile_service.dart';
 
 class InterestScreen extends StatefulWidget {
   // AÑADIDO: Recibir la lista de intereses desde el perfil para poder editarla

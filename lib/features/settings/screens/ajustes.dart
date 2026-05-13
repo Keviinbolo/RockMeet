@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/core/services/auth_service.dart';
+import 'package:RockMeet/config/Theme/app_theme.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
+import 'package:RockMeet/core/services/auth_service.dart';
 import 'terminos_condiciones.dart';
 import 'politica_privacidad.dart';
 import 'cambiar_contrasenia.dart';

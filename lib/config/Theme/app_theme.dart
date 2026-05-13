@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
 
 class AppTheme {
   // ===== DECORACIONES PREDETERMINADAS =====

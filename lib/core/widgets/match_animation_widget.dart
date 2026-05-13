@@ -1,9 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/config/Theme/constants/text_styles.dart';
+import 'package:RockMeet/config/Theme/app_theme.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 
 
 class MatchModal extends StatelessWidget {

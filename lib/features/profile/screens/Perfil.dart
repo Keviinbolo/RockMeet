@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:myapp/core/models/profile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:myapp/core/models/user_profile.dart';
-import 'package:myapp/features/profile/interest_screen.dart';
-import 'package:myapp/core/services/profile_service.dart';
+import 'package:RockMeet/core/models/user_profile.dart';
+import 'package:RockMeet/features/profile/interest_screen.dart';
+import 'package:RockMeet/core/services/profile_service.dart';
 
 // Constantes (igual que en tu código original)
 const String defaultAvatarUrl =
@@ -18,8 +17,6 @@ const List<String> profileImages = [
   'https://images.unsplash.com/photo-1709287253135-865c51892771?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMG5hdHVyZSUyMG91dGRvb3JzfGVufDF8fHx8MTc3MjEyMDk3Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
 ];
 
-
-
 class Perfil extends StatelessWidget {
   const Perfil({super.key});
 
@@ -32,6 +29,7 @@ class Perfil extends StatelessWidget {
     );
   }
 }
+
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required String uid});
 
@@ -69,17 +67,35 @@ class _ProfilePageState extends State<ProfilePage> {
       Interest(
         Icons.movie,
         'Películas',
-        subInterests: ['Acción', 'Comedia', 'Drama', 'Ciencia Ficción', 'Terror'],
+        subInterests: [
+          'Acción',
+          'Comedia',
+          'Drama',
+          'Ciencia Ficción',
+          'Terror',
+        ],
       ),
       Interest(
         Icons.book,
         'Lectura',
-        subInterests: ['Ficción', 'Misterio', 'Fantasía', 'Biografía', 'Tecnología'],
+        subInterests: [
+          'Ficción',
+          'Misterio',
+          'Fantasía',
+          'Biografía',
+          'Tecnología',
+        ],
       ),
       Interest(
         Icons.travel_explore,
         'Viajar',
-        subInterests: ['Playas', 'Montañas', 'Ciudades', 'Aventura', 'Cultural'],
+        subInterests: [
+          'Playas',
+          'Montañas',
+          'Ciudades',
+          'Aventura',
+          'Cultural',
+        ],
       ),
     ];
   }
@@ -101,28 +117,41 @@ class _ProfilePageState extends State<ProfilePage> {
       final label = entry.key.trim();
       if (label.isEmpty) continue;
       if (!byLabel.containsKey(label)) {
-        byLabel[label] = Interest(Icons.interests, label, subInterests: entry.value);
+        byLabel[label] = Interest(
+          Icons.interests,
+          label,
+          subInterests: entry.value,
+        );
       } else {
         final existing = byLabel[label]!;
-        final mergedSub = <String>{...existing.subInterests, ...entry.value}.toList();
-        byLabel[label] = Interest(existing.icon, existing.label, subInterests: mergedSub);
+        final mergedSub = <String>{
+          ...existing.subInterests,
+          ...entry.value,
+        }.toList();
+        byLabel[label] = Interest(
+          existing.icon,
+          existing.label,
+          subInterests: mergedSub,
+        );
       }
     }
 
     final labels = byLabel.keys.toList()
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
-    return labels.map((label) {
-      final base = byLabel[label]!;
-      final savedSubs = detail[label] ?? const <String>[];
-      return Interest(
-        base.icon,
-        base.label,
-        selected: selected.contains(label),
-        subInterests: base.subInterests,
-        selectedSubInterests: Set<String>.from(savedSubs),
-      );
-    }).toList(growable: false);
+    return labels
+        .map((label) {
+          final base = byLabel[label]!;
+          final savedSubs = detail[label] ?? const <String>[];
+          return Interest(
+            base.icon,
+            base.label,
+            selected: selected.contains(label),
+            subInterests: base.subInterests,
+            selectedSubInterests: Set<String>.from(savedSubs),
+          );
+        })
+        .toList(growable: false);
   }
 
   String _safeStatValue(dynamic value) {
@@ -156,15 +185,18 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _saveChanges() async {
     // Extrae los intereses seleccionados como lista simple
-    final selectedInterests =
-        _tempInterests.where((i) => i.selected).map((i) => i.label).toList();
+    final selectedInterests = _tempInterests
+        .where((i) => i.selected)
+        .map((i) => i.label)
+        .toList();
 
     // Construye un mapa con los intereses y sus sub-intereses
     final interestsWithSubInterests = <String, List<String>>{};
     for (final interest in _tempInterests) {
       if (interest.selected && interest.selectedSubInterests.isNotEmpty) {
-        interestsWithSubInterests[interest.label] =
-            interest.selectedSubInterests.toList();
+        interestsWithSubInterests[interest.label] = interest
+            .selectedSubInterests
+            .toList();
       }
     }
 
@@ -178,8 +210,9 @@ class _ProfilePageState extends State<ProfilePage> {
         tiktok: _tiktokController.text,
         gallery: _tempImages,
         interests: selectedInterests,
-        interestsWithSubInterests:
-            interestsWithSubInterests.isNotEmpty ? interestsWithSubInterests : null,
+        interestsWithSubInterests: interestsWithSubInterests.isNotEmpty
+            ? interestsWithSubInterests
+            : null,
       );
 
       setState(() => _isEditing = false);
@@ -204,17 +237,22 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _handleRemoveImage(int index) => setState(() => _tempImages.removeAt(index));
+  void _handleRemoveImage(int index) =>
+      setState(() => _tempImages.removeAt(index));
 
   void _handleAddImage() {
     if (_tempImages.length >= 3) return;
-    final available = profileImages.where((img) => !_tempImages.contains(img)).toList();
+    final available = profileImages
+        .where((img) => !_tempImages.contains(img))
+        .toList();
     if (available.isNotEmpty) {
-      final randomIndex = DateTime.now().millisecondsSinceEpoch % available.length;
+      final randomIndex =
+          DateTime.now().millisecondsSinceEpoch % available.length;
       setState(() => _tempImages.add(available[randomIndex]));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No hay más imágenes disponibles')));
+        const SnackBar(content: Text('No hay más imágenes disponibles')),
+      );
     }
   }
 
@@ -227,14 +265,19 @@ class _ProfilePageState extends State<ProfilePage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Cambiar foto de perfil',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Cambiar foto de perfil',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8),
+                crossAxisCount: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
               itemCount: profileImages.length,
               itemBuilder: (context, index) {
                 final isSelected = _tempAvatarUrl == profileImages[index];
@@ -246,13 +289,17 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Container(
                     decoration: BoxDecoration(
                       border: Border.all(
-                          color: isSelected ? Colors.deepPurple : Colors.grey,
-                          width: isSelected ? 3 : 1),
+                        color: isSelected ? Colors.deepPurple : Colors.grey,
+                        width: isSelected ? 3 : 1,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.network(profileImages[index], fit: BoxFit.cover),
+                      child: Image.network(
+                        profileImages[index],
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 );
@@ -281,7 +328,9 @@ class _ProfilePageState extends State<ProfilePage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+          if (snapshot.hasError ||
+              !snapshot.hasData ||
+              !snapshot.data!.exists) {
             return const Center(child: Text('Error al cargar el perfil'));
           }
 
@@ -297,7 +346,7 @@ class _ProfilePageState extends State<ProfilePage> {
           final String twitter = profile.twitter ?? '';
           final String instagram = profile.instagram ?? '';
           final String tiktok = profile.tiktok ?? '';
-            final List<String> gallery =
+          final List<String> gallery =
               (data['gallery'] as List?)?.whereType<String>().toList() ?? [];
           final String likes = _safeStatValue(profile.likes);
 
@@ -306,11 +355,15 @@ class _ProfilePageState extends State<ProfilePage> {
 
           // Sincronizar datos si no estamos editando
           if (!_isEditing) {
-            if (_nameController.text != displayName) _nameController.text = displayName;
+            if (_nameController.text != displayName)
+              _nameController.text = displayName;
             if (_bioController.text != bio) _bioController.text = bio;
-            if (_twitterController.text != twitter) _twitterController.text = twitter;
-            if (_instagramController.text != instagram) _instagramController.text = instagram;
-            if (_tiktokController.text != tiktok) _tiktokController.text = tiktok;
+            if (_twitterController.text != twitter)
+              _twitterController.text = twitter;
+            if (_instagramController.text != instagram)
+              _instagramController.text = instagram;
+            if (_tiktokController.text != tiktok)
+              _tiktokController.text = tiktok;
             _tempAvatarUrl = avatarUrl;
             _tempImages = List.from(gallery);
             _tempInterests = _buildInterestsFromProfile(profile);
@@ -344,17 +397,27 @@ class _ProfilePageState extends State<ProfilePage> {
                                         width: 140,
                                         height: 140,
                                         fit: BoxFit.cover,
-                                        loadingBuilder: (context, child, loadingProgress) {
-                                          if (loadingProgress == null) return child;
-                                          return const SizedBox(
-                                            width: 26,
-                                            height: 26,
-                                            child: CircularProgressIndicator(strokeWidth: 2),
-                                          );
-                                        },
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return const Icon(Icons.person, size: 56, color: Colors.grey);
-                                        },
+                                        loadingBuilder:
+                                            (context, child, loadingProgress) {
+                                              if (loadingProgress == null)
+                                                return child;
+                                              return const SizedBox(
+                                                width: 26,
+                                                height: 26,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              );
+                                            },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return const Icon(
+                                                Icons.person,
+                                                size: 56,
+                                                color: Colors.grey,
+                                              );
+                                            },
                                       ),
                                     ),
                                   ),
@@ -369,7 +432,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                           shape: BoxShape.circle,
                                           color: Colors.deepPurple,
                                         ),
-                                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                                        child: const Icon(
+                                          Icons.camera_alt,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
                                       ),
                                     ),
                                 ],
@@ -394,7 +461,10 @@ class _ProfilePageState extends State<ProfilePage> {
                             icon: const Icon(Icons.edit),
                             label: const Text('Editar perfil'),
                             style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 12,
+                              ),
                             ),
                           ),
                         ),
@@ -407,10 +477,22 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                StatCard(icon: Icons.favorite, label: 'Me gusta', value: likes),
-                            
-                                StatCard(icon: Icons.calendar_today, label: 'Eventos', value: activities),
-                                StatCard(icon: Icons.group, label: 'Amigos', value: friends),
+                                StatCard(
+                                  icon: Icons.favorite,
+                                  label: 'Me gusta',
+                                  value: likes,
+                                ),
+
+                                StatCard(
+                                  icon: Icons.calendar_today,
+                                  label: 'Eventos',
+                                  value: activities,
+                                ),
+                                StatCard(
+                                  icon: Icons.group,
+                                  label: 'Amigos',
+                                  value: friends,
+                                ),
                               ],
                             ),
                           ),
@@ -423,7 +505,10 @@ class _ProfilePageState extends State<ProfilePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
                                 child: Row(
                                   children: [
                                     const Icon(Icons.photo_camera),
@@ -440,13 +525,15 @@ class _ProfilePageState extends State<ProfilePage> {
                                   children: [
                                     GridView.builder(
                                       shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 3,
-                                        crossAxisSpacing: 8,
-                                        mainAxisSpacing: 8,
-                                        childAspectRatio: 0.75,
-                                      ),
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: 3,
+                                            crossAxisSpacing: 8,
+                                            mainAxisSpacing: 8,
+                                            childAspectRatio: 0.75,
+                                          ),
                                       itemCount: 3,
                                       itemBuilder: (context, index) {
                                         if (index < _tempImages.length) {
@@ -454,31 +541,57 @@ class _ProfilePageState extends State<ProfilePage> {
                                           return Stack(
                                             children: [
                                               ClipRRect(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                                 child: Image.network(
                                                   img,
                                                   fit: BoxFit.cover,
                                                   width: double.infinity,
                                                   height: double.infinity,
-                                                  loadingBuilder: (context, child, loadingProgress) {
-                                                    if (loadingProgress == null) return child;
-                                                    return Container(
-                                                      color: Colors.grey.shade200,
-                                                      alignment: Alignment.center,
-                                                      child: const SizedBox(
-                                                        width: 20,
-                                                        height: 20,
-                                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                                      ),
-                                                    );
-                                                  },
-                                                  errorBuilder: (context, error, stackTrace) {
-                                                    return Container(
-                                                      color: Colors.grey.shade200,
-                                                      alignment: Alignment.center,
-                                                      child: const Icon(Icons.broken_image_outlined),
-                                                    );
-                                                  },
+                                                  loadingBuilder:
+                                                      (
+                                                        context,
+                                                        child,
+                                                        loadingProgress,
+                                                      ) {
+                                                        if (loadingProgress ==
+                                                            null)
+                                                          return child;
+                                                        return Container(
+                                                          color: Colors
+                                                              .grey
+                                                              .shade200,
+                                                          alignment:
+                                                              Alignment.center,
+                                                          child: const SizedBox(
+                                                            width: 20,
+                                                            height: 20,
+                                                            child:
+                                                                CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2,
+                                                                ),
+                                                          ),
+                                                        );
+                                                      },
+                                                  errorBuilder:
+                                                      (
+                                                        context,
+                                                        error,
+                                                        stackTrace,
+                                                      ) {
+                                                        return Container(
+                                                          color: Colors
+                                                              .grey
+                                                              .shade200,
+                                                          alignment:
+                                                              Alignment.center,
+                                                          child: const Icon(
+                                                            Icons
+                                                                .broken_image_outlined,
+                                                          ),
+                                                        );
+                                                      },
                                                 ),
                                               ),
                                               if (_isEditing)
@@ -486,15 +599,23 @@ class _ProfilePageState extends State<ProfilePage> {
                                                   top: 4,
                                                   right: 4,
                                                   child: GestureDetector(
-                                                    onTap: () => _handleRemoveImage(index),
+                                                    onTap: () =>
+                                                        _handleRemoveImage(
+                                                          index,
+                                                        ),
                                                     child: Container(
                                                       width: 20,
                                                       height: 20,
-                                                      decoration: const BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        color: Colors.red,
+                                                      decoration:
+                                                          const BoxDecoration(
+                                                            shape:
+                                                                BoxShape.circle,
+                                                            color: Colors.red,
+                                                          ),
+                                                      child: const Icon(
+                                                        Icons.close,
+                                                        size: 18,
                                                       ),
-                                                      child: const Icon(Icons.close, size: 18),
                                                     ),
                                                   ),
                                                 ),
@@ -508,33 +629,51 @@ class _ProfilePageState extends State<ProfilePage> {
                                           );
                                         } else {
                                           return GestureDetector(
-                                            onTap: _isEditing ? _handleAddImage : null,
+                                            onTap: _isEditing
+                                                ? _handleAddImage
+                                                : null,
                                             child: Container(
                                               decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                                 border: Border.all(
                                                   width: 2,
                                                   style: BorderStyle.solid,
-                                                  color: _isEditing ? Colors.grey : Colors.grey.shade700,
+                                                  color: _isEditing
+                                                      ? Colors.grey
+                                                      : Colors.grey.shade700,
                                                 ),
                                               ),
                                               child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
                                                 children: [
                                                   Container(
                                                     width: 40,
                                                     height: 40,
-                                                    decoration: const BoxDecoration(shape: BoxShape.circle),
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
                                                     child: Icon(
                                                       Icons.add,
-                                                      color: _isEditing ? Colors.grey : Colors.grey.shade600,
+                                                      color: _isEditing
+                                                          ? Colors.grey
+                                                          : Colors
+                                                                .grey
+                                                                .shade600,
                                                     ),
                                                   ),
                                                   const SizedBox(height: 4),
                                                   Text(
                                                     'Añadir foto',
                                                     style: TextStyle(
-                                                      color: _isEditing ? Colors.grey : Colors.grey.shade600,
+                                                      color: _isEditing
+                                                          ? Colors.grey
+                                                          : Colors
+                                                                .grey
+                                                                .shade600,
                                                     ),
                                                   ),
                                                 ],
@@ -550,7 +689,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                           ? 'Toca el icono de cerrar (X) para eliminar fotos. Toca + para añadir nuevas.'
                                           : 'Haz clic en "Editar perfil" para cambiar tus fotos.',
                                       textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade500,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -576,7 +718,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ? TextFormField(
                                           controller: _bioController,
                                           maxLines: 3,
-                                          decoration: const InputDecoration(border: OutlineInputBorder()),
+                                          decoration: const InputDecoration(
+                                            border: OutlineInputBorder(),
+                                          ),
                                         )
                                       : Text(bio),
                                 ],
@@ -596,14 +740,17 @@ class _ProfilePageState extends State<ProfilePage> {
                                 Center(
                                   child: ElevatedButton.icon(
                                     onPressed: () async {
-                                      final result = await Navigator.push<List<Interest>>(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => InterestScreen(
-                                            currentInterests: _tempInterests,
-                                          ),
-                                        ),
-                                      );
+                                      final result =
+                                          await Navigator.push<List<Interest>>(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  InterestScreen(
+                                                    currentInterests:
+                                                        _tempInterests,
+                                                  ),
+                                            ),
+                                          );
                                       if (result != null) {
                                         setState(() {
                                           _tempInterests = result;
@@ -613,29 +760,45 @@ class _ProfilePageState extends State<ProfilePage> {
                                     icon: const Icon(Icons.edit),
                                     label: const Text('Intereses'),
                                     style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 32,
+                                        vertical: 12,
+                                      ),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                if (_tempInterests.where((i) => i.selected).isEmpty)
+                                if (_tempInterests
+                                    .where((i) => i.selected)
+                                    .isEmpty)
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                    ),
                                     child: Text(
                                       'No hay intereses seleccionados',
-                                      style: TextStyle(color: Colors.grey.shade500),
+                                      style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                      ),
                                     ),
                                   )
                                 else
                                   ListView.separated(
                                     shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: _tempInterests.where((i) => i.selected).length,
-                                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount: _tempInterests
+                                        .where((i) => i.selected)
+                                        .length,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(height: 16),
                                     itemBuilder: (context, index) {
-                                      final interest = _tempInterests.where((i) => i.selected).toList()[index];
+                                      final interest = _tempInterests
+                                          .where((i) => i.selected)
+                                          .toList()[index];
                                       return Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
@@ -643,15 +806,23 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 width: 36,
                                                 height: 36,
                                                 decoration: BoxDecoration(
-                                                  color: Colors.deepPurple.withOpacity(0.1),
+                                                  color: Colors.deepPurple
+                                                      .withOpacity(0.1),
                                                   shape: BoxShape.circle,
                                                 ),
-                                                child: Icon(interest.icon, color: Colors.deepPurple, size: 18),
+                                                child: Icon(
+                                                  interest.icon,
+                                                  color: Colors.deepPurple,
+                                                  size: 18,
+                                                ),
                                               ),
                                               const SizedBox(width: 12),
                                               Text(
                                                 interest.label,
-                                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -659,20 +830,31 @@ class _ProfilePageState extends State<ProfilePage> {
                                           Wrap(
                                             spacing: 8,
                                             runSpacing: 8,
-                                            children: interest.selectedSubInterests.map((sub) {
-                                              return Chip(
-                                                label: Text(sub),
-                                                deleteIcon: const Icon(Icons.close, size: 16),
-                                                onDeleted: () {
-                                                  setState(() {
-                                                    interest.selectedSubInterests.remove(sub);
-                                                    if (interest.selectedSubInterests.isEmpty) {
-                                                      interest.selected = false;
-                                                    }
-                                                  });
-                                                },
-                                              );
-                                            }).toList(),
+                                            children: interest
+                                                .selectedSubInterests
+                                                .map((sub) {
+                                                  return Chip(
+                                                    label: Text(sub),
+                                                    deleteIcon: const Icon(
+                                                      Icons.close,
+                                                      size: 16,
+                                                    ),
+                                                    onDeleted: () {
+                                                      setState(() {
+                                                        interest
+                                                            .selectedSubInterests
+                                                            .remove(sub);
+                                                        if (interest
+                                                            .selectedSubInterests
+                                                            .isEmpty) {
+                                                          interest.selected =
+                                                              false;
+                                                        }
+                                                      });
+                                                    },
+                                                  );
+                                                })
+                                                .toList(),
                                           ),
                                         ],
                                       );
@@ -762,7 +944,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 _isEditing
                     ? TextFormField(
                         controller: controller,
-                        decoration: const InputDecoration(border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
                       )
                     : Text(value),
               ],

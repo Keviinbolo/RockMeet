@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:myapp/core/models/class_event.dart';
-import 'package:myapp/core/services/profile_service.dart';
+import 'package:RockMeet/core/models/class_event.dart';
+import 'package:RockMeet/core/services/profile_service.dart';
 import 'package:uuid/uuid.dart';
 
 class EventService {

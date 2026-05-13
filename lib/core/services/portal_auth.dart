@@ -1,12 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:myapp/core/services/auth_service.dart';
-import 'package:myapp/features/auth/screens/blocked_user_screen.dart';
-import 'package:myapp/features/auth/screens/login.dart';
-import 'package:myapp/features/auth/screens/pantalla_splash.dart';
+import 'package:RockMeet/core/services/auth_service.dart';
+import 'package:RockMeet/features/auth/screens/blocked_user_screen.dart';
+import 'package:RockMeet/features/auth/screens/login.dart';
+import 'package:RockMeet/features/auth/screens/pantalla_splash.dart';
 
-import 'package:myapp/features/home/screens/home_page.dart';
-import 'package:myapp/features/home/screens/home_staff_page.dart';
+import 'package:RockMeet/features/home/screens/home_page.dart';
+import 'package:RockMeet/features/home/screens/home_staff_page.dart';
 
 class PortalAuth extends StatelessWidget {
   const PortalAuth({super.key});

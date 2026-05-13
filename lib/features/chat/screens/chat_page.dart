@@ -3,11 +3,9 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:myapp/core/models/chat_message.dart';
-import 'package:myapp/core/services/chat_service.dart';
+import 'package:RockMeet/core/models/chat_message.dart';
+import 'package:RockMeet/core/services/chat_service.dart';
 
-// Asume que existe esta pantalla; si no, créala o cambia la ruta.
-// import 'package:myapp/ui/screens/profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({

@@ -2,9 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/config/Theme/constants/text_styles.dart';
-import 'package:myapp/core/models/user_profile.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/constants/text_styles.dart';
+import 'package:RockMeet/core/models/user_profile.dart';
 
 // 1. Modelo de Usuario
 
