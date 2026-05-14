@@ -13,6 +13,7 @@ import 'package:RockMeet/features/settings/screens/ajustes.dart';
 import 'package:RockMeet/core/widgets/match_animation_widget.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:RockMeet/config/Theme/constants/text_styles.dart';
+import 'package:RockMeet/core/services/profile_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -95,6 +96,17 @@ class _HomePageState extends State<HomePage> {
     final interests =
         (data['interests'] as List?)?.whereType<String>().toList() ??
         <String>[];
+    final interestsDetailMap = <String, List<String>>{};
+    final rawDetail = data['interestsDetail'];
+    if (rawDetail is Map) {
+      for (final entry in rawDetail.entries) {
+        final key = entry.key.toString();
+        final val = entry.value;
+        if (key.trim().isNotEmpty && val is List) {
+          interestsDetailMap[key] = val.whereType<String>().toList();
+        }
+      }
+    }
     final gallery =
         (data['gallery'] as List?)?.whereType<String>().toList() ?? <String>[];
     final photoUrl = (data['photoURL'] as String?)?.trim();
@@ -102,30 +114,6 @@ class _HomePageState extends State<HomePage> {
     final safeAge = (parsedAge != null && parsedAge >= 18 && parsedAge <= 99)
         ? parsedAge
         : 18;
-
-    final detailsParts = <String>[];
-    if (bio != null && bio.isNotEmpty) {
-      detailsParts.add(bio);
-    }
-    if (parsedAge != null) {
-      detailsParts.add('Edad: $safeAge');
-    }
-    if (interests.isNotEmpty) {
-      detailsParts.add('Intereses: ${interests.join(', ')}');
-    }
-    if (twitter != null && twitter.isNotEmpty) {
-      detailsParts.add('X/Twitter: $twitter');
-    }
-    if (instagram != null && instagram.isNotEmpty) {
-      detailsParts.add('Instagram: $instagram');
-    }
-    if (tiktok != null && tiktok.isNotEmpty) {
-      detailsParts.add('TikTok: $tiktok');
-    }
-
-    final details = detailsParts.isNotEmpty
-        ? detailsParts.join('\n\n')
-        : 'Este usuario aun no ha completado su perfil.';
 
     final photos = <String>{
       if (photoUrl != null && photoUrl.isNotEmpty) photoUrl,
@@ -139,7 +127,13 @@ class _HomePageState extends State<HomePage> {
           : 'Usuario',
       age: safeAge,
       photos: photos.isNotEmpty ? photos : <String>[_fallbackPhotoUrl],
-      bio: details, isStaff: data['isStaff'] as bool? ?? false,
+      bio: (bio != null && bio.isNotEmpty) ? bio : null,
+      interests: interests.isNotEmpty ? interests : null,
+      interestsDetail: interestsDetailMap.isNotEmpty ? interestsDetailMap : null,
+      twitter: (twitter != null && twitter.isNotEmpty) ? twitter : null,
+      instagram: (instagram != null && instagram.isNotEmpty) ? instagram : null,
+      tiktok: (tiktok != null && tiktok.isNotEmpty) ? tiktok : null,
+      isStaff: data['isStaff'] as bool? ?? false,
     );
   }
 
@@ -364,21 +358,34 @@ class _HomePageState extends State<HomePage> {
     UserProfile currentProfile,
     int profilesLength,
   ) async {
-    // 1. Forzamos que sea true para que la animación salte SIEMPRE
-    bool isMutualLike = true;
-
     try {
-      // Guardamos la interacción en Firebase (opcional, pero mejor dejarlo para que el perfil no repita)
       await _saveInteraction(profile: currentProfile, type: 'like');
-
-      // Intentamos preparar el chat (aunque no sea mutuo real, para que el modal tenga datos)
-      await _prepareChatForMatch(currentProfile);
     } catch (e) {
       print("Error guardando interacción: $e");
+      if (mounted) _nextProfile(profilesLength);
+      return;
     }
 
-    // 2. Al ser isMutualLike = true, entrará aquí SIEMPRE
+    // Incrementar likes: no crítico, no bloquea el flujo
+    ProfileService.instance
+        .incrementLikesCountForUser(currentProfile.uid)
+        .catchError((e) => print("Error incrementando likes: $e"));
+
+    final isMutualLike = await _isMutualLike(currentProfile);
+
     if (isMutualLike) {
+      try {
+        await _prepareChatForMatch(currentProfile);
+      } catch (e) {
+        print("Error preparando chat: $e");
+      }
+      // Contadores de amigos: no críticos, no bloquean el modal
+      ProfileService.instance
+          .incrementFriendsCount()
+          .catchError((e) => print("Error incrementando amigos: $e"));
+      ProfileService.instance
+          .incrementFriendsCountForUser(currentProfile.uid)
+          .catchError((e) => print("Error incrementando amigos del otro: $e"));
       _showMatchModal(currentProfile, profilesLength);
     } else {
       _nextProfile(profilesLength);
@@ -894,16 +901,17 @@ class _SwipeableCardState extends State<SwipeableCard>
     );
   }
 
-  // --- FRENTE DE LA TARJETA (Ajustado para evitar overflow) ---
   Widget _buildCard() {
     final photos = widget.profile.photos;
-    final titleText = '${widget.profile.name}, ${widget.profile.age}';
-    final photoCount = photos?.length;
+    final photoCount = photos?.length ?? 1;
     final currentPhoto = photos != null && photos.isNotEmpty
         ? photos[_currentPhotoIndex.clamp(0, photos.length - 1)]
         : '';
     final likeProgress = _likeProgress;
     final nopeProgress = _nopeProgress;
+    final categories = widget.profile.interestsDetail?.keys.toList()
+        ?? widget.profile.interests
+        ?? [];
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
@@ -913,154 +921,213 @@ class _SwipeableCardState extends State<SwipeableCard>
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.24),
+              color: AppColors.primary.withOpacity(0.18),
+              blurRadius: 22,
+              spreadRadius: 1,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.45),
               blurRadius: 14,
               offset: const Offset(0, 8),
             ),
           ],
         ),
-        // LayoutBuilder y Column Flexible para evitar el error de RenderFlex overflow
         child: LayoutBuilder(
           builder: (context, constraints) {
-            return Column(
+            return Stack(
+              fit: StackFit.expand,
               children: [
-                // 1. Título
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                // Foto a pantalla completa
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  child: Image.network(
+                    currentPhoto,
+                    key: ValueKey(currentPhoto),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: AppColors.surface,
+                        child: const Center(
+                          child: Icon(
+                            Icons.broken_image,
+                            color: Colors.white38,
+                            size: 64,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Viñeta superior sutil
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.center,
+                        colors: [
+                          Colors.black.withOpacity(0.45),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Gradiente inferior fuerte
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const [0.42, 0.70, 1.0],
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.62),
+                          Colors.black.withOpacity(0.94),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Indicadores de fotos
+                Positioned(
+                  top: 14,
+                  left: 14,
+                  right: 14,
                   child: Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          titleText,
-                          style: AppTextStyles.displayMedium,
+                      for (var i = 0; i < photoCount; i++)
+                        Expanded(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            height: 3,
+                            margin: EdgeInsets.only(
+                              right: i == photoCount - 1 ? 0 : 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: i == _currentPhotoIndex
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.35),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
 
-                // 2. Imagen (ocupa todo el espacio disponible dentro de su bloque)
-                Expanded(
-                  flex: 3,
+                // Badge NOPE
+                Positioned(
+                  left: 14,
+                  top: 32,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 90),
+                    opacity: nopeProgress,
+                    child: Transform.rotate(
+                      angle: -0.20,
+                      child: _buildBadge("NOPE", AppColors.error),
+                    ),
+                  ),
+                ),
+
+                // Badge LIKE
+                Positioned(
+                  right: 14,
+                  top: 32,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 90),
+                    opacity: likeProgress,
+                    child: Transform.rotate(
+                      angle: 0.20,
+                      child: _buildBadge("LIKE", AppColors.success),
+                    ),
+                  ),
+                ),
+
+                // Info inferior: nombre, edad e intereses
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: SizedBox.expand(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: Stack(
-                          fit: StackFit.expand,
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
                           children: [
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 220),
-                              child: Image.network(
-                                currentPhoto,
-                                key: ValueKey(currentPhoto),
-                                fit: BoxFit.cover,
-                                errorBuilder:
-                                    (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.black12,
-                                    child: const Center(
-                                      child: Icon(Icons.broken_image),
+                            Expanded(
+                              child: Text(
+                                widget.profile.name,
+                                style: AppTextStyles.displaySmall.copyWith(
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black.withOpacity(0.7),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 2),
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
-                            // Gradiente Inferior
-                            Positioned.fill(
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.transparent,
-                                      Colors.black.withOpacity(0.35),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // Indicadores de fotos (Barras blancas arriba)
-                            Positioned(
-                              top: 10,
-                              left: 10,
-                              right: 10,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(999),
-                                child: Row(
-                                  children: [
-                                    for (var i = 0; i < photoCount!; i++)
-                                      Expanded(
-                                        child: AnimatedContainer(
-                                          duration: const Duration(
-                                            milliseconds: 180,
-                                          ),
-                                          height: 3,
-                                          margin: EdgeInsets.only(
-                                            right: i == photoCount - 1
-                                                ? 0
-                                                : 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: i == _currentPhotoIndex
-                                                ? Colors.white
-                                                : Colors.white.withOpacity(
-                                                    0.35,
-                                                  ),
-                                          ),
-                                        ),
-                                      ),
                                   ],
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            // Detector de Taps para navegar fotos
-                            Positioned.fill(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.translucent,
-                                onTapUp: (details) => _handleTapUp(
-                                  details,
-                                  constraints,
+                            const SizedBox(width: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(
+                                  sigmaX: 8,
+                                  sigmaY: 8,
                                 ),
-                              ),
-                            ),
-                            // Labels LIKE/NOPE
-                            Positioned(
-                              left: 14,
-                              top: 22,
-                              child: AnimatedOpacity(
-                                duration: const Duration(milliseconds: 90),
-                                opacity: nopeProgress,
-                                child: Transform.rotate(
-                                  angle: -0.20,
-                                  child: _buildBadge(
-                                    "NOPE",
-                                    AppColors.error,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
                                   ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 14,
-                              top: 22,
-                              child: AnimatedOpacity(
-                                duration: const Duration(milliseconds: 90),
-                                opacity: likeProgress,
-                                child: Transform.rotate(
-                                  angle: 0.20,
-                                  child: _buildBadge(
-                                    "LIKE",
-                                    AppColors.success,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '${widget.profile.age}',
+                                    style: AppTextStyles.titleLarge.copyWith(
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ),
+                        if (categories.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          _buildInterestChips(categories),
+                        ],
+                      ],
                     ),
+                  ),
+                ),
+
+                // Detector de taps para navegar fotos
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTapUp: (details) => _handleTapUp(details, constraints),
                   ),
                 ),
               ],
@@ -1073,67 +1140,209 @@ class _SwipeableCardState extends State<SwipeableCard>
 
   Widget _buildBadge(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        border: Border.all(color: color, width: 2),
+        border: Border.all(color: color, width: 2.5),
         borderRadius: BorderRadius.circular(10),
-        color: Colors.black.withOpacity(0.25),
+        color: Colors.black.withOpacity(0.35),
       ),
-      child: Text(text, style: AppTextStyles.labelLarge.copyWith(color: color)),
+      child: Text(
+        text,
+        style: AppTextStyles.labelLarge.copyWith(
+          color: color,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInterestChips(List<String> interests) {
+    final shown = interests.take(4).toList();
+    final extra = interests.length - 4;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final interest in shown) _buildFrontChip(interest),
+        if (extra > 0) _buildFrontChip('+$extra', isCounter: true),
+      ],
+    );
+  }
+
+  Widget _buildFrontChip(String label, {bool isCounter = false}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: isCounter
+                ? Colors.white.withOpacity(0.12)
+                : AppColors.primary.withOpacity(0.25),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isCounter
+                  ? Colors.white.withOpacity(0.28)
+                  : AppColors.primary.withOpacity(0.6),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.labelMedium.copyWith(
+              fontSize: 11,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildBackCard() {
+    final interestsDetail = widget.profile.interestsDetail;
+    final interests = widget.profile.interests ?? [];
+    final bio = widget.profile.bio;
+
     return SizedBox.expand(
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.surface,
+              const Color(0xFF1A0F1F),
+            ],
+          ),
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 2),
+          border: Border.all(
+            color: AppColors.primary.withOpacity(0.4),
+            width: 1.5,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.24),
+              color: AppColors.primary.withOpacity(0.14),
+              blurRadius: 22,
+              spreadRadius: 2,
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.45),
               blurRadius: 14,
               offset: const Offset(0, 8),
             ),
           ],
         ),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(22),
         child: Column(
-          mainAxisSize: MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.person_search, size: 50, color: AppColors.primary),
-            const SizedBox(height: 16),
-            Text(
-              "Intereses y Detalles",
-              textAlign: TextAlign.center,
-              style: AppTextStyles.headlineSmall?.copyWith(
-                color: AppColors.primary,
-              ),
+            // Cabecera
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: AppColors.gradientPrimary,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.person_search,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.profile.name,
+                        style: AppTextStyles.titleLarge,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Intereses y detalles',
+                        style: AppTextStyles.labelSmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
+
+            const SizedBox(height: 16),
+            Divider(color: AppColors.border, height: 1),
+            const SizedBox(height: 14),
+
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                child: Text(
-                  widget.profile.interests != null &&
-                          widget.profile.interests!.isNotEmpty
-                      ? widget.profile.interests!.join(', ')
-                      : 'No se han especificado intereses.',
-                  style: AppTextStyles.bodyLarge?.copyWith(height: 1.5),
-                  textAlign: TextAlign.center,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (bio != null && bio.isNotEmpty) ...[
+                      Text('Bio', style: AppTextStyles.labelLarge),
+                      const SizedBox(height: 6),
+                      Text(
+                        bio,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                    ],
+
+                    Text('Intereses', style: AppTextStyles.labelLarge),
+                    const SizedBox(height: 10),
+
+                    if (interestsDetail != null && interestsDetail.isNotEmpty)
+                      _buildBackInterestCategories(interestsDetail)
+                    else if (interests.isNotEmpty)
+                      _buildBackInterestChips(interests)
+                    else
+                      Text(
+                        'No se han especificado intereses.',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textHint,
+                        ),
+                      ),
+
+                    if (widget.profile.twitter != null ||
+                        widget.profile.instagram != null ||
+                        widget.profile.tiktok != null) ...[
+                      const SizedBox(height: 18),
+                      Text('Redes sociales', style: AppTextStyles.labelLarge),
+                      const SizedBox(height: 8),
+                      _buildSocialLinks(),
+                    ],
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+
+            const SizedBox(height: 14),
+
             ElevatedButton.icon(
               onPressed: _toggleFlip,
-              icon: const Icon(Icons.arrow_upward),
-              label: const Text("Volver a la foto"),
+              icon: const Icon(Icons.keyboard_arrow_up, size: 20),
+              label: const Text('Volver a la foto'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -1143,6 +1352,213 @@ class _SwipeableCardState extends State<SwipeableCard>
         ),
       ),
     );
+  }
+
+  Widget _buildBackInterestCategories(Map<String, List<String>> detail) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: detail.entries.map((entry) {
+        final category = entry.key;
+        final subs = entry.value;
+        final color = _interestColor(category);
+        final icon = _interestIcon(category);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 14, color: color),
+                  const SizedBox(width: 6),
+                  Text(
+                    category,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              if (subs.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: subs
+                      .map(
+                        (sub) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: color.withOpacity(0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            sub,
+                            style: AppTextStyles.labelMedium.copyWith(
+                              color: color.withOpacity(0.85),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildBackInterestChips(List<String> interests) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: interests.map((interest) {
+        final color = _interestColor(interest);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.14),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withOpacity(0.5), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_interestIcon(interest), size: 13, color: color),
+              const SizedBox(width: 5),
+              Text(
+                interest,
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: color,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSocialLinks() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        if (widget.profile.twitter != null)
+          _buildSocialChip(
+            'X · ${widget.profile.twitter}',
+            Icons.alternate_email,
+            const Color(0xFF1DA1F2),
+          ),
+        if (widget.profile.instagram != null)
+          _buildSocialChip(
+            'IG · ${widget.profile.instagram}',
+            Icons.camera_alt_outlined,
+            const Color(0xFFE1306C),
+          ),
+        if (widget.profile.tiktok != null)
+          _buildSocialChip(
+            'TikTok · ${widget.profile.tiktok}',
+            Icons.music_note,
+            Colors.white,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSocialChip(String label, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.4), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: AppTextStyles.labelMedium.copyWith(
+              color: Colors.white.withOpacity(0.85),
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _interestColor(String interest) {
+    final l = interest.toLowerCase();
+    if (l.contains('músi') || l.contains('musi') || l.contains('rock') || l.contains('metal') || l.contains('banda')) {
+      return const Color(0xFF9C27B0);
+    }
+    if (l.contains('deport') || l.contains('fútbol') || l.contains('futbol') || l.contains('gym') || l.contains('ejercicio')) {
+      return const Color(0xFF4CAF50);
+    }
+    if (l.contains('pelí') || l.contains('peli') || l.contains('cine') || l.contains('serie') || l.contains('anime')) {
+      return const Color(0xFF2196F3);
+    }
+    if (l.contains('viaje') || l.contains('travel') || l.contains('aventura')) {
+      return const Color(0xFF00BCD4);
+    }
+    if (l.contains('lectura') || l.contains('libro') || l.contains('leer')) {
+      return const Color(0xFFFF9800);
+    }
+    if (l.contains('arte') || l.contains('dibujo') || l.contains('diseño') || l.contains('fotog')) {
+      return const Color(0xFFE91E63);
+    }
+    if (l.contains('tecno') || l.contains('progra') || l.contains('código') || l.contains('codigo')) {
+      return const Color(0xFF00E5FF);
+    }
+    if (l.contains('juego') || l.contains('gaming') || l.contains('videojuego')) {
+      return const Color(0xFF8BC34A);
+    }
+    return AppColors.primary;
+  }
+
+  IconData _interestIcon(String interest) {
+    final l = interest.toLowerCase();
+    if (l.contains('músi') || l.contains('musi') || l.contains('rock') || l.contains('metal') || l.contains('banda')) {
+      return Icons.music_note;
+    }
+    if (l.contains('deport') || l.contains('fútbol') || l.contains('futbol') || l.contains('gym')) {
+      return Icons.sports_soccer;
+    }
+    if (l.contains('pelí') || l.contains('peli') || l.contains('cine') || l.contains('serie') || l.contains('anime')) {
+      return Icons.movie;
+    }
+    if (l.contains('viaje') || l.contains('travel') || l.contains('aventura')) {
+      return Icons.flight;
+    }
+    if (l.contains('lectura') || l.contains('libro') || l.contains('leer')) {
+      return Icons.menu_book;
+    }
+    if (l.contains('arte') || l.contains('dibujo') || l.contains('diseño') || l.contains('fotog')) {
+      return Icons.brush;
+    }
+    if (l.contains('tecno') || l.contains('progra') || l.contains('código') || l.contains('codigo')) {
+      return Icons.computer;
+    }
+    if (l.contains('juego') || l.contains('gaming') || l.contains('videojuego')) {
+      return Icons.sports_esports;
+    }
+    return Icons.interests;
   }
 }
 

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\j.vazquez\\\\Documents\\\\Project\\\\RockMeet\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(flutter analyze *)",
+      "PowerShell(Get-Command flutter -ErrorAction SilentlyContinue)"
+    ]
+  }
+}
