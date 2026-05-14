@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,10 +8,6 @@ import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
 
-// 1. Modelo de Usuario
-
-
-// 2. La Página Principal
 class LikesPage extends StatefulWidget {
   const LikesPage({super.key});
 
@@ -21,52 +19,57 @@ class _LikesPageState extends State<LikesPage> {
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
 
-  /// Obtiene los likes del usuario actual (usuarios que le dieron like)
-  /// Excluye los matches (usuarios con los que hay mutual like)
-  Future<List<UserProfile>> _getLikesExcludingMatches() async {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) return [];
+  late final Stream<List<UserProfile>> _likesStream;
 
-    try {
-      // Obtener todas las interacciones donde alguien me dio like
-      final likesSnapshot = await _firestore
+  @override
+  void initState() {
+    super.initState();
+    _likesStream = _buildLikesStream();
+  }
+
+  /// Stream en tiempo real: personas que me dieron like, excluyendo matches mutuos.
+  Stream<List<UserProfile>> _buildLikesStream() {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return Stream.value([]);
+
+    return _firestore
+        .collection('interactions')
+        .where('toUserId', isEqualTo: currentUser.uid)
+        .where('type', isEqualTo: 'like')
+        .snapshots()
+        .asyncMap((snapshot) => _processSnapshot(snapshot, currentUser.uid));
+  }
+
+  Future<List<UserProfile>> _processSnapshot(
+    QuerySnapshot snapshot,
+    String currentUserId,
+  ) async {
+    final result = <UserProfile>[];
+
+    for (final doc in snapshot.docs) {
+      final fromUserId = doc.data() is Map
+          ? (doc.data() as Map<String, dynamic>)['fromUserId'] as String? ?? ''
+          : '';
+      if (fromUserId.isEmpty) continue;
+
+      // Si yo también di like → es match → no aparece aquí
+      final mutualDoc = await _firestore
           .collection('interactions')
-          .where('toUserId', isEqualTo: currentUser.uid)
-          .where('type', isEqualTo: 'like')
+          .doc('${currentUserId}_$fromUserId')
           .get();
 
-      List<UserProfile> userLikes = [];
+      if (mutualDoc.exists && mutualDoc.data()?['type'] == 'like') continue;
 
-      for (var doc in likesSnapshot.docs) {
-        final fromUserId = doc['fromUserId'] as String;
-
-        // Verificar si es un match (yo también di like a este usuario)
-        final mutualLikeSnapshot = await _firestore
-            .collection('interactions')
-            .where('fromUserId', isEqualTo: currentUser.uid)
-            .where('toUserId', isEqualTo: fromUserId)
-            .where('type', isEqualTo: 'like')
-            .get();
-
-        // Solo agregar si NO es un match
-        if (mutualLikeSnapshot.docs.isEmpty) {
-          try {
-            final userDoc =
-                await _firestore.collection('users').doc(fromUserId).get();
-            if (userDoc.exists) {
-              userLikes.add(UserProfile.fromFirestore(userDoc));
-            }
-          } catch (e) {
-            debugPrint('Error obteniendo usuario $fromUserId: $e');
-          }
+      try {
+        final userDoc =
+            await _firestore.collection('users').doc(fromUserId).get();
+        if (userDoc.exists) {
+          result.add(UserProfile.fromFirestore(userDoc));
         }
-      }
-
-      return userLikes;
-    } catch (e) {
-      debugPrint('Error obteniendo likes: $e');
-      return [];
+      } catch (_) {}
     }
+
+    return result;
   }
 
   @override
@@ -74,13 +77,12 @@ class _LikesPageState extends State<LikesPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: FutureBuilder<List<UserProfile>>(
-          future: _getLikesExcludingMatches(),
+        child: StreamBuilder<List<UserProfile>>(
+          stream: _likesStream,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                !snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
             }
 
             if (snapshot.hasError) {
@@ -99,23 +101,21 @@ class _LikesPageState extends State<LikesPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- Header ---
                   Text(
-                    "Sugerencias para ti",
+                    'Sugerencias para ti',
                     style: AppTextStyles.displaySmall,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     likes.isEmpty
-                        ? "Aún no tienes likes"
-                        : "${likes.length} ${likes.length == 1 ? 'persona' : 'personas'} están interesadas en ti",
+                        ? 'Aún no tienes likes'
+                        : '${likes.length} ${likes.length == 1 ? 'persona' : 'personas'} están interesadas en ti',
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 32),
 
-                  // --- Grid de Likes ---
                   if (likes.isNotEmpty)
                     GridView.builder(
                       shrinkWrap: true,
@@ -135,11 +135,21 @@ class _LikesPageState extends State<LikesPage> {
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 40.0),
-                        child: Text(
-                          'Sigue conociendo gente',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.favorite_border,
+                              size: 56,
+                              color: AppColors.textHint,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Sigue conociendo gente',
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -154,8 +164,12 @@ class _LikesPageState extends State<LikesPage> {
     );
   }
 
-  // Widget para cada tarjeta individual
   Widget _buildLikeCard(UserProfile person) {
+    final photo = person.photoURL ??
+        (person.photos != null && person.photos!.isNotEmpty
+            ? person.photos!.first
+            : null);
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -165,64 +179,68 @@ class _LikesPageState extends State<LikesPage> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Imagen con Blur
-          if (person.photoURL != null)
+          // Foto con blur (privacy)
+          if (photo != null)
             Image.network(
-              person.photoURL!,
+              photo,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: AppColors.surface,
-                  child: const Icon(Icons.person),
-                );
-              },
+              errorBuilder: (_, __, ___) => Container(
+                color: AppColors.surface,
+                child: const Icon(Icons.person, color: Colors.white38, size: 48),
+              ),
             )
           else
             Container(
               color: AppColors.surface,
-              child: const Icon(Icons.person),
+              child: const Icon(Icons.person, color: Colors.white38, size: 48),
             ),
+
+          // Blur de privacidad
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(
-                color: Colors.black.withOpacity(0.2),
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: Container(color: Colors.black.withOpacity(0.18)),
+            ),
+          ),
+
+          // Gradiente inferior
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    AppColors.background.withOpacity(0.8),
+                    AppColors.background,
+                  ],
+                ),
               ),
             ),
           ),
 
-          // Gradiente inferior para legibilidad del texto
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  AppColors.background.withOpacity(0.8),
-                  AppColors.background,
-                ],
-              ),
-            ),
-          ),
-
-          // Icono de Candado
+          // Candado central
           Center(
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surface.withOpacity(0.5),
+                color: AppColors.surface.withOpacity(0.55),
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.5),
+                  width: 1.5,
+                ),
               ),
               child: Icon(
                 Icons.lock_outline,
-                color: AppColors.primary.withOpacity(0.7),
-                size: 28,
+                color: AppColors.primary.withOpacity(0.9),
+                size: 26,
               ),
             ),
           ),
 
-          // Información del perfil
+          // Info
           Positioned(
             bottom: 12,
             left: 12,
@@ -231,11 +249,13 @@ class _LikesPageState extends State<LikesPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "${person.name}, ${person.age}",
+                  '${person.name}, ${person.age}',
                   style: AppTextStyles.titleLarge,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  "Dale like para ver perfil",
+                  'Dale like para ver el perfil',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                   ),
