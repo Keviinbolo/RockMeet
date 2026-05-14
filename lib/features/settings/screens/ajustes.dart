@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:RockMeet/config/Theme/app_theme.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:RockMeet/core/services/auth_service.dart';
+import 'package:RockMeet/core/widgets/settings_header.dart';
 import 'terminos_condiciones.dart';
 import 'politica_privacidad.dart';
 import 'cambiar_contrasenia.dart';
@@ -28,36 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
-          // Header con gradiente
-          Container(
-            decoration: AppTheme.primaryGradientBox,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Text(
-                  'Ajustes',
-                  style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SettingsHeader(title: 'Ajustes', fontSize: 24),
 
           // Lista de desplegables
           Expanded(
