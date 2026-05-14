@@ -39,6 +39,7 @@ class _HomePageState extends State<HomePage> {
   String? _pendingChatPeerUid;
   String? _pendingChatPeerName;
   String? _pendingChatPeerAvatarUrl;
+  UserProfile? _currentUserProfile;
   static const String _fallbackPhotoUrl =
       'https://images.unsplash.com/photo-1521119989659-a83eee488004?q=80&w=1080';
 
@@ -46,6 +47,16 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _initInteractionsAndLoadProfiles();
+    _loadCurrentUserProfile();
+  }
+
+  Future<void> _loadCurrentUserProfile() async {
+    final profile = await _getCurrentUserProfile();
+    if (mounted) {
+      setState(() {
+        _currentUserProfile = profile;
+      });
+    }
   }
 
   Future<void> _initInteractionsAndLoadProfiles() async {
@@ -92,6 +103,8 @@ class _HomePageState extends State<HomePage> {
     final twitter = (data['twitter'] as String?)?.trim();
     final instagram = (data['instagram'] as String?)?.trim();
     final tiktok = (data['tiktok'] as String?)?.trim();
+    final gender = (data['gender'] as String?)?.trim();
+    final course = (data['course'] as String?)?.trim();
     final interests =
         (data['interests'] as List?)?.whereType<String>().toList() ??
         <String>[];
@@ -139,7 +152,11 @@ class _HomePageState extends State<HomePage> {
           : 'Usuario',
       age: safeAge,
       photos: photos.isNotEmpty ? photos : <String>[_fallbackPhotoUrl],
-      bio: details, isStaff: data['isStaff'] as bool? ?? false,
+      bio: details,
+      isStaff: data['isStaff'] as bool? ?? false,
+      gender: gender,
+      course: course,
+      interests: interests.isNotEmpty ? interests : null,
     );
   }
 
@@ -265,6 +282,86 @@ class _HomePageState extends State<HomePage> {
       _pendingChatPeerName = profile.name;
       _pendingChatPeerAvatarUrl = profile.photos?.first;
     });
+  }
+
+  Future<UserProfile?> _getCurrentUserProfile() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return null;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (!doc.exists) return null;
+
+      final data = doc.data() as Map<String, dynamic>;
+
+      final displayName = (data['displayName'] as String?)?.trim();
+      final age = data['age'];
+      final parsedAge = age is int ? age : int.tryParse('$age');
+      final safeAge = (parsedAge != null && parsedAge >= 18 && parsedAge <= 99)
+          ? parsedAge
+          : 18;
+      final interests =
+          (data['interests'] as List?)?.whereType<String>().toList() ??
+          <String>[];
+      final gender = (data['gender'] as String?)?.trim();
+      final course = (data['course'] as String?)?.trim();
+
+      return UserProfile(
+        uid: currentUser.uid,
+        name: displayName ?? 'Usuario',
+        age: safeAge,
+        isStaff: false,
+        interests: interests.isNotEmpty ? interests : null,
+        gender: gender,
+        course: course,
+      );
+    } catch (e) {
+      print('Error getting current user profile: $e');
+      return null;
+    }
+  }
+
+  int _calculateCompatibility(UserProfile currentUser, UserProfile otherUser) {
+    int compatibilityScore = 0;
+
+    // Edad similar (dentro de 3 años): 25 puntos
+    final ageDifference = (currentUser.age - otherUser.age).abs();
+    if (ageDifference <= 3) {
+      compatibilityScore += 25;
+    } else if (ageDifference <= 5) {
+      compatibilityScore += 15;
+    }
+
+    // Mismos intereses: 35 puntos
+    if (currentUser.interests != null &&
+        otherUser.interests != null &&
+        currentUser.interests!.isNotEmpty &&
+        otherUser.interests!.isNotEmpty) {
+      final commonInterests = currentUser.interests!
+          .toSet()
+          .intersection(otherUser.interests!.toSet());
+      if (commonInterests.isNotEmpty) {
+        final matchPercentage = commonInterests.length / 
+            ((currentUser.interests!.length + otherUser.interests!.length) / 2);
+        compatibilityScore += (35 * matchPercentage).toInt();
+      }
+    }
+
+    // Mismo curso: 20 puntos
+    if (currentUser.course != null &&
+        otherUser.course != null &&
+        currentUser.course!.isNotEmpty &&
+        otherUser.course!.isNotEmpty &&
+        currentUser.course == otherUser.course) {
+      compatibilityScore += 20;
+    }
+
+    // Limitar a 100 puntos máximo
+    return compatibilityScore.clamp(0, 100);
   }
 
   Future<void> _resetInteractions() async {
@@ -593,6 +690,7 @@ class _HomePageState extends State<HomePage> {
                 SwipeableCard(
                   key: ValueKey('$safeIndex-${currentProfile.uid}'),
                   profile: currentProfile,
+                  currentUserProfile: _currentUserProfile,
                   showHints: _showCardHints,
                   onDismissHints: () {
                     if (!_showCardHints) return;
@@ -606,6 +704,7 @@ class _HomePageState extends State<HomePage> {
                       _handleLike(currentProfile, profiles.length),
                   onDragDownProgress: (progress) =>
                       setState(() => _dragDownProgress = progress),
+                  calculateCompatibility: _calculateCompatibility,
                 ),
               ],
             ),
@@ -639,20 +738,24 @@ class _HomePageState extends State<HomePage> {
 
 class SwipeableCard extends StatefulWidget {
   final UserProfile profile;
+  final UserProfile? currentUserProfile;
   final bool showHints;
   final VoidCallback onDismissHints;
   final VoidCallback onSwipeLeft;
   final VoidCallback onSwipeRight;
   final Function(double) onDragDownProgress;
+  final Function(UserProfile, UserProfile)? calculateCompatibility;
 
   const SwipeableCard({
     super.key,
     required this.profile,
+    this.currentUserProfile,
     required this.showHints,
     required this.onDismissHints,
     required this.onSwipeLeft,
     required this.onSwipeRight,
     required this.onDragDownProgress,
+    this.calculateCompatibility,
   });
 
   @override
@@ -894,7 +997,6 @@ class _SwipeableCardState extends State<SwipeableCard>
     );
   }
 
-  // --- FRENTE DE LA TARJETA (Ajustado para evitar overflow) ---
   Widget _buildCard() {
     final photos = widget.profile.photos;
     final titleText = '${widget.profile.name}, ${widget.profile.age}';
@@ -904,6 +1006,14 @@ class _SwipeableCardState extends State<SwipeableCard>
         : '';
     final likeProgress = _likeProgress;
     final nopeProgress = _nopeProgress;
+
+    // Calcular compatibilidad
+    int? compatibilityScore;
+    if (widget.currentUserProfile != null &&
+        widget.calculateCompatibility != null) {
+      compatibilityScore =
+          widget.calculateCompatibility!(widget.currentUserProfile!, widget.profile);
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
@@ -924,17 +1034,54 @@ class _SwipeableCardState extends State<SwipeableCard>
           builder: (context, constraints) {
             return Column(
               children: [
-                // 1. Título
+                // 1. Título con compatibilidad
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          titleText,
-                          style: AppTextStyles.displayMedium,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              titleText,
+                              style: AppTextStyles.displayMedium,
+                            ),
+                          ),
+                        ],
                       ),
+                      if (compatibilityScore != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getCompatibilityColor(compatibilityScore)
+                                      .withOpacity(0.2),
+                                  border: Border.all(
+                                    color: _getCompatibilityColor(compatibilityScore),
+                                    width: 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '$compatibilityScore% Compatibilidad',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        _getCompatibilityColor(compatibilityScore),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -1081,6 +1228,16 @@ class _SwipeableCardState extends State<SwipeableCard>
       ),
       child: Text(text, style: AppTextStyles.labelLarge.copyWith(color: color)),
     );
+  }
+
+  Color _getCompatibilityColor(int score) {
+    if (score >= 75) {
+      return const Color(0xFF10B981); // Verde
+    } else if (score >= 50) {
+      return const Color(0xFFF59E0B); // Naranja
+    } else {
+      return const Color(0xFFEF4444); // Rojo
+    }
   }
 
   Widget _buildBackCard() {

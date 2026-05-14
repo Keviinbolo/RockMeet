@@ -18,6 +18,8 @@ class UserProfile {
   final String? photoURL;
   final List<String>? photos;
   final bool isStaff;
+  final String? gender;
+  final String? course;
 
   UserProfile({
     required this.uid,
@@ -37,6 +39,8 @@ class UserProfile {
     this.matches,
     this.activities,
     this.friends,
+    this.gender,
+    this.course,
   });
 
   factory UserProfile.fromFirestore(DocumentSnapshot doc) {
@@ -89,6 +93,8 @@ class UserProfile {
       matches: asNullableString(data['matches']),
       activities: asNullableString(data['activities']),
       friends: asNullableString(data['friends']),
+      gender: asNullableString(data['gender']),
+      course: asNullableString(data['course']),
     );
   }
 }

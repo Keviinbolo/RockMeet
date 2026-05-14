@@ -35,6 +35,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   bool _acceptedTerms = false;
   String? _ageError;
+  String? _selectedGender;
 
   @override
   void initState() {
@@ -234,7 +235,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
       return;
     }
     
-    AuthService().register(_emailController.text, _passwordController.text, _nameController.text);
+    AuthService().register(
+      _emailController.text,
+      _passwordController.text,
+      _nameController.text,
+      lastName: _lastNameController.text,
+      birthDate: _selectedBirthDate,
+      gender: _selectedGender,
+      course: _courseController.text,
+    );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -294,6 +303,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
                             _buildEmailField(),
                             const SizedBox(height: 20),
                             _buildBirthDateField(),
+                            const SizedBox(height: 20),
+                            _buildGenderField(),
                             const SizedBox(height: 20),
                             _buildCourseField(),
                             const SizedBox(height: 20),
@@ -456,6 +467,40 @@ class _RegistroScreenState extends State<RegistroScreen> {
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildGenderField() {
+    final theme = Theme.of(context);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Sexo', style: theme.textTheme.labelMedium),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedGender,
+          hint: const Text('Selecciona tu sexo'),
+          items: const [
+            DropdownMenuItem(value: 'Hombre', child: Text('Hombre')),
+            DropdownMenuItem(value: 'Mujer', child: Text('Mujer')),
+          ],
+          onChanged: (value) {
+            setState(() {
+              _selectedGender = value;
+            });
+          },
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.person, size: 20),
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Este campo es requerido';
+            }
+            return null;
+          },
+        ),
       ],
     );
   }
