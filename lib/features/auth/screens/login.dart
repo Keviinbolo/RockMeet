@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:RockMeet/config/Routes/approutes.dart';
 import 'package:RockMeet/core/services/auth_service.dart';
 import 'package:RockMeet/features/auth/screens/blocked_user_screen.dart';
+import 'package:RockMeet/features/auth/widgets/wave_background.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -98,7 +99,8 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
+      body: WaveBackground(
+        child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
@@ -253,6 +255,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

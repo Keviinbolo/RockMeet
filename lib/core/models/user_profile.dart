@@ -10,6 +10,9 @@ class UserProfile {
   final String? twitter;
   final String? instagram;
   final String? tiktok;
+  final String? spotify;
+  final String? favoriteSong;
+  final String? favoriteArtist;
   final String? likes;
   final String? matches;
   final String? activities;
@@ -33,6 +36,9 @@ class UserProfile {
     this.twitter,
     this.instagram,
     this.tiktok,
+    this.spotify,
+    this.favoriteSong,
+    this.favoriteArtist,
     this.likes,
     this.matches,
     this.activities,
@@ -85,6 +91,9 @@ class UserProfile {
       twitter: asNullableString(data['twitter']),
       instagram: asNullableString(data['instagram']),
       tiktok: asNullableString(data['tiktok']),
+      spotify: asNullableString(data['spotify']),
+      favoriteSong: asNullableString(data['favoriteSong']),
+      favoriteArtist: asNullableString(data['favoriteArtist']),
       likes: asNullableString(data['likes']),
       matches: asNullableString(data['matches']),
       activities: asNullableString(data['activities']),

@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
@@ -116,6 +117,10 @@ class _HomePageState extends State<HomePage> {
       ...gallery.map((url) => url.trim()).where((url) => url.isNotEmpty),
     }.toList(growable: false);
 
+    final spotify = (data['spotify'] as String?)?.trim();
+    final favoriteSong = (data['favoriteSong'] as String?)?.trim();
+    final favoriteArtist = (data['favoriteArtist'] as String?)?.trim();
+
     return UserProfile(
       uid: doc.id,
       name: (displayName != null && displayName.isNotEmpty)
@@ -129,6 +134,9 @@ class _HomePageState extends State<HomePage> {
       twitter: (twitter != null && twitter.isNotEmpty) ? twitter : null,
       instagram: (instagram != null && instagram.isNotEmpty) ? instagram : null,
       tiktok: (tiktok != null && tiktok.isNotEmpty) ? tiktok : null,
+      spotify: (spotify != null && spotify.isNotEmpty) ? spotify : null,
+      favoriteSong: (favoriteSong != null && favoriteSong.isNotEmpty) ? favoriteSong : null,
+      favoriteArtist: (favoriteArtist != null && favoriteArtist.isNotEmpty) ? favoriteArtist : null,
       isStaff: data['isStaff'] as bool? ?? false,
     );
   }
@@ -278,7 +286,7 @@ class _HomePageState extends State<HomePage> {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUserId)
-          .update({'likes': 0, 'friends': 0});
+          .set({'likes': 0, 'friends': 0}, SetOptions(merge: true));
 
       // Borrar todos los chats (con sus mensajes) en los que participa el usuario
       await ChatService.instance.deleteAllChatsForUser(currentUserId);
@@ -416,7 +424,11 @@ class _HomePageState extends State<HomePage> {
             children: [
               AppBar(
                 backgroundColor: AppColors.surface,
-                title: Text("RockMeet", style: AppTextStyles.headlineSmall),
+                title: Image.asset(
+                  'lib/config/Theme/Logo/RockMeetLogo.png',
+                  height: 40,
+                  fit: BoxFit.contain,
+                ),
                 centerTitle: true,
                 automaticallyImplyLeading: false,
                 actions: [
