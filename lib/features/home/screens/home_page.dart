@@ -270,9 +270,9 @@ class _HomePageState extends State<HomePage> {
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: const Text('Reiniciar perfiles'),
+              title: const Text('Reiniciar interacciones'),
               content: const Text(
-                'Se eliminaran tus likes/passes guardados y volveras a ver perfiles ya evaluados.\n\n¿Quieres continuar?',
+                'Se borrarán todos los likes, matches y chats (enviados y recibidos) y se resetearán los contadores de Likes y Amigos.\n\n¿Quieres continuar?',
               ),
               actions: [
                 TextButton(
@@ -291,48 +291,75 @@ class _HomePageState extends State<HomePage> {
 
     if (!confirmed) return;
 
-    setState(() {
-      _isResettingInteractions = true;
-    });
+    setState(() => _isResettingInteractions = true);
 
     try {
-      final snapshot = await FirebaseFirestore.instance
+      final firestore = FirebaseFirestore.instance;
+
+      // Interacciones que YO envié (likes/passes a otros)
+      final sentSnap = await firestore
           .collection('interactions')
           .where('fromUserId', isEqualTo: currentUserId)
           .get();
 
-      final docs = snapshot.docs;
-      for (var i = 0; i < docs.length; i += 450) {
-        final batch = FirebaseFirestore.instance.batch();
-        final chunk = docs.skip(i).take(450);
-        for (final doc in chunk) {
+      // Interacciones que OTROS me enviaron a mí
+      final receivedSnap = await firestore
+          .collection('interactions')
+          .where('toUserId', isEqualTo: currentUserId)
+          .get();
+
+      // Unir ambos resultados evitando duplicados (un doc podría coincidir en ambas queries si alguien
+      // tiene el mismo UID en from y to, aunque eso no debería ocurrir)
+      final allDocs = {
+        for (final d in sentSnap.docs) d.id: d,
+        for (final d in receivedSnap.docs) d.id: d,
+      }.values.toList();
+
+      // Eliminar en batches de 450 (el límite de Firestore es 500 por batch)
+      for (var i = 0; i < allDocs.length; i += 450) {
+        final batch = firestore.batch();
+        for (final doc in allDocs.skip(i).take(450)) {
           batch.delete(doc.reference);
         }
         await batch.commit();
       }
 
+      // Resetear contadores propios a 0
+      await firestore.collection('users').doc(currentUserId).update({
+        'likes': 0,
+        'friends': 0,
+      });
+
+      // Borrar todos los chats (con sus mensajes) en los que participa el usuario
+      await ChatService.instance.deleteAllChatsForUser(currentUserId);
+
       if (!mounted) return;
+
       setState(() {
         _interactedUserIds.clear();
+        _pendingChatPeerUid = null;
+        _pendingChatPeerName = null;
+        _pendingChatPeerAvatarUrl = null;
         currentIndex = 0;
         _dragDownProgress = 0;
       });
+
       await _loadMoreProfiles(reset: true);
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Interacciones reiniciadas.')),
+        const SnackBar(
+          content: Text('Interacciones, chats y contadores reiniciados.'),
+        ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo reiniciar interacciones.')),
+        SnackBar(content: Text('Error al reiniciar: $e')),
       );
     } finally {
       if (mounted) {
-        setState(() {
-          _isResettingInteractions = false;
-        });
+        setState(() => _isResettingInteractions = false);
       }
     }
   }
@@ -415,9 +442,9 @@ class _HomePageState extends State<HomePage> {
         return MatchModal(
           profile: {'name': currentProfile.name, 'image': imageForModal},
           onSendMessage: () {
-            Navigator.of(context).pop();
+            // El botón del modal ya invocó Navigator.pop; aquí solo cambiamos de pestaña
             setState(() {
-              _selectedNavIndex = 2; // Redirige a mensajes
+              _selectedNavIndex = 2;
             });
           },
           onClose: () {
