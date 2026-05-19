@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:RockMeet/core/services/portal_auth.dart';
+import 'package:RockMeet/features/auth/screens/profile_setup_page.dart';
 import 'package:RockMeet/features/home/screens/home_staff_page.dart';
 import 'package:RockMeet/features/like/screens/like_page.dart';
 import 'package:RockMeet/features/settings/screens/ajustes.dart';
@@ -13,6 +14,7 @@ class AppRoutes {
   static const String prueba = '/prueba';
   static const String login = '/login';
   static const String register = '/register';
+  static const String profileSetup = '/profile-setup';
   static const String home = '/home';
   static const String ajustes = '/settings';
   static const String homestaff = '/homestaff';
@@ -41,6 +43,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const LoginPage());
       case register:
         return MaterialPageRoute(builder: (_) => const RegistroScreen());
+      case profileSetup:
+        return MaterialPageRoute(builder: (_) => const ProfileSetupPage());
       case home:
         return MaterialPageRoute(builder: (_) => const HomePage());
       case ajustes:

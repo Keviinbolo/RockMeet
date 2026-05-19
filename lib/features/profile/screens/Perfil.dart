@@ -46,6 +46,9 @@ class _ProfilePageState extends State<ProfilePage> {
   late TextEditingController _twitterController;
   late TextEditingController _instagramController;
   late TextEditingController _tiktokController;
+  late TextEditingController _spotifyController;
+  late TextEditingController _songController;
+  late TextEditingController _artistController;
 
   // Variables temporales para cambios antes de guardar
   List<String> _tempImages = [];
@@ -168,6 +171,9 @@ class _ProfilePageState extends State<ProfilePage> {
     _twitterController = TextEditingController();
     _instagramController = TextEditingController();
     _tiktokController = TextEditingController();
+    _spotifyController = TextEditingController();
+    _songController = TextEditingController();
+    _artistController = TextEditingController();
     _tempInterests = [];
   }
 
@@ -178,6 +184,9 @@ class _ProfilePageState extends State<ProfilePage> {
     _twitterController.dispose();
     _instagramController.dispose();
     _tiktokController.dispose();
+    _spotifyController.dispose();
+    _songController.dispose();
+    _artistController.dispose();
     super.dispose();
   }
 
@@ -208,6 +217,9 @@ class _ProfilePageState extends State<ProfilePage> {
         twitter: _twitterController.text,
         instagram: _instagramController.text,
         tiktok: _tiktokController.text,
+        spotify: _spotifyController.text,
+        favoriteSong: _songController.text,
+        favoriteArtist: _artistController.text,
         gallery: _tempImages,
         interests: selectedInterests,
         interestsWithSubInterests: interestsWithSubInterests.isNotEmpty
@@ -328,10 +340,26 @@ class _ProfilePageState extends State<ProfilePage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError ||
-              !snapshot.hasData ||
-              !snapshot.data!.exists) {
-            return const Center(child: Text('Error al cargar el perfil'));
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            // El documento no existe — lo creamos con datos mínimos del usuario autenticado
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .set({
+              'displayName': currentUser.displayName ?? '',
+              'email': currentUser.email ?? '',
+              'photoURL': currentUser.photoURL ?? '',
+              'age': 18,
+              'likes': 0,
+              'friends': 0,
+              'activities': 0,
+              'profileComplete': false,
+              'createdAt': Timestamp.now(),
+            }, SetOptions(merge: true));
+            return const Center(child: CircularProgressIndicator());
           }
 
           final profile = UserProfile.fromFirestore(snapshot.data!);
@@ -346,6 +374,9 @@ class _ProfilePageState extends State<ProfilePage> {
           final String twitter = profile.twitter ?? '';
           final String instagram = profile.instagram ?? '';
           final String tiktok = profile.tiktok ?? '';
+          final String spotify = profile.spotify ?? '';
+          final String favoriteSong = profile.favoriteSong ?? '';
+          final String favoriteArtist = profile.favoriteArtist ?? '';
           final List<String> gallery =
               (data['gallery'] as List?)?.whereType<String>().toList() ?? [];
           final String likes = _safeStatValue(profile.likes);
@@ -364,6 +395,12 @@ class _ProfilePageState extends State<ProfilePage> {
               _instagramController.text = instagram;
             if (_tiktokController.text != tiktok)
               _tiktokController.text = tiktok;
+            if (_spotifyController.text != spotify)
+              _spotifyController.text = spotify;
+            if (_songController.text != favoriteSong)
+              _songController.text = favoriteSong;
+            if (_artistController.text != favoriteArtist)
+              _artistController.text = favoriteArtist;
             _tempAvatarUrl = avatarUrl;
             _tempImages = List.from(gallery);
             _tempInterests = _buildInterestsFromProfile(profile);
@@ -712,7 +749,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Biografía'),
                                   const SizedBox(height: 4),
                                   _isEditing
                                       ? TextFormField(
@@ -728,6 +764,57 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 24),
+
+                        // Canción favorita
+                        if (!_isEditing && favoriteSong.isNotEmpty)
+                          _SpotifyCard(
+                            song: favoriteSong,
+                            artist: favoriteArtist,
+                          )
+                        else if (_isEditing)
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.music_note,
+                                          color: Color(0xFF1DB954)),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Canción favorita',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 16),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextFormField(
+                                    controller: _songController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Nombre de la canción',
+                                      border: OutlineInputBorder(),
+                                      prefixIcon:
+                                          Icon(Icons.music_note_outlined),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  TextFormField(
+                                    controller: _artistController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Artista o banda',
+                                      border: OutlineInputBorder(),
+                                      prefixIcon: Icon(Icons.mic_none_outlined),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 24),
 
                         // Intereses
@@ -873,21 +960,32 @@ class _ProfilePageState extends State<ProfilePage> {
                           children: [
                             _buildSocialRow(
                               icon: Icons.tag,
-                              label: 'Twitter',
+                              label: 'Twitter / X',
                               value: twitter,
                               controller: _twitterController,
+                              color: const Color(0xFF1DA1F2),
                             ),
                             _buildSocialRow(
-                              icon: Icons.photo_camera,
+                              icon: Icons.camera_alt_outlined,
                               label: 'Instagram',
                               value: instagram,
                               controller: _instagramController,
+                              color: const Color(0xFFE1306C),
                             ),
                             _buildSocialRow(
                               icon: Icons.music_note,
                               label: 'TikTok',
                               value: tiktok,
                               controller: _tiktokController,
+                              color: Colors.white,
+                            ),
+                            _buildSocialRow(
+                              icon: Icons.music_note_rounded,
+                              label: 'Spotify',
+                              value: spotify,
+                              controller: _spotifyController,
+                              color: const Color(0xFF1DB954),
+                              hint: 'Enlace de tu perfil',
                             ),
                           ],
                         ),
@@ -923,7 +1021,11 @@ class _ProfilePageState extends State<ProfilePage> {
     required String label,
     required String value,
     required TextEditingController controller,
+    Color color = Colors.grey,
+    String? hint,
   }) {
+    final empty = value.trim().isEmpty;
+    if (!_isEditing && empty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -931,24 +1033,35 @@ class _ProfilePageState extends State<ProfilePage> {
           Container(
             width: 36,
             height: 36,
-            decoration: const BoxDecoration(shape: BoxShape.circle),
-            child: Icon(icon),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label),
+                Text(label,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w500, fontSize: 13)),
                 const SizedBox(height: 4),
                 _isEditing
                     ? TextFormField(
                         controller: controller,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          hintText: hint,
                         ),
                       )
-                    : Text(value),
+                    : Text(
+                        value,
+                        style: TextStyle(color: Colors.grey.shade400),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
               ],
             ),
           ),
@@ -1022,6 +1135,85 @@ class InfoSection extends StatelessWidget {
               children: children,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpotifyCard extends StatelessWidget {
+  final String song;
+  final String artist;
+  const _SpotifyCard({required this.song, required this.artist});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF1DB954).withOpacity(0.15),
+            Colors.black.withOpacity(0.4),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF1DB954).withOpacity(0.35),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1DB954).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.music_note,
+                color: Color(0xFF1DB954), size: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Canción favorita',
+                  style: TextStyle(
+                      color: Color(0xFF1DB954),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  song,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (artist.isNotEmpty)
+                  Text(
+                    artist,
+                    style: TextStyle(
+                        color: Colors.grey.shade400, fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          const Icon(Icons.play_circle_fill,
+              color: Color(0xFF1DB954), size: 30),
         ],
       ),
     );

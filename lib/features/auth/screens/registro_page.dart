@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:RockMeet/core/services/auth_service.dart';
+import 'package:RockMeet/features/auth/widgets/wave_background.dart';
 
 class RegistroPage extends StatelessWidget {
   const RegistroPage({super.key});
@@ -34,6 +35,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   DateTime? _selectedBirthDate;
 
   bool _acceptedTerms = false;
+  bool _isLoading = false;
   String? _ageError;
 
   @override
@@ -208,40 +210,53 @@ class _RegistroScreenState extends State<RegistroScreen> {
     return age;
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
+    if (_isLoading) return;
+
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
     if (_selectedBirthDate == null) {
-      setState(() {
-        _ageError = 'Debes seleccionar tu fecha de nacimiento';
-      });
+      setState(() => _ageError = 'Debes seleccionar tu fecha de nacimiento');
       return;
     }
 
     final age = _calculateAge(_selectedBirthDate!);
     if (age < 18) {
-      setState(() {
-        _ageError = 'Debes ser mayor de 18 años para crear una cuenta';
-      });
+      setState(() => _ageError = 'Debes ser mayor de 18 años para crear una cuenta');
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
+    if (!_acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Las contraseñas no coinciden'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
+        const SnackBar(content: Text('Debes aceptar los términos y condiciones')),
       );
       return;
     }
-    
-    AuthService().register(_emailController.text, _passwordController.text, _nameController.text);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Registro exitoso'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      final displayName = '${_nameController.text.trim()} ${_lastNameController.text.trim()}'.trim();
+      await AuthService().register(
+        _emailController.text.trim(),
+        _passwordController.text,
+        displayName,
+        age: age,
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/profile-setup');
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -249,17 +264,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     final theme = Theme.of(context);
     
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.secondary.withOpacity(0.2),
-              theme.colorScheme.primary.withOpacity(0.2),
-            ],
-          ),
-        ),
+      body: WaveBackground(
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -609,7 +614,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     return SizedBox(
       width: double.infinity,
       child: GestureDetector(
-        onTap: _handleSubmit,
+        onTap: _isLoading ? null : _handleSubmit,
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -621,13 +626,24 @@ class _RegistroScreenState extends State<RegistroScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            'Crear cuenta',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onPrimary,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          child: _isLoading
+              ? const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                )
+              : Text(
+                  'Crear cuenta',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
         ),
       ),
     );

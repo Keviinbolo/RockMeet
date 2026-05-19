@@ -26,6 +26,9 @@ class ProfileService {
     String? twitter,
     String? instagram,
     String? tiktok,
+    String? spotify,
+    String? favoriteSong,
+    String? favoriteArtist,
     List<String>? gallery,
     List<String>? interests,
     Map<String, List<String>>? interestsWithSubInterests,
@@ -45,6 +48,9 @@ class ProfileService {
     if (twitter != null) updates['twitter'] = twitter;
     if (instagram != null) updates['instagram'] = instagram;
     if (tiktok != null) updates['tiktok'] = tiktok;
+    if (spotify != null) updates['spotify'] = spotify;
+    if (favoriteSong != null) updates['favoriteSong'] = favoriteSong;
+    if (favoriteArtist != null) updates['favoriteArtist'] = favoriteArtist;
     if (gallery != null) updates['gallery'] = gallery;
     if (interests != null) updates['interests'] = interests;
     if (interestsWithSubInterests != null) updates['interestsDetail'] = interestsWithSubInterests;
@@ -57,6 +63,15 @@ class ProfileService {
     if (photoURL != null) {
       await _auth.currentUser?.updatePhotoURL(photoURL);
     }
+  }
+
+  Future<void> markProfileComplete() async {
+    final uid = currentUserId;
+    if (uid == null) throw StateError('Usuario no autenticado');
+    await _firestore.collection('users').doc(uid).set(
+      {'profileComplete': true, 'updatedAt': Timestamp.now()},
+      SetOptions(merge: true),
+    );
   }
 
   /// Incrementa el contador de amigos del usuario actual en +1

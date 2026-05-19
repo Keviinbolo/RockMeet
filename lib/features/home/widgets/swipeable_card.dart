@@ -563,6 +563,8 @@ class _SwipeableCardState extends State<SwipeableCard>
     final interestsDetail = widget.profile.interestsDetail;
     final interests = widget.profile.interests ?? [];
     final bio = widget.profile.bio;
+    final favoriteSong = widget.profile.favoriteSong;
+    final favoriteArtist = widget.profile.favoriteArtist;
 
     return SizedBox.expand(
       child: Container(
@@ -659,6 +661,11 @@ class _SwipeableCardState extends State<SwipeableCard>
                       const SizedBox(height: 18),
                     ],
 
+                    if (favoriteSong != null && favoriteSong.isNotEmpty) ...[
+                      _buildSongCard(favoriteSong, favoriteArtist),
+                      const SizedBox(height: 18),
+                    ],
+
                     Text('Intereses', style: AppTextStyles.labelLarge),
                     const SizedBox(height: 10),
 
@@ -676,7 +683,8 @@ class _SwipeableCardState extends State<SwipeableCard>
 
                     if (widget.profile.twitter != null ||
                         widget.profile.instagram != null ||
-                        widget.profile.tiktok != null) ...[
+                        widget.profile.tiktok != null ||
+                        widget.profile.spotify != null) ...[
                       const SizedBox(height: 18),
                       Text('Redes sociales', style: AppTextStyles.labelLarge),
                       const SizedBox(height: 8),
@@ -829,7 +837,78 @@ class _SwipeableCardState extends State<SwipeableCard>
             Icons.music_note,
             Colors.white,
           ),
+        if (widget.profile.spotify != null)
+          _buildSocialChip(
+            'Spotify',
+            Icons.music_note_rounded,
+            const Color(0xFF1DB954),
+          ),
       ],
+    );
+  }
+
+  Widget _buildSongCard(String song, String? artist) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF1DB954).withOpacity(0.15),
+            AppColors.surface.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFF1DB954).withOpacity(0.35),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1DB954).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.music_note,
+                color: Color(0xFF1DB954), size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  song,
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (artist != null && artist.isNotEmpty)
+                  Text(
+                    artist,
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          const Icon(Icons.play_circle_fill,
+              color: Color(0xFF1DB954), size: 22),
+        ],
+      ),
     );
   }
 
