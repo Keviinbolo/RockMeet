@@ -1,26 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
 import 'package:RockMeet/features/profile/interest_screen.dart';
 import 'package:RockMeet/core/services/profile_service.dart';
 import 'package:RockMeet/core/services/schedule_service.dart';
-
-// Constantes (igual que en tu código original)
-const String defaultAvatarUrl =
-    'https://images.unsplash.com/photo-1543689604-6fe8dbcd1f59?w=400&q=80&fit=crop';
-
-const List<String> profileImages = [
-  'https://images.unsplash.com/photo-1584819332026-ac894ac5c26e?w=400&q=80&fit=crop',
-  'https://images.unsplash.com/photo-1744869985867-d23cc60e3625?w=400&q=80&fit=crop',
-  'https://images.unsplash.com/photo-1768725845828-a74119dc4f34?w=400&q=80&fit=crop',
-  'https://images.unsplash.com/photo-1623790679957-5a20f98faef6?w=400&q=80&fit=crop',
-  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&q=80&fit=crop',
-];
+import 'package:RockMeet/core/services/supabase_service.dart';
 
 class Perfil extends StatelessWidget {
   const Perfil({super.key});
@@ -59,6 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
   List<String> _tempImages = [];
   String _tempAvatarUrl = '';
   bool _isUploadingAvatar = false;
+  bool _isUploadingGallery = false;
   String? _clase;
   List<Interest> _tempInterests = [];
 
@@ -210,9 +197,11 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _isUploadingAvatar = true);
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
-      final ref = FirebaseStorage.instance.ref('profile_photos/$uid.jpg');
-      await ref.putFile(File(picked.path));
-      final url = await ref.getDownloadURL();
+      final bytes = await picked.readAsBytes();
+      final url = await SupabaseService.instance.uploadImage(
+        path: 'profile-photos/$uid.jpg',
+        bytes: bytes,
+      );
       setState(() => _tempAvatarUrl = url);
     } catch (e) {
       if (mounted) {
@@ -321,19 +310,36 @@ class _ProfilePageState extends State<ProfilePage> {
   void _handleRemoveImage(int index) =>
       setState(() => _tempImages.removeAt(index));
 
-  void _handleAddImage() {
+  Future<void> _handleAddImage() async {
     if (_tempImages.length >= 3) return;
-    final available = profileImages
-        .where((img) => !_tempImages.contains(img))
-        .toList();
-    if (available.isNotEmpty) {
-      final randomIndex =
-          DateTime.now().millisecondsSinceEpoch % available.length;
-      setState(() => _tempImages.add(available[randomIndex]));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay más imágenes disponibles')),
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+
+    setState(() => _isUploadingGallery = true);
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final bytes = await picked.readAsBytes();
+      final url = await SupabaseService.instance.uploadImage(
+        path: 'gallery/$uid/photo_$ts.jpg',
+        bytes: bytes,
       );
+      setState(() => _tempImages.add(url));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al subir foto: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingGallery = false);
     }
   }
 
@@ -366,51 +372,6 @@ class _ProfilePageState extends State<ProfilePage> {
               onTap: () {
                 setState(() => _tempAvatarUrl = '');
                 Navigator.pop(context);
-              },
-            ),
-            const Divider(),
-            const Padding(
-              padding: EdgeInsets.only(left: 4, bottom: 8),
-              child: Text(
-                'O elige un avatar:',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-            ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: profileImages.length,
-              itemBuilder: (context, index) {
-                final isSelected = _tempAvatarUrl == profileImages[index];
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _tempAvatarUrl = profileImages[index]);
-                    Navigator.pop(context);
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: isSelected ? Colors.deepPurple : Colors.grey,
-                        width: isSelected ? 3 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        profileImages[index],
-                        fit: BoxFit.cover,
-                        errorBuilder: (ctx, e, st) =>
-                            const Icon(Icons.person, color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                );
               },
             ),
             const SizedBox(height: 8),
@@ -873,8 +834,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                           );
                                         } else {
                                           return GestureDetector(
-                                            onTap: _isEditing
-                                                ? _handleAddImage
+                                            onTap: (_isEditing &&
+                                                    !_isUploadingGallery)
+                                                ? () => _handleAddImage()
                                                 : null,
                                             child: Container(
                                               decoration: BoxDecoration(
@@ -888,40 +850,47 @@ class _ProfilePageState extends State<ProfilePage> {
                                                       : Colors.grey.shade700,
                                                 ),
                                               ),
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Container(
-                                                    width: 40,
-                                                    height: 40,
-                                                    decoration:
-                                                        const BoxDecoration(
-                                                          shape:
-                                                              BoxShape.circle,
+                                              child: _isUploadingGallery
+                                                  ? const Center(
+                                                      child: SizedBox(
+                                                        width: 24,
+                                                        height: 24,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                              strokeWidth: 2,
+                                                            ),
+                                                      ),
+                                                    )
+                                                  : Column(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.add_photo_alternate_outlined,
+                                                          size: 32,
+                                                          color: _isEditing
+                                                              ? Colors.grey
+                                                              : Colors
+                                                                    .grey
+                                                                    .shade600,
                                                         ),
-                                                    child: Icon(
-                                                      Icons.add,
-                                                      color: _isEditing
-                                                          ? Colors.grey
-                                                          : Colors
-                                                                .grey
-                                                                .shade600,
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Text(
+                                                          'Añadir foto',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: _isEditing
+                                                                ? Colors.grey
+                                                                : Colors
+                                                                      .grey
+                                                                      .shade600,
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    'Añadir foto',
-                                                    style: TextStyle(
-                                                      color: _isEditing
-                                                          ? Colors.grey
-                                                          : Colors
-                                                                .grey
-                                                                .shade600,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
                                             ),
                                           );
                                         }

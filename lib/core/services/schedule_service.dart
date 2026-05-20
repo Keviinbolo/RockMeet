@@ -1,14 +1,13 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:RockMeet/core/services/supabase_service.dart';
 
 class ScheduleService {
   ScheduleService._();
   static final ScheduleService instance = ScheduleService._();
 
   final _firestore = FirebaseFirestore.instance;
-  final _storage = FirebaseStorage.instance;
 
   static const List<String> availableClasses = [
     'DAM',
@@ -27,10 +26,11 @@ class ScheduleService {
         .map((doc) => doc.data()?['scheduleImageUrl'] as String?);
   }
 
-  Future<void> uploadScheduleImage(String className, File imageFile) async {
-    final ref = _storage.ref('class_schedules/$className.jpg');
-    await ref.putFile(imageFile);
-    final url = await ref.getDownloadURL();
+  Future<void> uploadScheduleImage(String className, Uint8List bytes) async {
+    final url = await SupabaseService.instance.uploadImage(
+      path: 'class-schedules/$className.jpg',
+      bytes: bytes,
+    );
     await _firestore.collection('class_schedules').doc(className).set({
       'className': className,
       'scheduleImageUrl': url,
@@ -40,7 +40,8 @@ class ScheduleService {
 
   Future<void> removeScheduleImage(String className) async {
     try {
-      await _storage.ref('class_schedules/$className.jpg').delete();
+      await SupabaseService.instance
+          .deleteImage('class-schedules/$className.jpg');
     } catch (_) {}
     await _firestore.collection('class_schedules').doc(className).set({
       'className': className,

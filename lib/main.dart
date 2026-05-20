@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'package:RockMeet/config/Routes/approutes.dart';
 import 'package:RockMeet/config/Theme/app_theme.dart';
 import 'package:RockMeet/core/api/firebase_options.dart';
@@ -13,9 +14,14 @@ void main() async {
 
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Supabase.initialize(
+      url: 'https://xquqepkbpodwonxumete.supabase.co',
+      anonKey:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdXFlcGticG9kd29ueHVtZXRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMjI0NTQsImV4cCI6MjA5NDc5ODQ1NH0.5jALMMmZuzFRQ7w_izkCzJ-rG_nTcM2_pyN4dvmETTA',
+    );
     runApp(const MyApp());
   } catch (error, stackTrace) {
-    debugPrint('Firebase initialization failed: $error');
+    debugPrint('Firebase/Supabase initialization failed: $error');
     debugPrintStack(stackTrace: stackTrace);
     runApp(ErrorApp(errorMessage: error.toString()));
   }

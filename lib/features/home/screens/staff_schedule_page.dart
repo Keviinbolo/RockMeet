@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:RockMeet/core/services/schedule_service.dart';
@@ -24,10 +22,8 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
 
     setState(() => _uploading[className] = true);
     try {
-      await ScheduleService.instance.uploadScheduleImage(
-        className,
-        File(picked.path),
-      );
+      final bytes = await picked.readAsBytes();
+      await ScheduleService.instance.uploadScheduleImage(className, bytes);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Horario de $className actualizado')),
