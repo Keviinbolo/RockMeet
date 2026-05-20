@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:RockMeet/core/models/chat_message.dart';
 import 'package:RockMeet/core/services/chat_service.dart';
+import 'package:RockMeet/core/services/presence_service.dart';
 import 'package:RockMeet/features/chat/screens/peer_profile_screen.dart';
 import 'package:RockMeet/features/chat/widgets/chat_input_bar.dart';
 import 'package:RockMeet/features/chat/widgets/message_bubble.dart';
@@ -386,8 +387,36 @@ class _ChatScreenState extends State<ChatScreen> {
                 return ListTile(
                   selected: selected,
                   selectedTileColor: colorScheme.primary.withOpacity(0.12),
-                  leading: CircleAvatar(
-                    backgroundImage: NetworkImage(chat.avatar),
+                  leading: StreamBuilder<bool>(
+                    stream: PresenceService.instance
+                        .watchOnlineStatus(chat.peerUid),
+                    builder: (context, onlineSnap) {
+                      final isOnline = onlineSnap.data ?? false;
+                      return Stack(
+                        children: [
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(chat.avatar),
+                          ),
+                          if (isOnline)
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: colorScheme.surface,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                   title: Text(
                     chat.username,
@@ -436,10 +465,32 @@ class _ChatScreenState extends State<ChatScreen> {
                 });
               },
             ),
-            //  Aquí se agrega el tap al nombre del usuario
-            title: GestureDetector(
-              onTap: _goToProfile,
-              child: Text(activeChat.username),
+            title: StreamBuilder<bool>(
+              stream: PresenceService.instance
+                  .watchOnlineStatus(activeChat.peerUid),
+              builder: (context, onlineSnap) {
+                final isOnline = onlineSnap.data ?? false;
+                return GestureDetector(
+                  onTap: _goToProfile,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(activeChat.username),
+                      Text(
+                        isOnline ? 'En línea' : 'Desconectado',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.normal,
+                          color: isOnline
+                              ? Colors.greenAccent
+                              : Colors.grey.shade400,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
           Expanded(

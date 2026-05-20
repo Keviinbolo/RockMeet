@@ -9,6 +9,7 @@ import 'package:RockMeet/features/home/screens/staff_reports_page.dart';
 import 'package:RockMeet/features/home/screens/staff_user_management_page.dart';
 import 'package:RockMeet/core/models/class_event.dart';
 import 'package:RockMeet/features/settings/screens/ajustes.dart';
+import 'package:RockMeet/features/home/screens/staff_schedule_page.dart';
 import 'package:intl/intl.dart';
 
 class HomeStaffPage extends StatefulWidget {
@@ -532,6 +533,20 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
               context,
               MaterialPageRoute(
                 builder: (_) => const StaffUserManagementPage(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildOptionButton(
+          context,
+          icon: Icons.calendar_month,
+          title: 'Gestionar Horarios de Clase',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const StaffSchedulePage(),
               ),
             );
           },
