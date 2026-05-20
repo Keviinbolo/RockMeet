@@ -1,8 +1,12 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:RockMeet/config/Routes/approutes.dart';
 import 'package:RockMeet/config/Theme/app_theme.dart';
 import 'package:RockMeet/core/api/firebase_options.dart';
+import 'package:RockMeet/core/services/presence_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,9 +20,35 @@ void main() async {
     runApp(ErrorApp(errorMessage: error.toString()));
   }
 }
-
-class MyApp extends StatelessWidget {
+//f8lB5SlHpNHKLfBp
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  StreamSubscription<User?>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        PresenceService.instance.init();
+      } else {
+        PresenceService.instance.deactivate();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    PresenceService.instance.deactivate();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

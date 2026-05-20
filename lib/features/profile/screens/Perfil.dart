@@ -1,20 +1,25 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
 import 'package:RockMeet/features/profile/interest_screen.dart';
 import 'package:RockMeet/core/services/profile_service.dart';
+import 'package:RockMeet/core/services/schedule_service.dart';
 
 // Constantes (igual que en tu código original)
 const String defaultAvatarUrl =
-    'https://images.unsplash.com/photo-1543689604-6fe8dbcd1f59?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMHN0dWRlbnQlMjBwb3J0cmFpdCUyMGhhcHB5fGVufDF8fHx8MTc3MjEyMDc0MHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral';
+    'https://images.unsplash.com/photo-1543689604-6fe8dbcd1f59?w=400&q=80&fit=crop';
 
 const List<String> profileImages = [
-  'https://images.unsplash.com/photo-1584819332026-ac894ac5c26e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMHlvdW5nJTIwcGVyc29uJTIwb3V0ZG9vcnxlbnwxfHx8fDE3NzIxMjA5NzF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-  'https://images.unsplash.com/photo-1744869985867-d23cc60e3625?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwbGlmZXN0eWxlJTIwY2FzdWFsfGVufDF8fHx8MTc3MjEyMDk3MXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-  'https://images.unsplash.com/photo-1768725845828-a74119dc4f34?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBob2JieSUyMGFjdGl2aXR5fGVufDF8fHx8MTc3MjEyMDk3MXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-  'https://images.unsplash.com/photo-1623790679957-5a20f98faef6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMGFkdWx0JTIwdHJhdmVsfGVufDF8fHx8MTc3MjEyMDk3Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-  'https://images.unsplash.com/photo-1709287253135-865c51892771?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMG5hdHVyZSUyMG91dGRvb3JzfGVufDF8fHx8MTc3MjEyMDk3Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+  'https://images.unsplash.com/photo-1584819332026-ac894ac5c26e?w=400&q=80&fit=crop',
+  'https://images.unsplash.com/photo-1744869985867-d23cc60e3625?w=400&q=80&fit=crop',
+  'https://images.unsplash.com/photo-1768725845828-a74119dc4f34?w=400&q=80&fit=crop',
+  'https://images.unsplash.com/photo-1623790679957-5a20f98faef6?w=400&q=80&fit=crop',
+  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&q=80&fit=crop',
 ];
 
 class Perfil extends StatelessWidget {
@@ -52,7 +57,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // Variables temporales para cambios antes de guardar
   List<String> _tempImages = [];
-  String _tempAvatarUrl = defaultAvatarUrl;
+  String _tempAvatarUrl = '';
+  bool _isUploadingAvatar = false;
+  String? _clase;
   List<Interest> _tempInterests = [];
 
   List<Interest> _buildInterestCatalog() {
@@ -192,6 +199,66 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _toggleEdit() => setState(() => _isEditing = !_isEditing);
 
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+
+    setState(() => _isUploadingAvatar = true);
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
+      final ref = FirebaseStorage.instance.ref('profile_photos/$uid.jpg');
+      await ref.putFile(File(picked.path));
+      final url = await ref.getDownloadURL();
+      setState(() => _tempAvatarUrl = url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al subir imagen: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
+  }
+
+  void _showScheduleImage(String imageUrl, String clase) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text('Horario — $clase'),
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: InteractiveViewer(
+            child: Center(
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                loadingBuilder: (ctx, child, progress) {
+                  if (progress == null) return child;
+                  return const Center(child: CircularProgressIndicator());
+                },
+                errorBuilder: (ctx, e, st) =>
+                    const Center(child: Icon(Icons.broken_image, size: 64)),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveChanges() async {
     // Extrae los intereses seleccionados como lista simple
     final selectedInterests = _tempInterests
@@ -225,6 +292,8 @@ class _ProfilePageState extends State<ProfilePage> {
         interestsWithSubInterests: interestsWithSubInterests.isNotEmpty
             ? interestsWithSubInterests
             : null,
+        clase: _clase,
+        updateClase: true,
       );
 
       setState(() => _isEditing = false);
@@ -271,6 +340,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showAvatarSelector() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (context) => Container(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -281,7 +351,31 @@ class _ProfilePageState extends State<ProfilePage> {
               'Cambiar foto de perfil',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.deepPurple),
+              title: const Text('Subir desde galería'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _pickAndUploadImage();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_off, color: Colors.grey),
+              title: const Text('Sin foto de perfil'),
+              onTap: () {
+                setState(() => _tempAvatarUrl = '');
+                Navigator.pop(context);
+              },
+            ),
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                'O elige un avatar:',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -311,12 +405,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Image.network(
                         profileImages[index],
                         fit: BoxFit.cover,
+                        errorBuilder: (ctx, e, st) =>
+                            const Icon(Icons.person, color: Colors.grey),
                       ),
                     ),
                   ),
                 );
               },
             ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -368,9 +465,7 @@ class _ProfilePageState extends State<ProfilePage> {
           final String displayName = profile.name.trim();
           final String email = profile.email ?? '';
           final String bio = profile.bio ?? '';
-          final String avatarUrl = (profile.photoURL?.trim().isNotEmpty == true)
-              ? profile.photoURL!.trim()
-              : defaultAvatarUrl;
+          final String avatarUrl = profile.photoURL?.trim() ?? '';
           final String twitter = profile.twitter ?? '';
           final String instagram = profile.instagram ?? '';
           final String tiktok = profile.tiktok ?? '';
@@ -402,6 +497,7 @@ class _ProfilePageState extends State<ProfilePage> {
             if (_artistController.text != favoriteArtist)
               _artistController.text = favoriteArtist;
             _tempAvatarUrl = avatarUrl;
+            _clase = profile.clase;
             _tempImages = List.from(gallery);
             _tempInterests = _buildInterestsFromProfile(profile);
           }
@@ -429,33 +525,53 @@ class _ProfilePageState extends State<ProfilePage> {
                                     radius: 70,
                                     backgroundColor: Colors.grey.shade200,
                                     child: ClipOval(
-                                      child: Image.network(
-                                        _tempAvatarUrl,
-                                        width: 140,
-                                        height: 140,
-                                        fit: BoxFit.cover,
-                                        loadingBuilder:
-                                            (context, child, loadingProgress) {
-                                              if (loadingProgress == null)
-                                                return child;
-                                              return const SizedBox(
-                                                width: 26,
-                                                height: 26,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
-                                              );
-                                            },
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                              return const Icon(
-                                                Icons.person,
-                                                size: 56,
-                                                color: Colors.grey,
-                                              );
-                                            },
-                                      ),
+                                      child: _isUploadingAvatar
+                                          ? const SizedBox(
+                                              width: 40,
+                                              height: 40,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 3,
+                                              ),
+                                            )
+                                          : _tempAvatarUrl.isNotEmpty
+                                          ? Image.network(
+                                              _tempAvatarUrl,
+                                              width: 140,
+                                              height: 140,
+                                              fit: BoxFit.cover,
+                                              loadingBuilder: (
+                                                context,
+                                                child,
+                                                loadingProgress,
+                                              ) {
+                                                if (loadingProgress == null)
+                                                  return child;
+                                                return const SizedBox(
+                                                  width: 26,
+                                                  height: 26,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                );
+                                              },
+                                              errorBuilder: (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) {
+                                                return const Icon(
+                                                  Icons.person,
+                                                  size: 56,
+                                                  color: Colors.grey,
+                                                );
+                                              },
+                                            )
+                                          : const Icon(
+                                              Icons.person,
+                                              size: 56,
+                                              color: Colors.grey,
+                                            ),
                                     ),
                                   ),
                                   if (_isEditing)
@@ -530,6 +646,97 @@ class _ProfilePageState extends State<ProfilePage> {
                                   label: 'Amigos',
                                   value: friends,
                                 ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Clase
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.school),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Clase',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                if (_isEditing)
+                                  DropdownButtonFormField<String?>(
+                                    value: _clase,
+                                    decoration: const InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      hintText: 'Selecciona tu clase',
+                                    ),
+                                    items: [
+                                      const DropdownMenuItem<String?>(
+                                        value: null,
+                                        child: Text('Sin clase'),
+                                      ),
+                                      ...ScheduleService.availableClasses.map(
+                                        (c) => DropdownMenuItem<String?>(
+                                          value: c,
+                                          child: Text(c),
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: (value) =>
+                                        setState(() => _clase = value),
+                                  )
+                                else ...[
+                                  Text(
+                                    _clase ?? 'Sin clase asignada',
+                                    style: TextStyle(
+                                      color: _clase == null
+                                          ? Colors.grey.shade500
+                                          : null,
+                                    ),
+                                  ),
+                                  if (_clase != null)
+                                    StreamBuilder<String?>(
+                                      stream: ScheduleService.instance
+                                          .watchScheduleImageUrl(_clase!),
+                                      builder: (context, scheduleSnap) {
+                                        final scheduleUrl = scheduleSnap.data;
+                                        if (scheduleUrl == null) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 12,
+                                          ),
+                                          child: SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () =>
+                                                  _showScheduleImage(
+                                                    scheduleUrl,
+                                                    _clase!,
+                                                  ),
+                                              icon: const Icon(
+                                                Icons.calendar_month,
+                                              ),
+                                              label: const Text(
+                                                'Ver horario de clases',
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                ],
                               ],
                             ),
                           ),
