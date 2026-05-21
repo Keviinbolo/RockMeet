@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:RockMeet/config/Theme/app_theme.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:RockMeet/core/services/auth_service.dart';
 import 'package:RockMeet/core/services/event_service.dart';
+import 'package:RockMeet/core/services/tutor_code_service.dart';
 import 'package:RockMeet/features/home/screens/staff_reports_page.dart';
 import 'package:RockMeet/features/home/screens/staff_user_management_page.dart';
 import 'package:RockMeet/core/models/class_event.dart';
@@ -526,6 +528,13 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
         const SizedBox(height: 16),
         _buildOptionButton(
           context,
+          icon: Icons.vpn_key,
+          title: 'Código de Acceso al Registro',
+          onTap: () => _showTutorCodeDialog(context),
+        ),
+        const SizedBox(height: 12),
+        _buildOptionButton(
+          context,
           icon: Icons.people,
           title: 'Gestionar Usuarios',
           onTap: () {
@@ -588,6 +597,196 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           onTap: () => _showLogoutConfirmationDialog(context),
         ),
       ],
+    );
+  }
+
+  void _showTutorCodeDialog(BuildContext context) {
+    final staffId = _staffId;
+    if (staffId == null) {
+      _showSnackBar('Debes iniciar sesión');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.vpn_key, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Código de Acceso',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              content: StreamBuilder(
+                stream: TutorCodeService().watchCode(),
+                builder: (context, snapshot) {
+                  final data =
+                      snapshot.data?.data() as Map<String, dynamic>?;
+                  final info = TutorCodeService().parseCodeInfo(data);
+                  final hasCode = info != null;
+                  final isExpired = info?.isExpired ?? false;
+                  final codeColor = isExpired ? Colors.red : AppColors.primary;
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Comparte este código con los alumnos para que puedan registrarse. Caduca a las 24 horas.',
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      if (!hasCode)
+                        Text(
+                          'Aún no hay código generado.',
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                        )
+                      else ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: codeColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: codeColor.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    info.code,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 8,
+                                      color: isExpired
+                                          ? Colors.grey
+                                          : AppColors.primary,
+                                      decoration: isExpired
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                    ),
+                                  ),
+                                  if (!isExpired) ...[
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      tooltip: 'Copiar código',
+                                      icon: const Icon(Icons.copy, size: 20),
+                                      color: AppColors.primary,
+                                      onPressed: () {
+                                        Clipboard.setData(
+                                          ClipboardData(text: info.code),
+                                        );
+                                        Navigator.pop(context);
+                                        _showSnackBar(
+                                          'Código copiado al portapapeles',
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    isExpired
+                                        ? Icons.timer_off
+                                        : Icons.timer_outlined,
+                                    size: 14,
+                                    color: isExpired
+                                        ? Colors.red
+                                        : Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    info.remainingLabel,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isExpired
+                                          ? Colors.red
+                                          : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.refresh),
+                          label: Text(
+                            !hasCode ? 'Generar código' : 'Generar nuevo código',
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () async {
+                            final newCode = await TutorCodeService()
+                                .generateCode(staffId);
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+                            _showSnackBar('Nuevo código generado: $newCode');
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cerrar',
+                    style: GoogleFonts.outfit(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

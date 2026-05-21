@@ -915,31 +915,32 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Sobre mí
-                        InfoSection(
-                          icon: Icons.chat,
-                          title: 'Sobre mí',
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  _isEditing
-                                      ? TextFormField(
-                                          controller: _bioController,
-                                          maxLines: 3,
-                                          decoration: const InputDecoration(
-                                            border: OutlineInputBorder(),
-                                          ),
-                                        )
-                                      : Text(bio),
-                                ],
+                        // Sobre mí — solo visible si hay bio o se está editando
+                        if (bio.isNotEmpty || _isEditing)
+                          InfoSection(
+                            icon: Icons.chat,
+                            title: 'Sobre mí',
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    _isEditing
+                                        ? TextFormField(
+                                            controller: _bioController,
+                                            maxLines: 3,
+                                            decoration: const InputDecoration(
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          )
+                                        : Text(bio),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
                         const SizedBox(height: 24),
 
                         // Canción favorita
@@ -993,7 +994,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         const SizedBox(height: 24),
 
-                        // Intereses
+                        // Intereses — solo visible si hay alguno o se está editando
+                        if (_tempInterests.any((i) => i.selected) || _isEditing)
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -1129,10 +1131,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Redes Sociales
-                        InfoSection(
-                          icon: Icons.public,
-                          title: 'Redes Sociales',
+                        // Redes Sociales — solo visible si al menos una está rellena o editando
+                        if (_isEditing ||
+                            twitter.isNotEmpty ||
+                            instagram.isNotEmpty ||
+                            tiktok.isNotEmpty ||
+                            spotify.isNotEmpty)
+                          InfoSection(
+                            icon: Icons.public,
+                            title: 'Redes Sociales',
                           children: [
                             _buildSocialRow(
                               icon: Icons.tag,

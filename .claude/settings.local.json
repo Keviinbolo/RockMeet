@@ -8,7 +8,9 @@
       "PowerShell(Get-Command flutter -ErrorAction SilentlyContinue)",
       "Bash(Select-String -Pattern \"error -\")",
       "Bash(findstr \"error -\")",
-      "PowerShell(flutter analyze *)"
+      "PowerShell(flutter analyze *)",
+      "Bash(Select-String \"error -\")",
+      "Bash(Select-Object -First 50)"
     ]
   }
 }

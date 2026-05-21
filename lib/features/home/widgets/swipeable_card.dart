@@ -659,7 +659,8 @@ class _SwipeableCardState extends State<SwipeableCard>
                         bio,
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
-                          height: 1.5,
+                          height: 1.6,
+                          fontSize: 15,
                         ),
                       ),
                       const SizedBox(height: 18),

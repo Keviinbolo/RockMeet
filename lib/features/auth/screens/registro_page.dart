@@ -2,7 +2,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:RockMeet/core/services/auth_service.dart';
+import 'package:RockMeet/core/services/tutor_code_service.dart';
 import 'package:RockMeet/features/auth/widgets/wave_background.dart';
+import 'package:RockMeet/features/settings/screens/terminos_condiciones.dart';
+import 'package:RockMeet/features/settings/screens/politica_privacidad.dart';
 
 class RegistroPage extends StatelessWidget {
   const RegistroPage({super.key});
@@ -237,6 +240,20 @@ class _RegistroScreenState extends State<RegistroScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final codeValid = await TutorCodeService().validateCode(
+        _tutorCodeController.text.trim(),
+      );
+      if (!mounted) return;
+      if (!codeValid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('El código de tutor no es válido. Contacta con tu tutor.'),
+          ),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
       final displayName = '${_nameController.text.trim()} ${_lastNameController.text.trim()}'.trim();
       await AuthService().register(
         _emailController.text.trim(),
@@ -260,23 +277,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-    
-    AuthService().register(
-      _emailController.text,
-      _passwordController.text,
-      _nameController.text,
-      lastName: _lastNameController.text,
-      birthDate: _selectedBirthDate,
-      gender: _selectedGender,
-      course: _courseController.text,
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Registro exitoso'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-    );
   }
 
   @override
@@ -297,13 +297,18 @@ class _RegistroScreenState extends State<RegistroScreen> {
                     const SizedBox(height: 32),
                     Container(
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 20,
+                            color: const Color(0xFF1976D2).withOpacity(0.10),
+                            blurRadius: 24,
                             offset: const Offset(0, 10),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
@@ -385,7 +390,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         Text(
           'Completa tus datos para registrarte',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            color: const Color(0xFF546E7A),
           ),
         ),
       ],
@@ -637,7 +642,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
           child: RichText(
             text: TextSpan(
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: const Color(0xFF546E7A),
               ),
               children: [
                 const TextSpan(text: 'Acepto los '),
@@ -647,7 +652,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
                     color: theme.colorScheme.primary,
                     decoration: TextDecoration.underline,
                   ),
-                  recognizer: TapGestureRecognizer()..onTap = () {},
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TerminosCondicionesScreen(),
+                        ),
+                      );
+                    },
                 ),
                 const TextSpan(text: ' y la '),
                 TextSpan(
@@ -656,7 +669,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
                     color: theme.colorScheme.primary,
                     decoration: TextDecoration.underline,
                   ),
-                  recognizer: TapGestureRecognizer()..onTap = () {},
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PoliticaPrivacidadScreen(),
+                        ),
+                      );
+                    },
                 ),
               ],
             ),
@@ -712,7 +733,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         Text(
           '¿Ya tienes cuenta? ',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            color: const Color(0xFF546E7A),
           ),
         ),
         GestureDetector(
@@ -744,7 +765,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
           child: Text(
             'O regístrate con',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: const Color(0xFF546E7A),
             ),
           ),
         ),

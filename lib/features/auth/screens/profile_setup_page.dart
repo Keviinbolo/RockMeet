@@ -63,6 +63,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
   // Step 1 – Photo
   File? _photoFile;
   bool _uploadingPhoto = false;
+  final List<File?> _galleryFiles = [null, null, null];
+  bool _uploadingGallery = false;
 
   // Step 2 – Bio & socials
   final _bioController = TextEditingController();
@@ -153,6 +155,32 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
     }
   }
 
+  Future<void> _pickGalleryImage(int index) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null && mounted) {
+      setState(() => _galleryFiles[index] = File(picked.path));
+    }
+  }
+
+  Future<List<String>> _uploadGalleryPhotos(String uid) async {
+    final urls = <String>[];
+    setState(() => _uploadingGallery = true);
+    try {
+      for (int i = 0; i < _galleryFiles.length; i++) {
+        final file = _galleryFiles[i];
+        if (file == null) continue;
+        final ref = FirebaseStorage.instance.ref('users/$uid/gallery_$i.jpg');
+        await ref.putFile(file);
+        final url = await ref.getDownloadURL();
+        urls.add(url);
+      }
+    } catch (_) {} finally {
+      if (mounted) setState(() => _uploadingGallery = false);
+    }
+    return urls;
+  }
+
   // ─── Finish & save ───────────────────────────────────────────────────────────
 
   Future<void> _finish() async {
@@ -160,8 +188,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
     setState(() => _isSaving = true);
 
     try {
-      // Upload photo if selected
+      // Upload profile photo if selected
       final photoURL = await _uploadPhoto();
+
+      // Upload gallery photos
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      final galleryUrls = await _uploadGalleryPhotos(uid);
 
       // Build interest maps
       final selectedInterests = _interests
@@ -192,6 +224,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
         favoriteArtist: artist,
         interests: selectedInterests.isNotEmpty ? selectedInterests : null,
         interestsWithSubInterests: interestsDetail.isNotEmpty ? interestsDetail : null,
+        gallery: galleryUrls.isNotEmpty ? galleryUrls : null,
       );
 
       await ProfileService.instance.markProfileComplete();
@@ -355,93 +388,187 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Text(
-            'Pon una foto para que otros te reconozcan',
-            style: AppTextStyles.bodyMedium
-                .copyWith(color: AppColors.textSecondary),
+            'Añade tu foto de perfil y hasta 3 fotos para tu galería',
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 40),
-          // Avatar
-          GestureDetector(
-            onTap: () => _pickImage(ImageSource.gallery),
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.surface,
-                    border: Border.all(
-                      color: AppColors.primary.withOpacity(0.5),
-                      width: 2.5,
+          const SizedBox(height: 28),
+
+          // Foto de perfil
+          Text('Foto de perfil', style: AppTextStyles.labelLarge),
+          const SizedBox(height: 16),
+          Center(
+            child: GestureDetector(
+              onTap: () => _pickImage(ImageSource.gallery),
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.surface,
+                      border: Border.all(
+                        color: AppColors.primary.withOpacity(0.5),
+                        width: 2.5,
+                      ),
+                      image: _photoFile != null
+                          ? DecorationImage(
+                              image: FileImage(_photoFile!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
-                    image: _photoFile != null
-                        ? DecorationImage(
-                            image: FileImage(_photoFile!),
-                            fit: BoxFit.cover,
+                    child: _photoFile == null
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.person, size: 48, color: AppColors.textHint),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Toca para añadir',
+                                style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.textSecondary),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           )
                         : null,
                   ),
-                  child: _photoFile == null
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.person,
-                                size: 56, color: AppColors.textHint),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Toca para\nañadir foto',
-                              style: AppTextStyles.labelSmall.copyWith(
-                                  color: AppColors.textSecondary),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        )
-                      : null,
-                ),
-                // Edit badge
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.background, width: 2),
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.background, width: 2),
+                    ),
+                    child: const Icon(Icons.edit, size: 14, color: Colors.white),
                   ),
-                  child: const Icon(Icons.edit, size: 16, color: Colors.white),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildPickerButton(
+                  icon: Icons.photo_library_outlined,
+                  label: 'Galería',
+                  onTap: () => _pickImage(ImageSource.gallery),
+                ),
+                const SizedBox(width: 12),
+                _buildPickerButton(
+                  icon: Icons.camera_alt_outlined,
+                  label: 'Cámara',
+                  onTap: () => _pickImage(ImageSource.camera),
                 ),
               ],
             ),
           ),
+
           const SizedBox(height: 32),
+          Divider(color: AppColors.border),
+          const SizedBox(height: 20),
+
+          // Galería de fotos
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildPickerButton(
-                icon: Icons.photo_library_outlined,
-                label: 'Galería',
-                onTap: () => _pickImage(ImageSource.gallery),
-              ),
-              const SizedBox(width: 16),
-              _buildPickerButton(
-                icon: Icons.camera_alt_outlined,
-                label: 'Cámara',
-                onTap: () => _pickImage(ImageSource.camera),
+              Text('Mis fotos', style: AppTextStyles.labelLarge),
+              const SizedBox(width: 8),
+              Text(
+                '(hasta 3)',
+                style: AppTextStyles.labelSmall.copyWith(color: AppColors.textHint),
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 4),
           Text(
-            'Puedes cambiarla después desde tu perfil',
-            style:
-                AppTextStyles.labelSmall.copyWith(color: AppColors.textHint),
+            'Estas fotos se mostrarán en tu tarjeta al explorar',
+            style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: List.generate(3, (i) => _buildGallerySlot(i)),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Puedes cambiarlas después desde tu perfil',
+            style: AppTextStyles.labelSmall.copyWith(color: AppColors.textHint),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGallerySlot(int index) {
+    final file = _galleryFiles[index];
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _pickGalleryImage(index),
+        child: Container(
+          margin: EdgeInsets.only(right: index < 2 ? 10 : 0),
+          height: 110,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: file != null
+                  ? AppColors.primary.withOpacity(0.5)
+                  : AppColors.border,
+              width: file != null ? 2 : 1.5,
+            ),
+            image: file != null
+                ? DecorationImage(
+                    image: FileImage(file),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: file == null
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_photo_alternate_outlined,
+                        size: 28, color: AppColors.primary.withOpacity(0.6)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Añadir',
+                      style: AppTextStyles.labelSmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
+                )
+              : Stack(
+                  children: [
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _galleryFiles[index] = null),
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close,
+                              size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
