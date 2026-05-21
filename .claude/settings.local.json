@@ -10,7 +10,9 @@
       "Bash(findstr \"error -\")",
       "PowerShell(flutter analyze *)",
       "Bash(Select-String \"error -\")",
-      "Bash(Select-Object -First 50)"
+      "Bash(Select-Object -First 50)",
+      "Bash(xargs grep -l \"Firestore\\\\|collection\\('users'\\)\")",
+      "Bash(tasklist)"
     ]
   }
 }

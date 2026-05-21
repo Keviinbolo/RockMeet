@@ -29,7 +29,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   final _nameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _courseController = TextEditingController();
+  String? _selectedCourse;
   final _tutorCodeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -56,7 +56,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     _lastNameController.dispose();
     _emailController.dispose();
     _birthDateController.dispose();
-    _courseController.dispose();
     _tutorCodeController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -261,7 +260,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         displayName,
         birthDate: _selectedBirthDate,
         gender: _selectedGender,
-        course: _courseController.text.trim(),
+        course: _selectedCourse ?? '',
       );
 
       if (!mounted) return;
@@ -526,18 +525,45 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 
+  static const _courses = [
+    'DAM - Desarrollo de Aplicaciones Multiplataforma',
+    'DAW - Desarrollo de Aplicaciones Web',
+    'ASIR - Administración de Sistemas Informáticos en Red',
+    'SMR - Sistemas Microinformáticos y Redes',
+    'FPBI - Formación Profesional Básica Informática',
+    'Bachillerato Tecnológico',
+    'Bachillerato Ciencias',
+    'Bachillerato Humanidades y CC. Sociales',
+    'Bachillerato Artes',
+    'Otro',
+  ];
+
   Widget _buildCourseField() {
-    return _buildInputField(
-      label: 'Curso',
-      hint: 'Ej: FP, Bachillerato...',
-      controller: _courseController,
-      icon: Icons.school,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Este campo es requerido';
-        }
-        return null;
-      },
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Curso', style: theme.textTheme.labelMedium),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedCourse,
+          hint: const Text('Selecciona tu curso'),
+          isExpanded: true,
+          items: _courses
+              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .toList(),
+          onChanged: (value) => setState(() => _selectedCourse = value),
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.school, size: 20),
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Este campo es requerido';
+            }
+            return null;
+          },
+        ),
+      ],
     );
   }
 

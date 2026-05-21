@@ -8,6 +8,7 @@ import 'package:RockMeet/core/services/chat_service.dart';
 import 'package:RockMeet/core/services/presence_service.dart';
 import 'package:RockMeet/features/chat/screens/peer_profile_screen.dart';
 import 'package:RockMeet/features/chat/widgets/chat_input_bar.dart';
+import 'package:RockMeet/core/services/supabase_service.dart';
 import 'package:RockMeet/features/chat/widgets/message_bubble.dart';
 
 
@@ -158,7 +159,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   : 'Usuario',
               avatar:
                   (peerProfile?['photoURL'] as String?) ??
-                  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1080',
+                  SupabaseService.instance.randomFallbackUrl ??
+                  '',
               lastMessage: (data['lastMessage'] as String?) ?? '',
               lastMessageTime:
                   (data['lastMessageTime'] as Timestamp?)?.toDate() ??

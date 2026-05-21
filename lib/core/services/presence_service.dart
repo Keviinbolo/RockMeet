@@ -14,9 +14,9 @@ class PresenceService with WidgetsBindingObserver {
   Timer? _heartbeatTimer;
 
   // Un usuario se considera online si su lastSeen fue hace menos de este umbral.
-  static const _onlineThreshold = Duration(minutes: 2);
+  static const _onlineThreshold = Duration(seconds: 40);
   // Frecuencia del heartbeat: debe ser menor que el umbral.
-  static const _heartbeatInterval = Duration(seconds: 60);
+  static const _heartbeatInterval = Duration(seconds: 15);
 
   void init() {
     if (!_observerAdded) {
