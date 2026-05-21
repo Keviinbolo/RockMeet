@@ -1,9 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/config/Theme/constants/text_styles.dart';
+import 'package:RockMeet/config/Theme/app_theme.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 
 
 class MatchModal extends StatelessWidget {
@@ -27,7 +27,7 @@ class MatchModal extends StatelessWidget {
       body: Stack(
         children: [
           // ============================================================
-          // EFECTO 1: CORAZONES CAYENDO (Confetti)
+          // EFECTO 1:  CAYENDO (Confetti)
           // ============================================================
           ...List.generate(20, (index) => const _FallingHeart()),
 
@@ -227,7 +227,7 @@ class _FallingHeart extends StatelessWidget {
                 value * MediaQuery.of(context).size.height * 1.2,
               ),
               child: const Icon(
-                Icons.stars,
+                Icons.auto_awesome,
                 color: AppColors.primary,
                 size: 30,
               ),

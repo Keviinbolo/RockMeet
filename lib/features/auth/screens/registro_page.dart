@@ -1,7 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:myapp/core/services/auth_service.dart';
+import 'package:RockMeet/core/services/auth_service.dart';
+import 'package:RockMeet/features/auth/widgets/wave_background.dart';
 
 class RegistroPage extends StatelessWidget {
   const RegistroPage({super.key});
@@ -23,6 +24,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   final _formKey = GlobalKey<FormState>();
   
   final _nameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _courseController = TextEditingController();
   final _tutorCodeController = TextEditingController();
@@ -33,7 +35,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
   DateTime? _selectedBirthDate;
 
   bool _acceptedTerms = false;
+  bool _isLoading = false;
   String? _ageError;
+  String? _selectedGender;
 
   @override
   void initState() {
@@ -46,6 +50,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _birthDateController.dispose();
     _courseController.dispose();
@@ -64,7 +69,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    // Iniciar sin valores preseleccionados
     int tempDay = 1;
     int tempMonth = 1;
     int tempYear = 2000;
@@ -189,12 +193,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
     if (picked != null) {
       setState(() {
         _selectedBirthDate = picked;
-        // Formatear la fecha y asignarla al controlador
         String fechaFormateada = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
         _birthDateController.text = fechaFormateada;
         _ageError = null;
       });
-      // Depuración: imprime en consola para verificar
       print("Fecha seleccionada: ${_birthDateController.text}");
     }
   }
@@ -209,33 +211,65 @@ class _RegistroScreenState extends State<RegistroScreen> {
     return age;
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
+    if (_isLoading) return;
+
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
     if (_selectedBirthDate == null) {
-      setState(() {
-        _ageError = 'Debes seleccionar tu fecha de nacimiento';
-      });
+      setState(() => _ageError = 'Debes seleccionar tu fecha de nacimiento');
       return;
     }
 
     final age = _calculateAge(_selectedBirthDate!);
     if (age < 18) {
-      setState(() {
-        _ageError = 'Debes ser mayor de 18 años para crear una cuenta';
-      });
+      setState(() => _ageError = 'Debes ser mayor de 18 años para crear una cuenta');
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
+    if (!_acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Las contraseñas no coinciden'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
+        const SnackBar(content: Text('Debes aceptar los términos y condiciones')),
       );
       return;
     }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final displayName = '${_nameController.text.trim()} ${_lastNameController.text.trim()}'.trim();
+      await AuthService().register(
+        _emailController.text.trim(),
+        _passwordController.text,
+        displayName,
+        birthDate: _selectedBirthDate,
+        gender: _selectedGender,
+        course: _courseController.text.trim(),
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/profile-setup');
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
     
-    AuthService().register(_emailController.text, _passwordController.text, _nameController.text);
+    AuthService().register(
+      _emailController.text,
+      _passwordController.text,
+      _nameController.text,
+      lastName: _lastNameController.text,
+      birthDate: _selectedBirthDate,
+      gender: _selectedGender,
+      course: _courseController.text,
+    );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -250,17 +284,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     final theme = Theme.of(context);
     
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.secondary.withOpacity(0.2),
-              theme.colorScheme.primary.withOpacity(0.2),
-            ],
-          ),
-        ),
+      body: WaveBackground(
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -290,9 +314,13 @@ class _RegistroScreenState extends State<RegistroScreen> {
                           children: [
                             _buildNameField(),
                             const SizedBox(height: 20),
+                            _buildLastNameField(), // Campo Apellidos añadido aquí
+                            const SizedBox(height: 20),
                             _buildEmailField(),
                             const SizedBox(height: 20),
-                            _buildBirthDateField(), // Aquí está el campo de fecha
+                            _buildBirthDateField(),
+                            const SizedBox(height: 20),
+                            _buildGenderField(),
                             const SizedBox(height: 20),
                             _buildCourseField(),
                             const SizedBox(height: 20),
@@ -325,7 +353,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     );
   }
 
-  // Header sin fecha (solo ícono y texto)
   Widget _buildHeader(ThemeData theme) {
     return Column(
       children: [
@@ -367,9 +394,24 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   Widget _buildNameField() {
     return _buildInputField(
-      label: 'Nombre completo',
+      label: 'Nombre',
       hint: 'Tu nombre',
       controller: _nameController,
+      icon: Icons.person,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Este campo es requerido';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildLastNameField() {
+    return _buildInputField(
+      label: 'Apellidos',
+      hint: 'Tus apellidos',
+      controller: _lastNameController,
       icon: Icons.person,
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -422,7 +464,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
             return null;
           },
         ),
-        // Texto de depuración para ver la fecha (opcional, luego lo eliminas)
         if (_selectedBirthDate != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -442,6 +483,40 @@ class _RegistroScreenState extends State<RegistroScreen> {
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildGenderField() {
+    final theme = Theme.of(context);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Sexo', style: theme.textTheme.labelMedium),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedGender,
+          hint: const Text('Selecciona tu sexo'),
+          items: const [
+            DropdownMenuItem(value: 'Hombre', child: Text('Hombre')),
+            DropdownMenuItem(value: 'Mujer', child: Text('Mujer')),
+          ],
+          onChanged: (value) {
+            setState(() {
+              _selectedGender = value;
+            });
+          },
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.person, size: 20),
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Este campo es requerido';
+            }
+            return null;
+          },
+        ),
       ],
     );
   }
@@ -595,7 +670,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     return SizedBox(
       width: double.infinity,
       child: GestureDetector(
-        onTap: _handleSubmit,
+        onTap: _isLoading ? null : _handleSubmit,
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -607,13 +682,24 @@ class _RegistroScreenState extends State<RegistroScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            'Crear cuenta',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onPrimary,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          child: _isLoading
+              ? const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                )
+              : Text(
+                  'Crear cuenta',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
         ),
       ),
     );

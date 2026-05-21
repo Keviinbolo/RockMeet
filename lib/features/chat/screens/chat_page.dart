@@ -1,52 +1,15 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:myapp/core/services/chat_service.dart';
+import 'package:RockMeet/core/models/chat_message.dart';
+import 'package:RockMeet/core/services/chat_service.dart';
+import 'package:RockMeet/core/services/presence_service.dart';
+import 'package:RockMeet/features/chat/screens/peer_profile_screen.dart';
+import 'package:RockMeet/features/chat/widgets/chat_input_bar.dart';
+import 'package:RockMeet/features/chat/widgets/message_bubble.dart';
 
-// Asume que existe esta pantalla; si no, créala o cambia la ruta.
-// import 'package:myapp/ui/screens/profile_screen.dart';
-
-class Message {
-  final int id;
-  final String text;
-  final String sender; // user or other
-  final DateTime timestamp;
-
-  Message({
-    required this.id,
-    required this.text,
-    required this.sender,
-    required this.timestamp,
-  });
-}
-
-class Chat {
-  final int id;
-  final String peerUid;
-  final String username;
-  final String avatar;
-  String lastMessage;
-  DateTime lastMessageTime;
-  int unread;
-  final bool online;
-  List<Message> messages;
-  String? chatId;
-
-  Chat({
-    required this.id,
-    required this.peerUid,
-    required this.username,
-    required this.avatar,
-    required this.lastMessage,
-    required this.lastMessageTime,
-    required this.unread,
-    required this.online,
-    required this.messages,
-    this.chatId,
-  });
-}
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
@@ -70,6 +33,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   StreamSubscription<List<ChatMessage>>? _messagesSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _chatsSubscription;
   bool _hasEnteredChat = false;
@@ -81,6 +46,11 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     chats = [];
     _subscribeToUserChats();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
   }
 
   Future<void> _tryOpenInitialPeerChat(List<Chat> updatedChats) async {
@@ -130,6 +100,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _chatsSubscription?.cancel();
     _messagesSubscription?.cancel();
     _inputController.dispose();
+    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -199,6 +170,11 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           );
         }
+
+        // Ordenar chats por último mensaje más reciente
+        updatedChats.sort(
+          (a, b) => b.lastMessageTime.compareTo(a.lastMessageTime),
+        );
 
         if (!_hasEnteredChat) {
           setState(() {
@@ -350,24 +326,15 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
-  /// Navega a la pantalla de perfil del usuario con el que se está chateando.
   void _goToProfile() {
     if (activeChat.peerUid.isEmpty) return;
-
-    // Ajusta esta línea según el nombre real de tu pantalla de perfil y sus parámetros.
-    // Ejemplo: ProfileScreen(uid: activeChat.peerUid, username: activeChat.username, avatarUrl: activeChat.avatar)
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProfileScreen(
+        builder: (context) => PeerProfileScreen(
           uid: activeChat.peerUid,
           username: activeChat.username,
           avatarUrl: activeChat.avatar,
-          photos: [
-            'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?q=80&w=1080',
-            'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1080',
-            'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?q=80&w=1080',
-          ],
         ),
       ),
     );
@@ -379,43 +346,102 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildChatList(BuildContext context, {bool closeOnSelect = false}) {
     final colorScheme = Theme.of(context).colorScheme;
+    // Filtrar por búsqueda (nombre o último mensaje)
+    final filtered = _searchQuery.isEmpty
+        ? chats
+        : chats.where((c) {
+            final name = c.username.toLowerCase();
+            final last = c.lastMessage.toLowerCase();
+            return name.contains(_searchQuery) || last.contains(_searchQuery);
+          }).toList();
 
-    if (chats.isEmpty) {
-      return Center(
-        child: Text(
-          'No tienes conversaciones aún',
-          style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(
+              hintText: 'Buscar...',
+              prefixIcon: Icon(Icons.search),
+            ),
+          ),
         ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: chats.length,
-      itemBuilder: (context, index) {
-        final chat = chats[index];
-        final selected = chat.id == activeChat.id;
-        return ListTile(
-          selected: selected,
-          selectedTileColor: colorScheme.primary.withOpacity(0.12),
-          leading: CircleAvatar(backgroundImage: NetworkImage(chat.avatar)),
-          title: Text(
-            chat.username,
-            style: TextStyle(color: colorScheme.onSurface),
+        if (filtered.isEmpty)
+          Expanded(
+            child: Center(
+              child: Text(
+                'No tienes conversaciones aún',
+                style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+              ),
+            ),
+          )
+        else
+          Expanded(
+            child: ListView.builder(
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final chat = filtered[index];
+                final selected =
+                    chat.id == (chats.isNotEmpty ? activeChat.id : -1);
+                return ListTile(
+                  selected: selected,
+                  selectedTileColor: colorScheme.primary.withOpacity(0.12),
+                  leading: StreamBuilder<bool>(
+                    stream: PresenceService.instance
+                        .watchOnlineStatus(chat.peerUid),
+                    builder: (context, onlineSnap) {
+                      final isOnline = onlineSnap.data ?? false;
+                      return Stack(
+                        children: [
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(chat.avatar),
+                          ),
+                          if (isOnline)
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: colorScheme.surface,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                  title: Text(
+                    chat.username,
+                    style: TextStyle(color: colorScheme.onSurface),
+                  ),
+                  subtitle: Text(
+                    chat.lastMessage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                  trailing: Text(_formatTime(chat.lastMessageTime)),
+                  onTap: () {
+                    _handleChatSelect(chat);
+                    if (closeOnSelect) {
+                      Navigator.pop(context);
+                    }
+                  },
+                );
+              },
+            ),
           ),
-          subtitle: Text(
-            chat.lastMessage,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
-          ),
-          onTap: () {
-            _handleChatSelect(chat);
-            if (closeOnSelect) {
-              Navigator.pop(context);
-            }
-          },
-        );
-      },
+      ],
     );
   }
 
@@ -424,10 +450,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     if (!_hasEnteredChat) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Selecciona un usuario')),
-        body: _buildChatList(context),
-      );
+      return Scaffold(body: _buildChatList(context));
     }
 
     return Scaffold(
@@ -442,10 +465,32 @@ class _ChatScreenState extends State<ChatScreen> {
                 });
               },
             ),
-            // 👇 Aquí se agrega el tap al nombre del usuario
-            title: GestureDetector(
-              onTap: _goToProfile,
-              child: Text(activeChat.username),
+            title: StreamBuilder<bool>(
+              stream: PresenceService.instance
+                  .watchOnlineStatus(activeChat.peerUid),
+              builder: (context, onlineSnap) {
+                final isOnline = onlineSnap.data ?? false;
+                return GestureDetector(
+                  onTap: _goToProfile,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(activeChat.username),
+                      Text(
+                        isOnline ? 'En línea' : 'Desconectado',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.normal,
+                          color: isOnline
+                              ? Colors.greenAccent
+                              : Colors.grey.shade400,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
           Expanded(
@@ -454,391 +499,19 @@ class _ChatScreenState extends State<ChatScreen> {
               itemCount: activeChat.messages.length,
               itemBuilder: (context, index) {
                 final message = activeChat.messages[index];
-                final mine = message.sender == 'user';
-                return Align(
-                  alignment: mine
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: mine
-                          ? colorScheme.primary
-                          : colorScheme.surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: mine
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          message.text,
-                          style: TextStyle(
-                            color: mine
-                                ? colorScheme.onPrimary
-                                : colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatTime(message.timestamp),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color:
-                                (mine
-                                        ? colorScheme.onPrimary
-                                        : colorScheme.onSurfaceVariant)
-                                    .withOpacity(0.8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                return MessageBubble(
+                  text: message.text,
+                  isFromMe: message.sender == 'user',
+                  timestamp: message.timestamp,
                 );
               },
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _inputController,
-                      decoration: const InputDecoration(
-                        hintText: 'Escribe un mensaje...',
-                        border: OutlineInputBorder(),
-                      ),
-                      onSubmitted: (_) => _handleSendMessage(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _handleSendMessage,
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ),
+          ChatInputBar(
+            controller: _inputController,
+            onSend: _handleSendMessage,
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Define esta pantalla en tu proyecto o ajusta la importación.
-class ProfileScreen extends StatefulWidget {
-  final String uid;
-  final String username;
-  final String avatarUrl;
-  final List<String> photos;
-
-  const ProfileScreen({
-    super.key,
-    required this.uid,
-    required this.username,
-    required this.avatarUrl,
-    required this.photos,
-  });
-
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  Map<String, dynamic>? userProfile;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserProfile();
-  }
-
-  Future<void> _loadUserProfile() async {
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.uid)
-          .get();
-
-      if (mounted) {
-        setState(() {
-          userProfile = userDoc.data();
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.username),
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Header con avatar
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          colorScheme.primary.withOpacity(0.1),
-                          colorScheme.surface,
-                        ],
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundImage: NetworkImage(widget.avatarUrl),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          widget.username,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        if (userProfile?['displayName'] != null &&
-                            userProfile!['displayName'] != widget.username)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              userProfile!['displayName'] ?? '',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: colorScheme.onSurface
-                                        .withOpacity(0.7),
-                                  ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Información del perfil
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Bio o descripción
-                        if (userProfile?['bio'] != null &&
-                            (userProfile!['bio'] as String).isNotEmpty)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Acerca de',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                userProfile!['bio'],
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                        // Edad y Localización
-                        if (userProfile?['age'] != null ||
-                            userProfile?['location'] != null)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  if (userProfile?['age'] != null)
-                                    Expanded(
-                                      child: _buildInfoCard(
-                                        context,
-                                        Icons.cake,
-                                        'Edad',
-                                        '${userProfile!['age']} años',
-                                      ),
-                                    ),
-                                  if (userProfile?['location'] != null)
-                                    const SizedBox(width: 12),
-                                  if (userProfile?['location'] != null)
-                                    Expanded(
-                                      child: _buildInfoCard(
-                                        context,
-                                        Icons.location_on,
-                                        'Ubicación',
-                                        userProfile!['location'],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                        // Intereses
-                        if (userProfile?['interests'] != null &&
-                            (userProfile!['interests'] as List).isNotEmpty)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Intereses',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  for (final interest
-                                      in userProfile!['interests'] as List)
-                                    Chip(
-                                      label: Text(interest),
-                                      backgroundColor:
-                                          colorScheme.primaryContainer,
-                                      labelStyle: TextStyle(
-                                        color: colorScheme.onPrimaryContainer,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                  // Fotos
-                  if (widget.photos.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'Galería',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            children: [
-                              for (final photo in widget.photos)
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 12),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: GestureDetector(
-                                      onTap: () => _showImagePreview(
-                                        context,
-                                        photo,
-                                      ),
-                                      child: Image.network(
-                                        photo,
-                                        width: 150,
-                                        height: 150,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) =>
-                                            Container(
-                                          width: 150,
-                                          height: 150,
-                                          color: colorScheme.surfaceVariant,
-                                          child: const Icon(Icons.image),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _buildInfoCard(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showImagePreview(BuildContext context, String imageUrl) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        child: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Image.network(imageUrl, fit: BoxFit.contain),
-        ),
       ),
     );
   }

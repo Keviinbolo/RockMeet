@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/app_theme.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:myapp/core/services/auth_service.dart';
-import 'package:myapp/core/services/event_service.dart';
-import 'package:myapp/features/events/class_event.dart';
-import 'package:myapp/features/settings/screens/ajustes.dart';
+import 'package:RockMeet/core/services/auth_service.dart';
+import 'package:RockMeet/core/services/event_service.dart';
+import 'package:RockMeet/features/home/screens/staff_reports_page.dart';
+import 'package:RockMeet/features/home/screens/staff_user_management_page.dart';
+import 'package:RockMeet/core/models/class_event.dart';
+import 'package:RockMeet/features/settings/screens/ajustes.dart';
+import 'package:RockMeet/features/home/screens/staff_schedule_page.dart';
 import 'package:intl/intl.dart';
 
 class HomeStaffPage extends StatefulWidget {
@@ -43,6 +46,43 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
             return const Center(child: CircularProgressIndicator());
           }
 
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline, size: 56, color: AppColors.error),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No se pudieron cargar los eventos',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Revisa las reglas de Firestore o el campo staffOrganizerId.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             _staffEvents = [];
           } else {
@@ -58,6 +98,11 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
               children: [
                 // Sección de Resumen
                 _buildSummarySection(context),
+
+                const SizedBox(height: 28),
+
+                // Sección de eventos recientes
+                _buildRecentEventsSection(context),
 
                 const SizedBox(height: 28),
 
@@ -144,6 +189,174 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildRecentEventsSection(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final recentEvents = List<Event>.from(_staffEvents)
+      ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Eventos recientes',
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: _handleViewEvents,
+              child: Text(
+                'Ver todos',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (recentEvents.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surface : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border, width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.35 : 0.06),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Text(
+              'Todavía no hay eventos asignados a este staff.',
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+              ),
+            ),
+          )
+        else
+          Column(
+            children: recentEvents
+                .take(3)
+                .map(
+                  (event) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildRecentEventCard(context, event),
+                  ),
+                )
+                .toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRecentEventCard(BuildContext context, Event event) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final statusColor = switch (event.status) {
+      EventStatus.active => Colors.green,
+      EventStatus.pending => Colors.orange,
+      EventStatus.inactive => Colors.grey,
+      EventStatus.cancelled => AppColors.error,
+      EventStatus.completed => AppColors.secondary,
+    };
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: _handleViewEvents,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surface : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.35 : 0.06),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      event.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      event.status.toString().split('.').last.toUpperCase(),
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                event.location,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                DateFormat('dd/MM/yyyy HH:mm').format(event.dateTime),
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -315,14 +528,45 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           context,
           icon: Icons.people,
           title: 'Gestionar Usuarios',
-          onTap: () => _showSnackBar('Gestionar usuarios'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const StaffUserManagementPage(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildOptionButton(
+          context,
+          icon: Icons.calendar_month,
+          title: 'Gestionar Horarios de Clase',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const StaffSchedulePage(),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 12),
         _buildOptionButton(
           context,
           icon: Icons.bar_chart,
           title: 'Reportes',
-          onTap: () => _showSnackBar('Reportes'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StaffReportsPage(
+                  staffId: _staffId!,
+                  eventService: _eventService,
+                ),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 12),
         _buildOptionButton(
@@ -332,9 +576,7 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const SettingsScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
             );
           },
         ),
@@ -354,7 +596,9 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Text(
             'Cerrar sesión',
             style: GoogleFonts.outfit(
@@ -1030,29 +1274,108 @@ class _StaffEventsPage extends StatefulWidget {
 }
 
 class _StaffEventsPageState extends State<_StaffEventsPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  late final Stream<List<Event>> _staffEventsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _staffEventsStream = widget.eventService.getEventsByStaffStream(
+      widget.staffId,
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Mis Eventos'), elevation: 0),
       body: StreamBuilder<List<Event>>(
-        stream: widget.eventService.getEventsByStaffStream(widget.staffId),
+        stream: _staffEventsStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final staffEvents = snapshot.data ?? [];
-
-          if (staffEvents.isEmpty) {
-            return _buildEmptyState(context);
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  'No se pudieron cargar tus eventos',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
+              ),
+            );
           }
 
-          return ListView.builder(
-            itemCount: staffEvents.length,
-            itemBuilder: (context, index) {
-              final event = staffEvents[index];
-              return _buildEventTile(context, event);
-            },
+          final staffEvents = snapshot.data ?? [];
+          final query = _searchQuery.trim().toLowerCase();
+          final filteredEvents = query.isEmpty
+              ? staffEvents
+              : staffEvents.where((event) {
+                  final statusText = event.status.toString().split('.').last;
+                  return event.title.toLowerCase().contains(query) ||
+                      event.location.toLowerCase().contains(query) ||
+                      event.description.toLowerCase().contains(query) ||
+                      statusText.toLowerCase().contains(query);
+                }).toList();
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() => _searchQuery = value);
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por título, ubicación o estado',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    filled: true,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: filteredEvents.isEmpty
+                    ? (_searchQuery.trim().isEmpty
+                          ? _buildEmptyState(context)
+                          : _buildSearchEmptyState(context))
+                    : ListView.builder(
+                        itemCount: filteredEvents.length,
+                        itemBuilder: (context, index) {
+                          final event = filteredEvents[index];
+                          return _buildEventTile(context, event);
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
@@ -1068,6 +1391,26 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
           const SizedBox(height: 16),
           Text('No has creado eventos aún', style: AppTheme.emptyStateTitle),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchEmptyState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No hay coincidencias para "$_searchQuery"',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(fontSize: 16),
+            ),
+          ],
+        ),
       ),
     );
   }

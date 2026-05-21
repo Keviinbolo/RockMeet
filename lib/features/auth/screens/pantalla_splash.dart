@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:myapp/config/Theme/app_theme.dart';
-import 'package:myapp/config/Theme/constants/colors.dart';
-import 'package:myapp/config/Theme/constants/text_styles.dart';
-import 'package:myapp/core/widgets/validation_state_widget.dart';
+import 'package:RockMeet/config/Theme/app_theme.dart';
+import 'package:RockMeet/config/Theme/constants/colors.dart';
+import 'package:RockMeet/config/Theme/constants/text_styles.dart';
+import 'package:RockMeet/core/widgets/validation_state_widget.dart';
 
 class AnimatedSplashScreen extends StatefulWidget {
   const AnimatedSplashScreen({Key? key, required this.nextScreen})
@@ -111,16 +111,26 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                   // Aquí va el Logo
                   Container(
                     width: 150,
-                    height: 150,
-                    decoration: AppTheme.primaryGradientBox,
-                    child: const Icon(
-                      Icons.apps_sharp,
-                      size: 80,
-                      color: Colors.white,
+                    
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Image.asset(
+                        'lib/config/Theme/Logo/RockMeetLogo.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text('RockMeet', style: AppTextStyles.headlineLarge),
+                  Container(
+                    width: 150,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Image.asset(
+                        'lib/config/Theme/Logo/RockMeet.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

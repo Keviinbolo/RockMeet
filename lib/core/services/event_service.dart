@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:myapp/features/events/class_event.dart';
+import 'package:RockMeet/core/models/class_event.dart';
+import 'package:RockMeet/core/services/profile_service.dart';
 import 'package:uuid/uuid.dart';
 
 class EventService {
@@ -150,8 +151,13 @@ class EventService {
           });
         }
       });
+
+      try {
+        await ProfileService.instance.incrementActivitiesCountForUser(userId);
+      } catch (e) {
+        rethrow;
+      }
     } catch (e) {
-      print('Error marcando asistente: $e');
       rethrow;
     }
   }
@@ -163,8 +169,13 @@ class EventService {
         'attendeeIds': FieldValue.arrayRemove([userId]),
         'updatedAt': Timestamp.now(),
       });
+
+      try {
+        await ProfileService.instance.decrementActivitiesCountForUser(userId);
+      } catch (e) {
+        rethrow;
+      }
     } catch (e) {
-      print('Error removiendo asistente: $e');
       rethrow;
     }
   }
@@ -201,10 +212,10 @@ class EventService {
     try {
       await _firestore.collection('events').doc(eventId).update({
         'status': EventStatus.active.toString(),
+        'staffOrganizerId': staffId,
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error aprobando evento: $e');
       rethrow;
     }
   }
@@ -217,7 +228,6 @@ class EventService {
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error rechazando evento: $e');
       rethrow;
     }
   }
@@ -230,7 +240,6 @@ class EventService {
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error activando evento: $e');
       rethrow;
     }
   }
@@ -243,7 +252,6 @@ class EventService {
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error desactivando evento: $e');
       rethrow;
     }
   }
@@ -256,7 +264,6 @@ class EventService {
         'updatedAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error cancelando evento: $e');
       rethrow;
     }
   }
@@ -321,7 +328,6 @@ class EventService {
       });
       return eventId;
     } catch (e) {
-      print('Error creando evento sugerido: $e');
       rethrow;
     }
   }
