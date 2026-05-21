@@ -56,7 +56,6 @@ class AuthService {
         'course': course ?? '',
         'photoURL': '',
         'bio': '',
-        'age': age,
         'type': 'user',
         'blockedBy': <String>[],
         'profileComplete': false,

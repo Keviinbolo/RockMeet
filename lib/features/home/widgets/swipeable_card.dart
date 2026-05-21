@@ -8,20 +8,24 @@ import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 
 class SwipeableCard extends StatefulWidget {
   final UserProfile profile;
+  final UserProfile? currentUserProfile;
   final bool showHints;
   final VoidCallback onDismissHints;
   final VoidCallback onSwipeLeft;
   final VoidCallback onSwipeRight;
   final Function(double) onDragDownProgress;
+  final int Function(UserProfile, UserProfile)? calculateCompatibility;
 
   const SwipeableCard({
     super.key,
     required this.profile,
+    this.currentUserProfile,
     required this.showHints,
     required this.onDismissHints,
     required this.onSwipeLeft,
     required this.onSwipeRight,
     required this.onDragDownProgress,
+    this.calculateCompatibility,
   });
 
   @override

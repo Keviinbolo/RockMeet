@@ -23,6 +23,7 @@ class UserProfile {
   final bool isStaff;
   final String? gender;
   final String? course;
+  final String? clase;
 
   UserProfile({
     required this.uid,
@@ -47,6 +48,7 @@ class UserProfile {
     this.friends,
     this.gender,
     this.course,
+    this.clase,
   });
 
   factory UserProfile.fromFirestore(DocumentSnapshot doc) {
@@ -104,6 +106,7 @@ class UserProfile {
       friends: asNullableString(data['friends']),
       gender: asNullableString(data['gender']),
       course: asNullableString(data['course']),
+      clase: asNullableString(data['clase']),
     );
   }
 }

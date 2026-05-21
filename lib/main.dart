@@ -29,6 +29,28 @@ void main() async {
   }
 }
 //f8lB5SlHpNHKLfBp
+class ErrorApp extends StatelessWidget {
+  final String errorMessage;
+  const ErrorApp({super.key, required this.errorMessage});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Error al iniciar la app:\n$errorMessage',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 

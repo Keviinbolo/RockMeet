@@ -242,7 +242,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
         _emailController.text.trim(),
         _passwordController.text,
         displayName,
-        age: age,
+        birthDate: _selectedBirthDate,
+        gender: _selectedGender,
+        course: _courseController.text.trim(),
       );
 
       if (!mounted) return;
