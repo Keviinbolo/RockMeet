@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -43,6 +43,7 @@ class _HomePageState extends State<HomePage> {
   String? _pendingChatPeerUid;
   String? _pendingChatPeerName;
   String? _pendingChatPeerAvatarUrl;
+  UserProfile? _currentUserProfile;
   static const String _fallbackPhotoUrl =
       'https://images.unsplash.com/photo-1521119989659-a83eee488004?q=80&w=1080';
 
@@ -50,6 +51,16 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _initInteractionsAndLoadProfiles();
+    _loadCurrentUserProfile();
+  }
+
+  Future<void> _loadCurrentUserProfile() async {
+    final profile = await _getCurrentUserProfile();
+    if (mounted) {
+      setState(() {
+        _currentUserProfile = profile;
+      });
+    }
   }
 
   Future<void> _initInteractionsAndLoadProfiles() async {
@@ -90,6 +101,8 @@ class _HomePageState extends State<HomePage> {
     final twitter = (data['twitter'] as String?)?.trim();
     final instagram = (data['instagram'] as String?)?.trim();
     final tiktok = (data['tiktok'] as String?)?.trim();
+    final gender = (data['gender'] as String?)?.trim();
+    final course = (data['course'] as String?)?.trim();
     final interests =
         (data['interests'] as List?)?.whereType<String>().toList() ??
         <String>[];
@@ -246,6 +259,86 @@ class _HomePageState extends State<HomePage> {
       _pendingChatPeerName = profile.name;
       _pendingChatPeerAvatarUrl = profile.photos?.first;
     });
+  }
+
+  Future<UserProfile?> _getCurrentUserProfile() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return null;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (!doc.exists) return null;
+
+      final data = doc.data() as Map<String, dynamic>;
+
+      final displayName = (data['displayName'] as String?)?.trim();
+      final age = data['age'];
+      final parsedAge = age is int ? age : int.tryParse('$age');
+      final safeAge = (parsedAge != null && parsedAge >= 18 && parsedAge <= 99)
+          ? parsedAge
+          : 18;
+      final interests =
+          (data['interests'] as List?)?.whereType<String>().toList() ??
+          <String>[];
+      final gender = (data['gender'] as String?)?.trim();
+      final course = (data['course'] as String?)?.trim();
+
+      return UserProfile(
+        uid: currentUser.uid,
+        name: displayName ?? 'Usuario',
+        age: safeAge,
+        isStaff: false,
+        interests: interests.isNotEmpty ? interests : null,
+        gender: gender,
+        course: course,
+      );
+    } catch (e) {
+      print('Error getting current user profile: $e');
+      return null;
+    }
+  }
+
+  int _calculateCompatibility(UserProfile currentUser, UserProfile otherUser) {
+    int compatibilityScore = 0;
+
+    // Edad similar (dentro de 3 años): 25 puntos
+    final ageDifference = (currentUser.age - otherUser.age).abs();
+    if (ageDifference <= 3) {
+      compatibilityScore += 25;
+    } else if (ageDifference <= 5) {
+      compatibilityScore += 15;
+    }
+
+    // Mismos intereses: 35 puntos
+    if (currentUser.interests != null &&
+        otherUser.interests != null &&
+        currentUser.interests!.isNotEmpty &&
+        otherUser.interests!.isNotEmpty) {
+      final commonInterests = currentUser.interests!
+          .toSet()
+          .intersection(otherUser.interests!.toSet());
+      if (commonInterests.isNotEmpty) {
+        final matchPercentage = commonInterests.length / 
+            ((currentUser.interests!.length + otherUser.interests!.length) / 2);
+        compatibilityScore += (35 * matchPercentage).toInt();
+      }
+    }
+
+    // Mismo curso: 20 puntos
+    if (currentUser.course != null &&
+        otherUser.course != null &&
+        currentUser.course!.isNotEmpty &&
+        otherUser.course!.isNotEmpty &&
+        currentUser.course == otherUser.course) {
+      compatibilityScore += 20;
+    }
+
+    // Limitar a 100 puntos máximo
+    return compatibilityScore.clamp(0, 100);
   }
 
   Future<void> _resetInteractions() async {
@@ -589,6 +682,7 @@ class _HomePageState extends State<HomePage> {
                 SwipeableCard(
                   key: ValueKey('$safeIndex-${currentProfile.uid}'),
                   profile: currentProfile,
+                  currentUserProfile: _currentUserProfile,
                   showHints: _showCardHints,
                   onDismissHints: () {
                     if (!_showCardHints) return;
@@ -602,6 +696,7 @@ class _HomePageState extends State<HomePage> {
                       _handleLike(currentProfile, profiles.length),
                   onDragDownProgress: (progress) =>
                       setState(() => _dragDownProgress = progress),
+                  calculateCompatibility: _calculateCompatibility,
                 ),
               ],
             ),

@@ -23,7 +23,10 @@ class AuthService {
     String email,
     String password,
     String displayName, {
-    int age = 18,
+    String? lastName,
+    DateTime? birthDate,
+    String? gender,
+    String? course,
   }) async {
     try {
       UserCredential userCredential = await _firebaseAuth
@@ -31,10 +34,26 @@ class AuthService {
 
       await userCredential.user?.updateDisplayName(displayName);
 
+      // Calcular edad
+      int? age;
+      if (birthDate != null) {
+        final now = DateTime.now();
+        age = now.year - birthDate.year;
+        if (now.month < birthDate.month ||
+            (now.month == birthDate.month && now.day < birthDate.day)) {
+          age--;
+        }
+      }
+
+      // Crear documento de usuario en Firestore
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'uid': userCredential.user!.uid,
         'email': email,
         'displayName': displayName,
+        'lastName': lastName ?? '',
+        'age': age ?? 0,
+        'gender': gender ?? '',
+        'course': course ?? '',
         'photoURL': '',
         'bio': '',
         'age': age,
