@@ -386,30 +386,30 @@ class _SwipeableCardState extends State<SwipeableCard>
                   ),
                 ),
 
-                // Badge NOPE
+                // Badge LIKE
                 Positioned(
                   left: 14,
                   top: 32,
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 90),
-                    opacity: nopeProgress,
+                    opacity: likeProgress,
                     child: Transform.rotate(
                       angle: -0.20,
-                      child: _buildBadge("NOPE", AppColors.error),
+                      child: _buildBadge("LIKE", AppColors.success),
                     ),
                   ),
                 ),
 
-                // Badge LIKE
+                // Badge NOPE
                 Positioned(
                   right: 14,
                   top: 32,
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 90),
-                    opacity: likeProgress,
+                    opacity: nopeProgress,
                     child: Transform.rotate(
                       angle: 0.20,
-                      child: _buildBadge("LIKE", AppColors.success),
+                      child: _buildBadge("NOPE", AppColors.error),
                     ),
                   ),
                 ),
@@ -628,13 +628,19 @@ class _SwipeableCardState extends State<SwipeableCard>
                     children: [
                       Text(
                         widget.profile.name,
-                        style: AppTextStyles.titleLarge,
+                        style: AppTextStyles.displayMedium.copyWith(
+                          color: Colors.lightBlue,
+                          fontWeight: FontWeight.w700,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        
                       ),
                       Text(
                         'Intereses y detalles',
-                        style: AppTextStyles.labelSmall,
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: Colors.black,
+                        ),
                       ),
                     ],
                   ),

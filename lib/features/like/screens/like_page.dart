@@ -103,7 +103,10 @@ class _LikesPageState extends State<LikesPage> {
                 children: [
                   Text(
                     'Sugerencias para ti',
-                    style: AppTextStyles.displaySmall,
+                    style: AppTextStyles.displaySmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(

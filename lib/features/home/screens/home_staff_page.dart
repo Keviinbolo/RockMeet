@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:RockMeet/config/Theme/app_theme.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -531,6 +532,16 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           icon: Icons.vpn_key,
           title: 'Código de Acceso al Registro',
           onTap: () => _showTutorCodeDialog(context),
+        ),
+        const SizedBox(height: 12),
+        _buildOptionButton(
+          context,
+          icon: Icons.support_agent,
+          title: 'Mensajes de Soporte',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const _SupportMessagesPage()),
+          ),
         ),
         const SizedBox(height: 12),
         _buildOptionButton(
@@ -1148,6 +1159,232 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+
+// Página de mensajes de soporte (solo lectura para el staff)
+class _SupportMessagesPage extends StatelessWidget {
+  const _SupportMessagesPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mensajes de Soporte'),
+        elevation: 0,
+      ),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('support_messages')
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox, size: 56, color: Colors.grey.shade400),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No hay mensajes aún',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final data = docs[index].data();
+              final docId = docs[index].id;
+              final email = data['fromEmail'] as String? ?? '—';
+              final subject = data['subject'] as String? ?? '(sin asunto)';
+              final message = data['message'] as String? ?? '';
+              final read = data['read'] as bool? ?? false;
+              final ts = data['createdAt'] as Timestamp?;
+              final date = ts != null
+                  ? '${ts.toDate().day.toString().padLeft(2, '0')}/'
+                    '${ts.toDate().month.toString().padLeft(2, '0')}/'
+                    '${ts.toDate().year}  '
+                    '${ts.toDate().hour.toString().padLeft(2, '0')}:'
+                    '${ts.toDate().minute.toString().padLeft(2, '0')}'
+                  : '';
+
+              return GestureDetector(
+                onTap: () {
+                  if (!read) {
+                    FirebaseFirestore.instance
+                        .collection('support_messages')
+                        .doc(docId)
+                        .update({'read': true});
+                  }
+                  _showMessageDetail(context, email, subject, message, date, isDark);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surface : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: read
+                          ? AppColors.border
+                          : AppColors.primary.withOpacity(0.5),
+                      width: read ? 1 : 1.8,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (!read)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          Expanded(
+                            child: Text(
+                              subject,
+                              style: GoogleFonts.outfit(
+                                fontSize: 15,
+                                fontWeight: read ? FontWeight.w500 : FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            date,
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              color: isDark ? Colors.grey.shade500 : Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        email,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        message,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _showMessageDetail(
+    BuildContext context,
+    String email,
+    String subject,
+    String message,
+    String date,
+    bool isDark,
+  ) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          subject,
+          style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.email, size: 14),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    email,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (date.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                date,
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  color: isDark ? Colors.grey.shade500 : Colors.grey.shade500,
+                ),
+              ),
+            ],
+            const Divider(height: 20),
+            Text(
+              message,
+              style: GoogleFonts.outfit(fontSize: 14, height: 1.6),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cerrar',
+              style: GoogleFonts.outfit(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

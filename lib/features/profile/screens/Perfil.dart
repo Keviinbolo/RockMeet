@@ -1160,10 +1160,10 @@ class _ProfilePageState extends State<ProfilePage> {
                               label: 'TikTok',
                               value: tiktok,
                               controller: _tiktokController,
-                              color: Colors.white,
+                              color: Colors.yellow.shade700,
                             ),
                             _buildSocialRow(
-                              icon: Icons.music_note_rounded,
+                              icon: Icons.library_music,
                               label: 'Spotify',
                               value: spotify,
                               controller: _spotifyController,
