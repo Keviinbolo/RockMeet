@@ -47,7 +47,21 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isUploadingAvatar = false;
   bool _isUploadingGallery = false;
   String? _clase;
+  String? _course;
   List<Interest> _tempInterests = [];
+
+  static const _courseOptions = [
+    'DAM - Desarrollo de Aplicaciones Multiplataforma',
+    'DAW - Desarrollo de Aplicaciones Web',
+    'ASIX - Administración de Sistemas Informáticos en Red',
+    'SMX - Sistemas Microinformáticos y Redes',
+    'AU - Automoción',
+    'IDMN - Imagen para el Diagnóstico y Medicina Nuclear',
+    'HB - Higiene Bucodental',
+    'MP - Marketing y Publicidad',
+    'EDI - Educación Infantil',
+    'Otro',
+  ];
 
   List<Interest> _buildInterestCatalog() {
     return [
@@ -283,6 +297,8 @@ class _ProfilePageState extends State<ProfilePage> {
             : null,
         clase: _clase,
         updateClase: true,
+        course: _course,
+        updateCourse: true,
       );
 
       setState(() => _isEditing = false);
@@ -459,6 +475,7 @@ class _ProfilePageState extends State<ProfilePage> {
               _artistController.text = favoriteArtist;
             _tempAvatarUrl = avatarUrl;
             _clase = profile.clase;
+            _course = profile.course;
             _tempImages = List.from(gallery);
             _tempInterests = _buildInterestsFromProfile(profile);
           }
@@ -613,7 +630,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Clase
+                        // Curso
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(16),
@@ -625,7 +642,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     Icon(Icons.school),
                                     SizedBox(width: 8),
                                     Text(
-                                      'Clase',
+                                      'Curso',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 16,
@@ -636,17 +653,18 @@ class _ProfilePageState extends State<ProfilePage> {
                                 const SizedBox(height: 12),
                                 if (_isEditing)
                                   DropdownButtonFormField<String?>(
-                                    value: _clase,
+                                    value: _course,
+                                    isExpanded: true,
                                     decoration: const InputDecoration(
                                       border: OutlineInputBorder(),
-                                      hintText: 'Selecciona tu clase',
+                                      hintText: 'Selecciona tu curso',
                                     ),
                                     items: [
                                       const DropdownMenuItem<String?>(
                                         value: null,
-                                        child: Text('Sin clase'),
+                                        child: Text('Sin asignar'),
                                       ),
-                                      ...ScheduleService.availableClasses.map(
+                                      ..._courseOptions.map(
                                         (c) => DropdownMenuItem<String?>(
                                           value: c,
                                           child: Text(c),
@@ -654,50 +672,43 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                     ],
                                     onChanged: (value) =>
-                                        setState(() => _clase = value),
+                                        setState(() => _course = value),
                                   )
-                                else ...[
+                                else
                                   Text(
-                                    _clase ?? 'Sin clase asignada',
+                                    _course ?? 'Sin curso asignado',
                                     style: TextStyle(
-                                      color: _clase == null
+                                      color: _course == null
                                           ? Colors.grey.shade500
                                           : null,
                                     ),
                                   ),
-                                  if (_clase != null)
-                                    StreamBuilder<String?>(
-                                      stream: ScheduleService.instance
-                                          .watchScheduleImageUrl(_clase!),
-                                      builder: (context, scheduleSnap) {
-                                        final scheduleUrl = scheduleSnap.data;
-                                        if (scheduleUrl == null) {
-                                          return const SizedBox.shrink();
-                                        }
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 12,
-                                          ),
-                                          child: SizedBox(
-                                            width: double.infinity,
-                                            child: ElevatedButton.icon(
-                                              onPressed: () =>
-                                                  _showScheduleImage(
-                                                    scheduleUrl,
-                                                    _clase!,
-                                                  ),
-                                              icon: const Icon(
-                                                Icons.calendar_month,
-                                              ),
-                                              label: const Text(
-                                                'Ver horario de clases',
-                                              ),
+                                // Horario de clase (si existe)
+                                if (_clase != null)
+                                  StreamBuilder<String?>(
+                                    stream: ScheduleService.instance
+                                        .watchScheduleImageUrl(_clase!),
+                                    builder: (context, scheduleSnap) {
+                                      final scheduleUrl = scheduleSnap.data;
+                                      if (scheduleUrl == null) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 12),
+                                        child: SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => _showScheduleImage(
+                                              scheduleUrl,
+                                              _clase!,
                                             ),
+                                            icon: const Icon(Icons.calendar_month),
+                                            label: const Text('Ver horario de clases'),
                                           ),
-                                        );
-                                      },
-                                    ),
-                                ],
+                                        ),
+                                      );
+                                    },
+                                  ),
                               ],
                             ),
                           ),

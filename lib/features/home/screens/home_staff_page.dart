@@ -1977,19 +1977,11 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed:
-                            event.status == EventStatus.active ||
-                                event.status == EventStatus.inactive
-                            ? () => _showDeleteConfirmation(event)
-                            : null,
-                        icon: const Icon(Icons.delete),
-                        label: const Text('Cancelar'),
+                        onPressed: () => _showDeleteConfirmation(event),
+                        icon: const Icon(Icons.delete_forever),
+                        label: const Text('Eliminar'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              event.status == EventStatus.active ||
-                                  event.status == EventStatus.inactive
-                              ? Colors.red
-                              : null,
+                          backgroundColor: Colors.red,
                         ),
                       ),
                     ),

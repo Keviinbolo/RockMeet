@@ -25,7 +25,7 @@ class RegistroScreen extends StatefulWidget {
 
 class _RegistroScreenState extends State<RegistroScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final _nameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -33,7 +33,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   final _tutorCodeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   final TextEditingController _birthDateController = TextEditingController();
   DateTime? _selectedBirthDate;
 
@@ -76,8 +76,18 @@ class _RegistroScreenState extends State<RegistroScreen> {
     int tempYear = 2000;
 
     final List<String> monthNames = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
 
     final DateTime? picked = await showDialog(
@@ -105,10 +115,12 @@ class _RegistroScreenState extends State<RegistroScreen> {
                               DropdownButton<int>(
                                 value: tempDay,
                                 items: List.generate(maxDays, (i) => i + 1)
-                                    .map((day) => DropdownMenuItem(
-                                          value: day,
-                                          child: Text(day.toString()),
-                                        ))
+                                    .map(
+                                      (day) => DropdownMenuItem(
+                                        value: day,
+                                        child: Text(day.toString()),
+                                      ),
+                                    )
                                     .toList(),
                                 onChanged: (newDay) {
                                   setStateDialog(() {
@@ -127,15 +139,20 @@ class _RegistroScreenState extends State<RegistroScreen> {
                               DropdownButton<int>(
                                 value: tempMonth,
                                 items: List.generate(12, (i) => i + 1)
-                                    .map((month) => DropdownMenuItem(
-                                          value: month,
-                                          child: Text(monthNames[month - 1]),
-                                        ))
+                                    .map(
+                                      (month) => DropdownMenuItem(
+                                        value: month,
+                                        child: Text(monthNames[month - 1]),
+                                      ),
+                                    )
                                     .toList(),
                                 onChanged: (newMonth) {
                                   setStateDialog(() {
                                     tempMonth = newMonth!;
-                                    int newMax = _getDaysInMonth(tempMonth, tempYear);
+                                    int newMax = _getDaysInMonth(
+                                      tempMonth,
+                                      tempYear,
+                                    );
                                     if (tempDay > newMax) tempDay = newMax;
                                   });
                                 },
@@ -150,17 +167,25 @@ class _RegistroScreenState extends State<RegistroScreen> {
                               const Text('Año'),
                               DropdownButton<int>(
                                 value: tempYear,
-                                items: List.generate(
-                                  DateTime.now().year - 1900 + 1,
-                                  (i) => 1900 + i,
-                                ).map((year) => DropdownMenuItem(
-                                      value: year,
-                                      child: Text(year.toString()),
-                                    )).toList(),
+                                items:
+                                    List.generate(
+                                          DateTime.now().year - 1900 + 1,
+                                          (i) => 1900 + i,
+                                        )
+                                        .map(
+                                          (year) => DropdownMenuItem(
+                                            value: year,
+                                            child: Text(year.toString()),
+                                          ),
+                                        )
+                                        .toList(),
                                 onChanged: (newYear) {
                                   setStateDialog(() {
                                     tempYear = newYear!;
-                                    int newMax = _getDaysInMonth(tempMonth, tempYear);
+                                    int newMax = _getDaysInMonth(
+                                      tempMonth,
+                                      tempYear,
+                                    );
                                     if (tempDay > newMax) tempDay = newMax;
                                   });
                                 },
@@ -195,7 +220,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
     if (picked != null) {
       setState(() {
         _selectedBirthDate = picked;
-        String fechaFormateada = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+        String fechaFormateada =
+            "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
         _birthDateController.text = fechaFormateada;
         _ageError = null;
       });
@@ -206,7 +232,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   int _calculateAge(DateTime birthDate) {
     final now = DateTime.now();
     int age = now.year - birthDate.year;
-    if (now.month < birthDate.month || 
+    if (now.month < birthDate.month ||
         (now.month == birthDate.month && now.day < birthDate.day)) {
       age--;
     }
@@ -225,13 +251,17 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
     final age = _calculateAge(_selectedBirthDate!);
     if (age < 18) {
-      setState(() => _ageError = 'Debes ser mayor de 18 años para crear una cuenta');
+      setState(
+        () => _ageError = 'Debes ser mayor de 18 años para crear una cuenta',
+      );
       return;
     }
 
     if (!_acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debes aceptar los términos y condiciones')),
+        const SnackBar(
+          content: Text('Debes aceptar los términos y condiciones'),
+        ),
       );
       return;
     }
@@ -246,14 +276,18 @@ class _RegistroScreenState extends State<RegistroScreen> {
       if (!codeValid) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('El código de tutor no es válido. Contacta con tu tutor.'),
+            content: Text(
+              'El código de tutor no es válido. Contacta con tu tutor.',
+            ),
           ),
         );
         setState(() => _isLoading = false);
         return;
       }
 
-      final displayName = '${_nameController.text.trim()} ${_lastNameController.text.trim()}'.trim();
+      final displayName =
+          '${_nameController.text.trim()} ${_lastNameController.text.trim()}'
+              .trim();
       await AuthService().register(
         _emailController.text.trim(),
         _passwordController.text,
@@ -281,7 +315,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       body: WaveBackground(
         child: SafeArea(
@@ -367,10 +401,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.secondary,
-                theme.colorScheme.primary,
-              ],
+              colors: [theme.colorScheme.secondary, theme.colorScheme.primary],
             ),
             borderRadius: BorderRadius.circular(16),
           ),
@@ -381,10 +412,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Text(
-          'Crear cuenta',
-          style: theme.textTheme.headlineLarge,
-        ),
+        Text('Crear cuenta', style: theme.textTheme.headlineLarge),
         const SizedBox(height: 8),
         Text(
           'Completa tus datos para registrarte',
@@ -447,7 +475,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   Widget _buildBirthDateField() {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -455,7 +483,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _birthDateController,
-          readOnly: true,          
+          readOnly: true,
           onTap: () => _selectDate(context),
           decoration: const InputDecoration(
             hintText: 'DD/MM/AAAA',
@@ -481,10 +509,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               _ageError!,
-              style: TextStyle(
-                color: theme.colorScheme.error,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
             ),
           ),
       ],
@@ -493,7 +518,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   Widget _buildGenderField() {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -528,13 +553,13 @@ class _RegistroScreenState extends State<RegistroScreen> {
   static const _courses = [
     'DAM - Desarrollo de Aplicaciones Multiplataforma',
     'DAW - Desarrollo de Aplicaciones Web',
-    'ASIR - Administración de Sistemas Informáticos en Red',
-    'SMR - Sistemas Microinformáticos y Redes',
-    'FPBI - Formación Profesional Básica Informática',
-    'Bachillerato Tecnológico',
-    'Bachillerato Ciencias',
-    'Bachillerato Humanidades y CC. Sociales',
-    'Bachillerato Artes',
+    'ASIX - Administración de Sistemas Informáticos en Red',
+    'SMX - Sistemas Microinformáticos y Redes',
+    'AU - Automoción',
+    'IDMN - Imagen para el Diagnóstico y Medicina Nuclear',
+    'HB - Higiene Bucodental',
+    'MP - Marketing y Publicidad',
+    'EDI - Educación Infantil',
     'Otro',
   ];
 
@@ -592,7 +617,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   Widget _buildPasswordField() {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -621,7 +646,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   Widget _buildConfirmPasswordField() {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -660,9 +685,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
             });
           },
           activeColor: theme.colorScheme.primary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         Expanded(
           child: RichText(
@@ -721,10 +744,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                theme.colorScheme.secondary,
-                theme.colorScheme.primary,
-              ],
+              colors: [theme.colorScheme.secondary, theme.colorScheme.primary],
             ),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -782,9 +802,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     return Row(
       children: [
         Expanded(
-          child: Divider(
-            color: theme.colorScheme.outline.withOpacity(0.3),
-          ),
+          child: Divider(color: theme.colorScheme.outline.withOpacity(0.3)),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -796,9 +814,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
           ),
         ),
         Expanded(
-          child: Divider(
-            color: theme.colorScheme.outline.withOpacity(0.3),
-          ),
+          child: Divider(color: theme.colorScheme.outline.withOpacity(0.3)),
         ),
       ],
     );
@@ -807,22 +823,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
   Widget _buildSocialButtons() {
     return Row(
       children: [
-        Expanded(
-          child: _buildSocialButton('Google'),
-        ),
+        Expanded(child: _buildSocialButton('Google')),
         const SizedBox(width: 12),
-        Expanded(
-          child: _buildSocialButton('Facebook'),
-        ),
+        Expanded(child: _buildSocialButton('Facebook')),
       ],
     );
   }
 
   Widget _buildSocialButton(String label) {
-    return OutlinedButton(
-      onPressed: () {},
-      child: Text(label),
-    );
+    return OutlinedButton(onPressed: () {}, child: Text(label));
   }
 
   Widget _buildInputField({
@@ -835,7 +844,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     String? Function(String?)? validator,
   }) {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

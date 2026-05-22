@@ -365,7 +365,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
           const SizedBox(height: 12),
           Text(
             labels[_currentStep],
-            style: AppTextStyles.headlineSmall,
+            style: AppTextStyles.headlineSmall.copyWith(color: AppColors.textPrimary),
           ),
         ],
       ),
