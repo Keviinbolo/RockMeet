@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
 import 'package:RockMeet/features/profile/interest_screen.dart';
 import 'package:RockMeet/core/services/profile_service.dart';
@@ -1210,6 +1211,18 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  String _shortenUrl(String url) {
+    final trimmed = url.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || !uri.hasScheme) return trimmed;
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segments.isEmpty) return uri.host;
+    // open.spotify.com/user/username → @username
+    if (segments.length >= 2 && segments[0] == 'user') return '@${segments[1]}';
+    // cualquier otra URL → último segmento del path
+    return segments.last;
+  }
+
   Widget _buildSocialRow({
     required IconData icon,
     required String label,
@@ -1250,11 +1263,23 @@ class _ProfilePageState extends State<ProfilePage> {
                           hintText: hint,
                         ),
                       )
-                    : Text(
-                        value,
-                        style: TextStyle(color: Colors.grey.shade400),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    : GestureDetector(
+                        onTap: () async {
+                          final uri = Uri.tryParse(value.trim());
+                          if (uri != null && uri.hasScheme && await canLaunchUrl(uri)) {
+                            launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: Text(
+                          _shortenUrl(value),
+                          style: TextStyle(
+                            color: color,
+                            decoration: TextDecoration.underline,
+                            decorationColor: color,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
               ],
             ),

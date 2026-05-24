@@ -110,4 +110,6 @@ class UserProfile {
       clase: asNullableString(data['clase']),
     );
   }
+
+  String? get displayName => null;
 }

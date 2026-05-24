@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -299,6 +300,21 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/profile-setup');
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      final message = switch (e.code) {
+        'email-already-in-use' =>
+          'Este correo ya está registrado. Inicia sesión o usa otro correo.',
+        'invalid-email' => 'El formato del correo electrónico no es válido.',
+        'weak-password' => 'La contraseña es demasiado débil (mínimo 6 caracteres).',
+        _ => 'Error al registrarse: ${e.message}',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     } on Exception catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

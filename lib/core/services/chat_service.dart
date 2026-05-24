@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:RockMeet/core/services/notification_service.dart';
 
 class ChatMessage {
   final String id;
@@ -188,6 +189,16 @@ class ChatService {
     }, SetOptions(merge: true));
 
     await batch.commit();
+
+    // Notificación de mensaje al receptor
+    NotificationService.instance.send(
+      toUserId: receiverId,
+      type: 'message',
+      fromUserId: uid,
+      fromName: _auth.currentUser?.displayName ?? '',
+      fromPhotoUrl: _auth.currentUser?.photoURL ?? '',
+      preview: trimmed.length > 60 ? '${trimmed.substring(0, 60)}…' : trimmed,
+    ).catchError((_) {});
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> streamCurrentUserChats() {

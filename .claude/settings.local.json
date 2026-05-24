@@ -12,7 +12,10 @@
       "Bash(Select-String \"error -\")",
       "Bash(Select-Object -First 50)",
       "Bash(xargs grep -l \"Firestore\\\\|collection\\('users'\\)\")",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "Bash(Get-ChildItem -Path \"Y:\\\\Works\\\\CFGS 2\\\\Projecto DAM\\\\RockMeet\\\\RockMeet\\\\lib\" -Recurse -Filter \"*.dart\")",
+      "Bash(xargs grep -l \"support_messages\")",
+      "Bash(flutter pub *)"
     ]
   }
 }

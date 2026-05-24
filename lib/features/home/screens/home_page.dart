@@ -10,6 +10,7 @@ import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
 import 'package:RockMeet/core/services/chat_service.dart';
 import 'package:RockMeet/core/services/interaction_service.dart';
+import 'package:RockMeet/core/services/notification_service.dart';
 import 'package:RockMeet/core/services/supabase_service.dart';
 import 'package:RockMeet/core/services/profile_service.dart';
 import 'package:RockMeet/core/widgets/match_animation_widget.dart';
@@ -17,6 +18,7 @@ import 'package:RockMeet/features/chat/screens/chat_page.dart';
 import 'package:RockMeet/features/events/screens/event_screen.dart';
 import 'package:RockMeet/features/home/widgets/swipeable_card.dart';
 import 'package:RockMeet/features/like/screens/like_page.dart';
+import 'package:RockMeet/features/notifications/notifications_page.dart';
 import 'package:RockMeet/features/profile/screens/Perfil.dart';
 import 'package:RockMeet/features/settings/screens/ajustes.dart';
 
@@ -498,6 +500,18 @@ class _HomePageState extends State<HomePage> {
         .incrementLikesCountForUser(currentProfile.uid)
         .catchError((e) => print("Error incrementando likes: $e"));
 
+    // Notificación de like
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final myName = currentUser?.displayName ?? '';
+    final myPhoto = _currentUserProfile?.photos?.firstOrNull ?? currentUser?.photoURL ?? '';
+    NotificationService.instance.send(
+      toUserId: currentProfile.uid,
+      type: 'like',
+      fromUserId: currentUser?.uid ?? '',
+      fromName: myName,
+      fromPhotoUrl: myPhoto,
+    ).catchError((_) {});
+
     final isMutualLike = await _isMutualLike(currentProfile);
 
     if (isMutualLike) {
@@ -513,6 +527,21 @@ class _HomePageState extends State<HomePage> {
       ProfileService.instance
           .incrementFriendsCountForUser(currentProfile.uid)
           .catchError((e) => print("Error incrementando amigos del otro: $e"));
+      // Notificaciones de match para ambos
+      NotificationService.instance.send(
+        toUserId: currentProfile.uid,
+        type: 'match',
+        fromUserId: currentUser?.uid ?? '',
+        fromName: myName,
+        fromPhotoUrl: myPhoto,
+      ).catchError((_) {});
+      NotificationService.instance.send(
+        toUserId: currentUser?.uid ?? '',
+        type: 'match',
+        fromUserId: currentProfile.uid,
+        fromName: currentProfile.displayName ?? '',
+        fromPhotoUrl: currentProfile.photos?.firstOrNull ?? '',
+      ).catchError((_) {});
       _showMatchModal(currentProfile, profilesLength);
     } else {
       _nextProfile(profilesLength);
@@ -598,6 +627,7 @@ class _HomePageState extends State<HomePage> {
                     color: AppColors.textPrimary,
                     tooltip: 'Reiniciar perfiles',
                   ),
+                  _NotificationBell(uid: FirebaseAuth.instance.currentUser?.uid),
                   IconButton(
                     onPressed: () => Navigator.push(
                       context,
@@ -782,6 +812,64 @@ class _HomePageState extends State<HomePage> {
         BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Eventos'),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
       ],
+    );
+  }
+}
+
+class _NotificationBell extends StatelessWidget {
+  final String? uid;
+  const _NotificationBell({required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    if (uid == null) {
+      return IconButton(
+        icon: const Icon(Icons.notifications_none),
+        color: AppColors.textPrimary,
+        onPressed: null,
+      );
+    }
+    return StreamBuilder<int>(
+      stream: NotificationService.instance.unreadCountStream(uid!),
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_none),
+              color: AppColors.textPrimary,
+              tooltip: 'Notificaciones',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsPage()),
+              ),
+            ),
+            if (count > 0)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

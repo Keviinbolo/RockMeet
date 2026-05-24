@@ -1164,9 +1164,65 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
   }
 }
 
-// Página de mensajes de soporte (solo lectura para el staff)
+// Página de mensajes de soporte
 class _SupportMessagesPage extends StatelessWidget {
   const _SupportMessagesPage();
+
+  static const _statusWorking = 'working';
+  static const _statusResolved = 'resolved';
+
+  Color _borderColor(String? status, bool read) {
+    return switch (status) {
+      _statusWorking => Colors.orange,
+      _statusResolved => Colors.green,
+      _ => read ? AppColors.border : AppColors.primary.withOpacity(0.5),
+    };
+  }
+
+  Widget _statusChip(String? status) {
+    if (status == _statusWorking) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          'Trabajando en ello',
+          style: GoogleFonts.outfit(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.orange,
+          ),
+        ),
+      );
+    }
+    if (status == _statusResolved) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          'Resuelto',
+          style: GoogleFonts.outfit(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.green,
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  void _setStatus(String docId, String status) {
+    FirebaseFirestore.instance
+        .collection('support_messages')
+        .doc(docId)
+        .update({'status': status, 'read': true});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1216,6 +1272,7 @@ class _SupportMessagesPage extends StatelessWidget {
               final subject = data['subject'] as String? ?? '(sin asunto)';
               final message = data['message'] as String? ?? '';
               final read = data['read'] as bool? ?? false;
+              final status = data['status'] as String?;
               final ts = data['createdAt'] as Timestamp?;
               final date = ts != null
                   ? '${ts.toDate().day.toString().padLeft(2, '0')}/'
@@ -1241,10 +1298,8 @@ class _SupportMessagesPage extends StatelessWidget {
                     color: isDark ? AppColors.surface : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: read
-                          ? AppColors.border
-                          : AppColors.primary.withOpacity(0.5),
-                      width: read ? 1 : 1.8,
+                      color: _borderColor(status, read),
+                      width: (read && status == null) ? 1 : 1.8,
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -1256,6 +1311,7 @@ class _SupportMessagesPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Cabecera: punto no leído + asunto + fecha
                       Row(
                         children: [
                           if (!read)
@@ -1284,19 +1340,27 @@ class _SupportMessagesPage extends StatelessWidget {
                             date,
                             style: GoogleFonts.outfit(
                               fontSize: 11,
-                              color: isDark ? Colors.grey.shade500 : Colors.grey.shade500,
+                              color: Colors.grey.shade500,
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        email,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      // Email + chip de estado
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              email,
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          _statusChip(status),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -1308,6 +1372,55 @@ class _SupportMessagesPage extends StatelessWidget {
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 12),
+                      // Botones de estado
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: status == _statusWorking
+                                  ? null
+                                  : () => _setStatus(docId, _statusWorking),
+                              icon: const Icon(Icons.build_circle_outlined, size: 16),
+                              label: const Text('Trabajando'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.orange,
+                                side: BorderSide(
+                                  color: status == _statusWorking
+                                      ? Colors.orange.withOpacity(0.3)
+                                      : Colors.orange,
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                textStyle: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: status == _statusResolved
+                                  ? null
+                                  : () => _setStatus(docId, _statusResolved),
+                              icon: const Icon(Icons.check_circle_outline, size: 16),
+                              label: const Text('Resuelto'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: status == _statusResolved
+                                    ? Colors.green.withOpacity(0.4)
+                                    : Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                textStyle: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1362,7 +1475,7 @@ class _SupportMessagesPage extends StatelessWidget {
                 date,
                 style: GoogleFonts.outfit(
                   fontSize: 11,
-                  color: isDark ? Colors.grey.shade500 : Colors.grey.shade500,
+                  color: Colors.grey.shade500,
                 ),
               ),
             ],
@@ -2226,11 +2339,11 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
             : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          '¿Cancelar evento?',
+          '¿Eliminar evento?',
           style: AppTheme.eventTitle.copyWith(color: AppColors.error),
         ),
         content: Text(
-          'Esta acción no se puede deshacer. ¿Deseas cancelar el evento "${event.title}"?',
+          'Esta acción no se puede deshacer. El evento "${event.title}" se eliminará permanentemente.',
           style: AppTheme.eventDescription,
         ),
         actions: [
@@ -2244,14 +2357,19 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              widget.eventService.cancelEvent(event.id);
-
+            onPressed: () async {
               Navigator.pop(context);
-              _showSnackBar('Evento cancelado');
+              try {
+                await widget.eventService.deleteEvent(event.id);
+                if (!mounted) return;
+                _showSnackBar('Evento eliminado correctamente');
+              } catch (e) {
+                if (!mounted) return;
+                _showSnackBar('Error al eliminar el evento');
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Sí, Cancelar'),
+            child: const Text('Sí, Eliminar'),
           ),
         ],
       ),

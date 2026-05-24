@@ -91,7 +91,13 @@ class _ContactarSoporteScreenState extends State<ContactarSoporteScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Formulario de c ontacto
+                // Mis reportes
+                _buildSection(title: 'Mis reportes', isDark: isDark),
+                const SizedBox(height: 12),
+                _buildMyReports(isDark),
+                const SizedBox(height: 24),
+
+                // Formulario de contacto
                 _buildSection(
                   title: 'Envía tu duda o comentario',
                   isDark: isDark,
@@ -208,6 +214,10 @@ class _ContactarSoporteScreenState extends State<ContactarSoporteScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildMyReports(bool isDark) {
+    return _MyReportsWidget(isDark: isDark);
   }
 
   Widget _buildSection({
@@ -403,5 +413,179 @@ class _ContactarSoporteScreenState extends State<ContactarSoporteScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+}
+
+class _MyReportsWidget extends StatefulWidget {
+  final bool isDark;
+  const _MyReportsWidget({required this.isDark});
+
+  @override
+  State<_MyReportsWidget> createState() => _MyReportsWidgetState();
+}
+
+class _MyReportsWidgetState extends State<_MyReportsWidget> {
+  List<Map<String, dynamic>> _reports = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReports();
+  }
+
+  Future<void> _loadReports() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() => _loading = false);
+      return;
+    }
+
+    try {
+      // Buscar por uid
+      final byUid = await FirebaseFirestore.instance
+          .collection('support_messages')
+          .where('fromUserId', isEqualTo: user.uid)
+          .get();
+
+      // Buscar también por email (cubre documentos guardados sin uid)
+      final byEmail = await FirebaseFirestore.instance
+          .collection('support_messages')
+          .where('fromEmail', isEqualTo: user.email)
+          .get();
+
+      // Unir sin duplicados usando el docId como clave
+      final merged = <String, Map<String, dynamic>>{};
+      for (final doc in [...byUid.docs, ...byEmail.docs]) {
+        merged[doc.id] = {'id': doc.id, ...doc.data()};
+      }
+
+      final list = merged.values.toList()
+        ..sort((a, b) {
+          final aTs = a['createdAt'] as Timestamp?;
+          final bTs = b['createdAt'] as Timestamp?;
+          if (aTs == null) return 1;
+          if (bTs == null) return -1;
+          return bTs.compareTo(aTs);
+        });
+
+      if (mounted) setState(() { _reports = list; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
+    if (_error != null) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          'Error: $_error',
+          style: GoogleFonts.outfit(fontSize: 12, color: Colors.red),
+        ),
+      );
+    }
+
+    if (_reports.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: widget.isDark ? Colors.grey.shade800 : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: widget.isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+          ),
+        ),
+        child: Text(
+          'Aún no has enviado ningún reporte.',
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            color: widget.isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: _reports.map((data) {
+        final subject = data['subject'] as String? ?? '(sin asunto)';
+        final status = data['status'] as String?;
+        final ts = data['createdAt'] as Timestamp?;
+        final date = ts != null
+            ? '${ts.toDate().day.toString().padLeft(2, '0')}/'
+              '${ts.toDate().month.toString().padLeft(2, '0')}/'
+              '${ts.toDate().year}'
+            : '';
+
+        final (statusLabel, statusColor) = switch (status) {
+          'working' => ('Trabajando en ello', Colors.orange),
+          'resolved' => ('Resuelto', Colors.green),
+          _ => ('Pendiente', Colors.grey),
+        };
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: widget.isDark ? Colors.grey.shade800 : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: statusColor.withOpacity(0.4), width: 1.5),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      subject,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: widget.isDark ? Colors.white : Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (date.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        date,
+                        style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
   }
 }
