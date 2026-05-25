@@ -492,7 +492,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const SizedBox(height: 16),
-
                         // Cabecera del perfil
                         Column(
                           children: [
@@ -583,7 +582,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       border: OutlineInputBorder(),
                                     ),
                                   )
-                                : Text(displayName),
+                                : Text(displayName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         const SizedBox(height: 24),
