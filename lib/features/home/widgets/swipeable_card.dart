@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:RockMeet/config/Theme/constants/text_styles.dart';
@@ -825,34 +826,55 @@ class _SwipeableCardState extends State<SwipeableCard>
     );
   }
 
+  String _shortenUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !uri.hasScheme) return url.trim();
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segments.isEmpty) return uri.host;
+    if (segments.length >= 2 && segments[0] == 'user') return '@${segments[1]}';
+    return segments.last;
+  }
+
+  Future<void> _launchUrl(String raw) async {
+    final trimmed = raw.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null && uri.hasScheme && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   Widget _buildSocialLinks() {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        if (widget.profile.twitter != null)
+        if (widget.profile.twitter?.isNotEmpty == true)
           _buildSocialChip(
-            'X · ${widget.profile.twitter}',
+            'X · ${_shortenUrl(widget.profile.twitter!)}',
             Icons.alternate_email,
             const Color(0xFF1DA1F2),
+            url: widget.profile.twitter!,
           ),
-        if (widget.profile.instagram != null)
+        if (widget.profile.instagram?.isNotEmpty == true)
           _buildSocialChip(
-            'IG · ${widget.profile.instagram}',
+            'IG · ${_shortenUrl(widget.profile.instagram!)}',
             Icons.camera_alt_outlined,
             const Color(0xFFE1306C),
+            url: widget.profile.instagram!,
           ),
-        if (widget.profile.tiktok != null)
+        if (widget.profile.tiktok?.isNotEmpty == true)
           _buildSocialChip(
-            'TikTok · ${widget.profile.tiktok}',
+            'TikTok · ${_shortenUrl(widget.profile.tiktok!)}',
             Icons.music_note,
             Colors.white,
+            url: widget.profile.tiktok!,
           ),
-        if (widget.profile.spotify != null)
+        if (widget.profile.spotify?.isNotEmpty == true)
           _buildSocialChip(
-            'Spotify',
+            'Spotify · ${_shortenUrl(widget.profile.spotify!)}',
             Icons.music_note_rounded,
             const Color(0xFF1DB954),
+            url: widget.profile.spotify!,
           ),
       ],
     );
@@ -923,13 +945,17 @@ class _SwipeableCardState extends State<SwipeableCard>
     );
   }
 
-  Widget _buildSocialChip(String label, IconData icon, Color color) {
-    return Container(
+  Widget _buildSocialChip(String label, IconData icon, Color color, {String? url}) {
+    final hasLink = url != null && url.trim().isNotEmpty;
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4), width: 1),
+        border: Border.all(
+          color: hasLink ? color.withOpacity(0.7) : color.withOpacity(0.4),
+          width: hasLink ? 1.5 : 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -941,10 +967,22 @@ class _SwipeableCardState extends State<SwipeableCard>
             style: AppTextStyles.labelMedium.copyWith(
               color: Colors.white.withOpacity(0.85),
               fontSize: 11,
+              decoration: hasLink ? TextDecoration.underline : null,
+              decorationColor: color,
             ),
           ),
+          if (hasLink) ...[
+            const SizedBox(width: 4),
+            Icon(Icons.open_in_new, size: 10, color: color.withOpacity(0.7)),
+          ],
         ],
       ),
+    );
+
+    if (!hasLink) return chip;
+    return GestureDetector(
+      onTap: () => _launchUrl(url),
+      child: chip,
     );
   }
 
