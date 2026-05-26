@@ -17,12 +17,39 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   void dispose() {
-    // Marca como leídas al salir, no al entrar, para que el usuario las vea
     final uid = _uid;
     if (uid != null) {
       NotificationService.instance.markAllRead(uid);
     }
     super.dispose();
+  }
+
+  Future<void> _confirmDeleteAll() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Borrar notificaciones',
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+        content: Text('¿Eliminar todas las notificaciones?',
+            style: GoogleFonts.outfit()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar', style: GoogleFonts.outfit()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Eliminar',
+                style: GoogleFonts.outfit(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await NotificationService.instance.deleteAllForUser(uid);
+    }
   }
 
   @override
@@ -32,8 +59,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Notificaciones', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+        title: Text('Notificaciones',
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
         elevation: 0,
+        actions: [
+          if (uid != null)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: 'Borrar todas',
+              onPressed: _confirmDeleteAll,
+            ),
+        ],
       ),
       body: uid == null
           ? const Center(child: Text('No autenticado'))
@@ -51,7 +87,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       child: Text(
                         'Error al cargar notificaciones:\n${snapshot.error}',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(fontSize: 13, color: Colors.red),
+                        style:
+                            GoogleFonts.outfit(fontSize: 13, color: Colors.red),
                       ),
                     ),
                   );
@@ -63,13 +100,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.notifications_none, size: 64, color: Colors.grey.shade400),
+                        Icon(Icons.notifications_none,
+                            size: 64, color: Colors.grey.shade400),
                         const SizedBox(height: 16),
                         Text(
                           'No tienes notificaciones',
                           style: GoogleFonts.outfit(
                             fontSize: 16,
-                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            color: isDark
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade600,
                           ),
                         ),
                       ],
@@ -83,7 +123,28 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final n = notifications[index];
-                    return _NotificationTile(data: n, isDark: isDark);
+                    final docId = n['id'] as String? ?? '';
+                    return Dismissible(
+                      key: ValueKey(docId),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade400,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.delete_outline,
+                            color: Colors.white, size: 26),
+                      ),
+                      onDismissed: (_) {
+                        if (docId.isNotEmpty) {
+                          NotificationService.instance
+                              .deleteNotification(docId);
+                        }
+                      },
+                      child: _NotificationTile(data: n, isDark: isDark),
+                    );
                   },
                 );
               },
@@ -110,8 +171,16 @@ class _NotificationTile extends StatelessWidget {
 
     final (icon, color, label) = switch (type) {
       'like' => (Icons.favorite, Colors.pink, '$fromName te ha dado like'),
-      'match' => (Icons.favorite_border, AppColors.primary, '¡Has hecho match con $fromName!'),
-      'message' => (Icons.chat_bubble_outline, Colors.blue, '$fromName te ha enviado un mensaje'),
+      'match' => (
+          Icons.favorite_border,
+          AppColors.primary,
+          '¡Has hecho match con $fromName!'
+        ),
+      'message' => (
+          Icons.chat_bubble_outline,
+          Colors.blue,
+          '$fromName te ha enviado un mensaje'
+        ),
       _ => (Icons.notifications, Colors.grey, fromName),
     };
 
@@ -141,7 +210,8 @@ class _NotificationTile extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundImage: fromPhoto.isNotEmpty ? NetworkImage(fromPhoto) : null,
+                backgroundImage:
+                    fromPhoto.isNotEmpty ? NetworkImage(fromPhoto) : null,
                 backgroundColor: color.withOpacity(0.15),
                 child: fromPhoto.isEmpty
                     ? Icon(icon, color: color, size: 22)
@@ -185,7 +255,8 @@ class _NotificationTile extends StatelessWidget {
                     '"$preview"',
                     style: GoogleFonts.outfit(
                       fontSize: 12,
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      color:
+                          isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                       fontStyle: FontStyle.italic,
                     ),
                     maxLines: 1,
@@ -210,7 +281,8 @@ class _NotificationTile extends StatelessWidget {
               width: 8,
               height: 8,
               margin: const EdgeInsets.only(top: 4),
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              decoration:
+                  BoxDecoration(color: color, shape: BoxShape.circle),
             ),
         ],
       ),

@@ -188,8 +188,8 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
-                  width: 250,
-                  height: 250,
+                  width: 200,
+                  height: 200,
                   child: Padding( 
                     padding: const EdgeInsets.all(24),
                     child: Image.asset(
@@ -210,7 +210,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 const Text(
                   'Inicia sesión para continuar',
                   textAlign: TextAlign.center,

@@ -476,7 +476,7 @@ class _ProfilePageState extends State<ProfilePage> {
               _artistController.text = favoriteArtist;
             _tempAvatarUrl = avatarUrl;
             _clase = profile.clase;
-            _course = profile.course;
+            _course = _normalizeCourse(profile.course);
             _tempImages = List.from(gallery);
             _tempInterests = _buildInterestsFromProfile(profile);
           }
@@ -1158,6 +1158,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               value: twitter,
                               controller: _twitterController,
                               color: const Color(0xFF1DA1F2),
+                              hint: 'Enlace de tu perfil'
                             ),
                             _buildSocialRow(
                               icon: Icons.camera_alt_outlined,
@@ -1165,6 +1166,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               value: instagram,
                               controller: _instagramController,
                               color: const Color(0xFFE1306C),
+                              hint: 'Enlace de tu perfil'
                             ),
                             _buildSocialRow(
                               icon: Icons.music_note,
@@ -1172,6 +1174,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               value: tiktok,
                               controller: _tiktokController,
                               color: Colors.yellow.shade700,
+                              hint: 'Enlace de tu perfil'
                             ),
                             _buildSocialRow(
                               icon: Icons.library_music,
@@ -1208,6 +1211,16 @@ class _ProfilePageState extends State<ProfilePage> {
         },
       ),
     );
+  }
+
+  String? _normalizeCourse(String? raw) {
+    if (raw == null) return null;
+    if (_courseOptions.contains(raw)) return raw;
+    final match = _courseOptions.firstWhere(
+      (opt) => opt.startsWith('${raw.trim()} ') || opt == raw.trim(),
+      orElse: () => '',
+    );
+    return match.isEmpty ? null : match;
   }
 
   String _shortenUrl(String url) {

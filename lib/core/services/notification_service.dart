@@ -70,4 +70,21 @@ class NotificationService {
     }
     await batch.commit();
   }
+
+  Future<void> deleteNotification(String docId) async {
+    await _firestore.collection('notifications').doc(docId).delete();
+  }
+
+  Future<void> deleteAllForUser(String userId) async {
+    final snap = await _firestore
+        .collection('notifications')
+        .where('toUserId', isEqualTo: userId)
+        .get();
+    if (snap.docs.isEmpty) return;
+    final batch = _firestore.batch();
+    for (final doc in snap.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
 }
