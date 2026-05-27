@@ -2,7 +2,7 @@
 
 > **La red social del Instituto Roca** — conecta con compañeros de tu ciclo, descubre eventos, y encuentra personas con tus mismos intereses.
 
-RockMeet es una aplicación móvil social construida con Flutter para los estudiantes del Institut Roca (Viladecans). Permite a los alumnos conectar entre sí mediante un sistema de matching por deslizamiento, chatear en tiempo real, apuntarse a eventos del centro y consultar el horario de su ciclo formativo.
+RockMeet es una aplicación móvil social construida con Flutter para los estudiantes del Institut Roca . Permite a los alumnos conectar entre sí mediante un sistema de matching por deslizamiento, chatear en tiempo real, apuntarse a eventos del centro y consultar el horario de su ciclo formativo.
 
 ---
 
@@ -64,7 +64,6 @@ RockMeet es una aplicación móvil social construida con Flutter para los estudi
 - Informes de actividad
 
 ---
-
 ## 📲 Descargar APK (Android)
 
 Escanea el código QR para descargar directamente la APK de RockMeet en tu dispositivo Android:
@@ -73,7 +72,8 @@ Escanea el código QR para descargar directamente la APK de RockMeet en tu dispo
   <img src="lib/core/doc/QR.jpg" alt="QR para descargar la APK de RockMeet" width="200"/>
 </p>
 
-> Asegúrate de tener habilitada la opción **"Instalar aplicaciones de fuentes desconocidas"** en los ajustes de tu dispositivo.
+> Asegúrate de tener habilitada la opción **"Instalar aplicaciones de fuentes desconocidas"** en los
+ ajustes de tu dispositivo.
 
 ---
 
