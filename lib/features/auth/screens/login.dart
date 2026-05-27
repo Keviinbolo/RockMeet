@@ -1,4 +1,3 @@
-import 'package:RockMeet/config/Theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:RockMeet/config/Routes/approutes.dart';
@@ -37,7 +36,7 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Introduce el correo de tu cuenta de tutor. Te enviaremos un enlace para crear una nueva contraseña.',
+              'Introduce el correo de tu cuenta. Te enviaremos un enlace para crear una nueva contraseña.',
             ),
             const SizedBox(height: 16),
             TextField(
@@ -74,15 +73,8 @@ class _LoginPageState extends State<LoginPage> {
 
       if (userData == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se encontró ninguna cuenta con ese correo.')),
-        );
-        return;
-      }
-
-      if ((userData['type'] as String?) != 'staff') {
-        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Esta opción solo está disponible para tutores.'),
+            content: Text('No se encontró ninguna cuenta con ese correo.'),
           ),
         );
         return;
@@ -263,9 +255,6 @@ class _LoginPageState extends State<LoginPage> {
                     if (value == null || value.isEmpty) {
                       return 'Por favor ingresa tu contraseña';
                     }
-                    if (value.length < 6) {
-                      return 'La contraseña debe tener al menos 6 caracteres';
-                    }
                     return null;
                   },
                 ),
@@ -310,13 +299,7 @@ class _LoginPageState extends State<LoginPage> {
                   label: const Text('Continuar con Google'),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.facebook),
-                  label: const Text('Continuar con Facebook'),
-                ),
-                const SizedBox(height: 24),
-      
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

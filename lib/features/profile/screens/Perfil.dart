@@ -280,6 +280,16 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     }
 
+    // Sincroniza 'clase' con el código extraído de 'course' para que
+    // ambos campos siempre estén alineados en Firestore.
+    String? derivedClase;
+    if (_course != null) {
+      final code = _course!.split(' - ').first.trim();
+      if (ScheduleService.availableClasses.contains(code)) {
+        derivedClase = code;
+      }
+    }
+
     try {
       await ProfileService.instance.updateCurrentUserProfile(
         displayName: _nameController.text,
@@ -296,7 +306,7 @@ class _ProfilePageState extends State<ProfilePage> {
         interestsWithSubInterests: interestsWithSubInterests.isNotEmpty
             ? interestsWithSubInterests
             : null,
-        clase: _clase,
+        clase: derivedClase,   // código derivado de course (p.ej. 'DAM')
         updateClase: true,
         course: _course,
         updateCourse: true,
@@ -683,14 +693,21 @@ class _ProfilePageState extends State<ProfilePage> {
                                           : null,
                                     ),
                                   ),
-                                // Horario de clase (si existe)
-                                if (_clase != null)
+                                // Horario de clase (solo si el curso tiene código en availableClasses)
+                                if (_scheduleKey != null)
                                   StreamBuilder<String?>(
                                     stream: ScheduleService.instance
-                                        .watchScheduleImageUrl(_clase!),
+                                        .watchScheduleImageUrl(_scheduleKey!),
                                     builder: (context, scheduleSnap) {
-                                      final scheduleUrl = scheduleSnap.data;
-                                      if (scheduleUrl == null) {
+                                      // Mientras carga, error o sin datos → nada
+                                      if (scheduleSnap.connectionState ==
+                                              ConnectionState.waiting ||
+                                          scheduleSnap.hasError) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      final scheduleUrl =
+                                          scheduleSnap.data?.trim() ?? '';
+                                      if (scheduleUrl.isEmpty) {
                                         return const SizedBox.shrink();
                                       }
                                       return Padding(
@@ -700,10 +717,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                           child: ElevatedButton.icon(
                                             onPressed: () => _showScheduleImage(
                                               scheduleUrl,
-                                              _clase!,
+                                              _scheduleKey!,
                                             ),
-                                            icon: const Icon(Icons.calendar_month),
-                                            label: const Text('Ver horario de clases'),
+                                            icon: const Icon(
+                                              Icons.calendar_month,
+                                            ),
+                                            label: const Text(
+                                              'Ver horario de clases',
+                                            ),
                                           ),
                                         ),
                                       );
@@ -1221,6 +1242,24 @@ class _ProfilePageState extends State<ProfilePage> {
       orElse: () => '',
     );
     return match.isEmpty ? null : match;
+  }
+
+  /// Devuelve el código de ciclo (p.ej. 'DAM') que se usa para buscar
+  /// el horario. Primero intenta extraerlo de [_course] (campo actualizado);
+  /// si no hay curso, usa [_clase] como compatibilidad con cuentas antiguas.
+  String? get _scheduleKey {
+    // Prioridad: código extraído del curso completo ('DAM - Desarrollo...')
+    if (_course != null) {
+      final code = _course!.split(' - ').first.trim();
+      if (ScheduleService.availableClasses.contains(code)) return code;
+    }
+    // Compatibilidad: cuentas antiguas que solo tienen el campo 'clase'
+    final claseCode = _clase?.trim() ?? '';
+    if (claseCode.isNotEmpty &&
+        ScheduleService.availableClasses.contains(claseCode)) {
+      return claseCode;
+    }
+    return null;
   }
 
   String _shortenUrl(String url) {

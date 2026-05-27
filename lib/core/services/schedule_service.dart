@@ -12,11 +12,30 @@ class ScheduleService {
   static const List<String> availableClasses = [
     'DAM',
     'DAW',
-    'Administración de Empresa',
-    'Atención a Personas en Situación de Dependencia',
-    'Educación Infantil',
-    'Integración Social',
+    'ASIX',
+    'SMX',
+    'AU',
+    'IDMN',
+    'HB',
+    'MP',
+    'EDI',
   ];
+
+  /// Nombre completo para mostrar en la UI. Si no existe devuelve el propio key.
+  static const Map<String, String> classDisplayNames = {
+    'DAM':  'DAM — Desarrollo de Aplicaciones Multiplataforma',
+    'DAW':  'DAW — Desarrollo de Aplicaciones Web',
+    'ASIX': 'ASIX — Administración de Sistemas Informáticos en Red',
+    'SMX':  'SMX — Sistemas Microinformáticos y Redes',
+    'AU':   'AU — Automoción',
+    'IDMN': 'IDMN — Imagen para el Diagnóstico y Medicina Nuclear',
+    'HB':   'HB — Higiene Bucodental',
+    'MP':   'MP — Marketing y Publicidad',
+    'EDI':  'EDI — Educación Infantil',
+  };
+
+  static String displayNameFor(String className) =>
+      classDisplayNames[className] ?? className;
 
   Stream<String?> watchScheduleImageUrl(String className) {
     return _firestore
@@ -43,9 +62,8 @@ class ScheduleService {
       await SupabaseService.instance
           .deleteImage('class-schedules/$className.jpg');
     } catch (_) {}
-    await _firestore.collection('class_schedules').doc(className).set({
-      'className': className,
-      'scheduleImageUrl': null,
+    await _firestore.collection('class_schedules').doc(className).update({
+      'scheduleImageUrl': FieldValue.delete(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }

@@ -57,30 +57,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
 
-                // Desplegable Notificaciones
-                CustomExpansionTile(
-                  icon: Icons.notifications,
-                  title: 'Notificaciones',
-                  subtitle: 'Configura tus alertas',
-                  children: [
-                    _buildSwitchTile(
-                      icon: Icons.notifications_active,
-                      title: 'Notificaciones push',
-                      value: _pushNotifications,
-                      onChanged: (value) {
-                        setState(() => _pushNotifications = value);
-                      },
-                    ),
-                    _buildSwitchTile(
-                      icon: Icons.email,
-                      title: 'Notificaciones por email',
-                      value: _emailNotifications,
-                      onChanged: (value) {
-                        setState(() => _emailNotifications = value);
-                      },
-                    ),
-                  ],
-                ),
+                
+
 
                 // Desplegable Seguridad
                 CustomExpansionTile(
@@ -139,7 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 CustomExpansionTile(
                   icon: Icons.info,
                   title: 'Acerca de',
-                  subtitle: 'Versión 1.0.0',
+                  subtitle: 'Información de la app',
                   children: [
                     _buildVersionTile(),
                     _buildAccountTile(

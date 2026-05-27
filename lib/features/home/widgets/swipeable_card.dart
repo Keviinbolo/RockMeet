@@ -659,6 +659,33 @@ class _SwipeableCardState extends State<SwipeableCard>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Género y Curso
+                    if (widget.profile.gender != null || widget.profile.course != null) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          if (widget.profile.gender != null)
+                            _buildInfoPill(
+                              icon: widget.profile.gender == 'Hombre'
+                                  ? Icons.male
+                                  : Icons.female,
+                              label: widget.profile.gender!,
+                              color: widget.profile.gender == 'Hombre'
+                                  ? const Color(0xFF42A5F5)
+                                  : const Color(0xFFEC407A),
+                            ),
+                          if (widget.profile.course != null)
+                            _buildInfoPill(
+                              icon: Icons.school_outlined,
+                              label: widget.profile.course!.split(' - ').first,
+                              color: AppColors.primary,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
                     if (bio != null && bio.isNotEmpty) ...[
                       Text('Bio', style: AppTextStyles.labelLarge),
                       const SizedBox(height: 6),
@@ -725,6 +752,28 @@ class _SwipeableCardState extends State<SwipeableCard>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoPill({required IconData icon, required String label, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: AppTextStyles.labelMedium.copyWith(color: color, fontSize: 12),
+          ),
+        ],
       ),
     );
   }
@@ -946,7 +995,11 @@ class _SwipeableCardState extends State<SwipeableCard>
   }
 
   Widget _buildSocialChip(String label, IconData icon, Color color, {String? url}) {
-    final hasLink = url != null && url.trim().isNotEmpty;
+    final parsedUri = Uri.tryParse(url?.trim() ?? '');
+    final hasLink = url != null &&
+        url.trim().isNotEmpty &&
+        parsedUri != null &&
+        parsedUri.hasScheme;
     final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(

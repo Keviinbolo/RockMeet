@@ -155,7 +155,7 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
                           ),
                   ),
                   title: Text(
-                    className,
+                    ScheduleService.displayNameFor(className),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(

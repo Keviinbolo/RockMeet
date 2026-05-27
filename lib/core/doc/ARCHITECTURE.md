@@ -1,320 +1,361 @@
-# Documentación de Arquitectura - RockMeet MVP
+# Arquitectura técnica — RockMeet
 
-## Estructura Modular
+**Versión**: Sprint 7 (MVP)  
+**Última actualización**: 2026-05-27  
+**Stack**: Flutter 3 / Dart 3 · Firebase Auth + Firestore · Supabase Storage
 
-RockMeet sigue una arquitectura **feature-based** con separación clara entre capas compartidas (core) y módulos funcionales (features).
+---
+
+## Estructura de carpetas
 
 ```
 lib/
-├── core/                         # Servicios y utilidades globales
-│   ├── services/
-│   │   ├── auth_service.dart    # Autenticación y sesión
-│   │   ├── chat_service.dart    # Mensajería en tiempo real
-│   │   ├── event_service.dart   # Eventos (CRUD + transacciones)
-│   │   ├── profile_service.dart # Datos de perfil
-│   │   └── portal_auth.dart     # Enrutamiento por tipo (staff/user)
-│   │
-│   ├── widgets/
-│   │   └── match_animation_widget.dart  # Componentes reutilizables
-│   │
-│   ├── theme/
-│   │   ├── app_theme.dart       # Tema global
-│   │   └── constants/
-│   │       ├── colors.dart      # Paleta de colores
-│   │       └── text_styles.dart # Estilos de texto
-│   │
-│   └── doc/                     # DOCUMENTACIÓN TÉCNICA
-│       └── crashes/             # 📋 Reporte de errores
-│           ├── README.md        # Instrucciones para reportar
-│           ├── CRASH_LOG_TEMPLATE.md  # Plantilla de reporte
-│           └── RESOLVED_ISSUES.md     # Bugs resueltos
+├── main.dart                          # Inicialización Firebase/Supabase, tema, rutas
 │
 ├── config/
 │   ├── Routes/
-│   │   └── approutes.dart       # Definición de rutas
+│   │   └── approutes.dart             # Definición centralizada de rutas nombradas
 │   └── Theme/
-│       └── constants/     # Constantes de diseño
+│       ├── app_theme.dart             # ThemeData light + dark
+│       ├── Logo/                      # Assets del logo
+│       └── constants/
+│           ├── colors.dart            # AppColors (primary, secondary, surface…)
+│           └── text_styles.dart       # Estilos de texto reutilizables
 │
-└── features/                    # MÓDULOS DE FUNCIONALIDAD
+├── core/
+│   ├── api/
+│   │   └── firebase_options.dart      # Configuración generada por FlutterFire CLI
+│   │
+│   ├── models/
+│   │   ├── user_profile.dart          # UserProfile.fromFirestore()
+│   │   ├── chat_message.dart          # Modelo de mensaje de chat
+│   │   └── class_event.dart           # Modelo Event + EventStatus enum
+│   │
+│   ├── services/
+│   │   ├── auth_service.dart          # Registro, login, logout, getUserData
+│   │   ├── profile_service.dart       # CRUD perfil, incremento de contadores
+│   │   ├── chat_service.dart          # Chats directos, envío de mensajes, streams
+│   │   ├── event_service.dart         # CRUD eventos, asistencia atómica, aprobación
+│   │   ├── notification_service.dart  # Enviar, leer, borrar notificaciones
+│   │   ├── schedule_service.dart      # Horarios de clase (upload/delete/watch)
+│   │   ├── supabase_service.dart      # Upload/delete imágenes en Supabase Storage
+│   │   ├── interaction_service.dart   # Registro de likes/passes, detección de match
+│   │   ├── presence_service.dart      # Indicador online/offline en Firestore
+│   │   ├── tutor_code_service.dart    # Código de registro de 24 h para staff
+│   │   ├── user_moderation_service.dart # Bloqueo de usuarios
+│   │   ├── portal_auth.dart           # Widget de enrutamiento por tipo de usuario
+│   │   └── firebase_service.dart      # Helpers genéricos Firebase
+│   │
+│   ├── widgets/
+│   │   ├── event_card.dart            # Tarjeta de evento reutilizable
+│   │   ├── match_animation_widget.dart # Overlay de celebración al hacer match
+│   │   ├── settings_header.dart       # Cabecera de secciones en ajustes
+│   │   ├── validation_text_field.dart # TextField con validación integrada
+│   │   └── validation_state_widget.dart
+│   │
+│   └── doc/
+│       ├── ARCHITECTURE.md            # ← este archivo
+│       └── crashes/
+│           ├── README.md
+│           ├── CRASH_LOG_TEMPLATE.md
+│           └── RESOLVED_ISSUES.md
+│
+└── features/
     ├── auth/
     │   ├── screens/
-    │   │   ├── login.dart
-    │   │   ├── registro_page.dart
-    │   │   └── pantalla_splash.dart
-    │   └── services/ (si aplica)
+    │   │   ├── pantalla_splash.dart       # Pantalla de carga inicial
+    │   │   ├── login.dart                 # Login + recuperación de contraseña
+    │   │   ├── registro_page.dart         # Registro con código de acceso
+    │   │   ├── profile_setup_page.dart    # Configuración inicial post-registro
+    │   │   └── blocked_user_screen.dart   # Pantalla de cuenta bloqueada
+    │   └── widgets/
+    │       └── wave_background.dart       # Fondo animado de ondas
     │
     ├── home/
     │   ├── screens/
-    │   │   ├── home_page.dart   # ⭐ Matching principal
-    │   │   └── home_staff_page.dart
+    │   │   ├── home_page.dart             # Matching principal (tarjetas deslizables)
+    │   │   ├── home_staff_page.dart       # Panel del staff
+    │   │   ├── staff_schedule_page.dart   # Gestión de horarios por ciclo
+    │   │   ├── staff_user_management_page.dart
+    │   │   └── staff_reports_page.dart
     │   └── widgets/
+    │       └── swipeable_card.dart        # Tarjeta con flip animation (frente/reverso)
     │
     ├── chat/
     │   ├── screens/
-    │   │   └── chat_page.dart
-    │   └── class_chat.dart
+    │   │   ├── chat_page.dart             # Chat en tiempo real
+    │   │   └── peer_profile_screen.dart   # Perfil del interlocutor
+    │   └── widgets/
+    │       ├── chat_input_bar.dart
+    │       └── message_bubble.dart
     │
     ├── profile/
     │   ├── screens/
-    │   │   └── Perfil.dart      # Edición y visualización
-    │   └── interest_screen.dart
+    │   │   └── Perfil.dart               # Perfil propio + edición completa
+    │   └── interest_screen.dart          # Selector de intereses con sub-intereses
     │
     ├── events/
-    │   ├── screens/
-    │   │   └── event_screen.dart # ⭐ Eventos públicos
-    │   ├── class_event.dart
-    │   └── staff_events.dart
+    │   └── screens/
+    │       └── event_screen.dart          # Lista de eventos, asistencia, sugerencias
+    │
+    ├── notifications/
+    │   └── notifications_page.dart        # Bandeja de notificaciones con swipe-delete
     │
     ├── like/
     │   └── screens/
-    │       └── like_page.dart
+    │       └── like_page.dart             # Usuarios que te han dado like
     │
-    ├── settings/
-    │   └── screens/
-    │       └── ajustes.dart      # Settings y logout
-    │
-    └── stubs/  # Pantallas temporales/pendientes
+    └── settings/
+        └── screens/
+            ├── ajustes.dart               # Pantalla principal de ajustes
+            ├── cambiar_contrasenia.dart
+            ├── contactar_soporte.dart
+            ├── politica_privacidad.dart
+            ├── preguntas_frecuentes.dart
+            └── terminos_condiciones.dart
 ```
 
-## Flujos Principales
+---
 
-### 1. Matching & Likes (Home Page)
+## Flujos principales
+
+### 1. Autenticación y enrutamiento
+
+**Archivos clave**: `portal_auth.dart`, `login.dart`, `registro_page.dart`
+
+```
+App inicio
+  └── PortalAuth
+        ├── Sin sesión          → /login
+        ├── type = 'user'       → /home
+        └── type = 'staff'      → /homestaff
+```
+
+**Registro** (usuario):
+1. Validar código de 24 h generado por staff (`TutorCodeService.validateCode()`)
+2. Crear usuario en Firebase Auth (`createUserWithEmailAndPassword`)
+3. Escribir documento en `users/{uid}` con campos iniciales
+4. Redirigir a `/profile-setup`
+
+**Contraseña**: mínimo 8 caracteres, al menos una letra y un número (validado en cliente con RegExp).
+
+**Recuperación de contraseña**: `FirebaseAuth.sendPasswordResetEmail()` — disponible para todos los tipos de usuario.
+
+---
+
+### 2. Matching (Home Page)
 
 **Archivo**: `lib/features/home/screens/home_page.dart`  
-**Servicios**: `ChatService`, `AuthService`, Firestore directo
+**Widget tarjeta**: `lib/features/home/widgets/swipeable_card.dart`  
+**Servicios**: `InteractionService`, `NotificationService`, `ChatService`
 
-**Flujo**:
-1. Cargar lista de usuarios tipo `user` desde Firestore (excluye `staff`)
-2. Renderizar un usuario por vez en tarjeta swipeable
-3. **Swipe derecha** (like):
-   - Guardar en colección `interactions` con `{fromUserId, toUserId, type: 'like'}`
-   - Comprobar si existe match mutuo (¿otro usuario también me dio like?)
-   - Si hay match: crear chat directo automáticamente
-   - Mostrar modal de celebración
-4. **Swipe izquierda** (pass):
-   - Guardar en colección `interactions` con `type: 'pass'`
+```
+Cargar usuarios (tipo 'user', excluye staff + interacciones previas)
+  │
+  ├── Swipe derecha (Like)
+  │     ├── interactions/{id} {type:'like', from, to}
+  │     ├── ¿Match mutuo?
+  │     │     ├── Sí → crear chat + notificación 'match' a ambos
+  │     │     │        + mostrar MatchAnimationWidget
+  │     │     └── No → notificación 'like' al receptor
+  │
+  └── Swipe izquierda (Pass)
+        └── interactions/{id} {type:'pass', from, to}
+```
 
-**Validaciones aplicadas**:
-- Edad: sanitizada y acotada a 18-99
-- Fotos: con fallback a imagen por defecto si URL inválida
-- Bio: limitada a 6 líneas con ellipsis
-- Usuarios staff: excluidos de búsqueda
-- Interacciones previas: filtradas para no repetir
-
-**Métodos clave**:
-- `_mapDocToProfile()` - Mapeo seguro de Firestore a modelo Profile
-- `_handleLike()` - Lógica de like y match mutuo
-- `_isMutualLike()` - Comprobación de match
-- `_prepareChatForMatch()` - Creación de chat
+**Tarjeta deslizable** — dos caras con `AnimationController`:
+- **Frente**: foto principal, nombre, edad, bio (max 6 líneas), píldoras de intereses
+- **Reverso**: galería, género, ciclo formativo, links de redes sociales (abre navegador externo), botón de like/pass
 
 ---
 
-### 2. Eventos (Event Screen)
-
-**Archivos**: 
-- Frontend: `lib/features/events/screens/event_screen.dart`
-- Backend: `lib/core/services/event_service.dart`
-
-**Flujo de usuario normal**:
-1. Crear evento sugerido → enviado a staff para aprobación
-2. Ver eventos públicos activos y próximos
-3. **Apuntarse a evento**:
-   - Validación de aforo (dentro de transacción Firestore)
-   - Agregar userId a `attendeeIds[]` (atómico)
-   - Feedback de éxito/error
-
-**Flujo de staff/monitor**:
-1. Ver eventos sugeridos pendientes
-2. Aprobar, rechazar o eliminar sugerencias
-3. Crear evento directo (activo de inmediato)
-4. Editar, activar, desactivar o cancelar eventos
-
-**Validaciones aplicadas**:
-- Título: mínimo 5 caracteres (trim)
-- Descripción: mínimo 10 caracteres
-- Fecha: debe ser futura
-- MaxAttendees: número válido, entre 1-1000
-- **Transacción atómica** en `markUserAsAttendee()`:
-  - Lee estado actual
-  - Comprueba aforo
-  - Escribe nuevo asistente
-  - Todo en una transacción Firestore (sin race condition)
-
-**Métodos clave**:
-- `createSuggestedEvent()` - Crear evento como sugerencia
-- `markUserAsAttendee()` - Apuntarse (CON TRANSACCIÓN)
-- `removeUserAsAttendee()` - Desapuntarse
-- `_toggleAttendance()` - UI handler con feedback
-
----
-
-### 3. Perfil (Perfil Page)
+### 3. Perfil
 
 **Archivo**: `lib/features/profile/screens/Perfil.dart`  
-**Servicio**: `ProfileService`
+**Servicio**: `ProfileService`, `ScheduleService`, `SupabaseService`
 
-**Flujo**:
-1. Cargar perfil actual desde Firestore
-2. Mostrar datos: nombre, bio, avatar, galería (3 fotos), intereses, stats
-3. En modo edición:
-   - Cambiar avatar (selector predefinio de imágenes)
-   - Editar nombre, bio, redes sociales (twitter, instagram, tiktok)
-   - Seleccionar intereses
-   - Cambiar galería (subir/cambiar up a 3 fotos)
-4. Guardar cambios en tiempo real a Firestore
+**Campos editables**: nombre, bio, avatar, galería (3 fotos), ciclo formativo, intereses (+sub-intereses), Twitter/X, Instagram, TikTok, Spotify, canción favorita, artista favorito.
 
-**Validaciones aplicadas**:
-- Nombre: fallback a "Usuario" si vacío
-- Bio: fallback a texto guía si vacío
-- Stats (likes, matches, activities): normalizadas a "0" si nulas
-- Imágenes: con loadingBuilder y errorBuilder (muestra ícono si falla)
-- Solo acceso de lectura/escritura al propio perfil
+**Botón de horario de clase**:
+```
+_scheduleKey (getter)
+  ├── _course != null → extraer código ('DAM' de 'DAM - Desarrollo...')
+  │     └── ¿código en availableClasses? → devuelve código
+  └── _course == null → usar _clase como fallback (cuentas legacy)
+        └── ¿_clase en availableClasses? → devuelve código
 
-**Métodos/Helpers clave**:
-- `_safeStatValue()` - Normalizar stats nulos a "0"
-- `_textOrFallback()` - Texto seguro con fallback
-- `_loadProfileFromFirestore()` - Hidratación desde Firestore
+StreamBuilder(watchScheduleImageUrl(_scheduleKey))
+  ├── scheduleUrl vacío  → SizedBox.shrink()  (sin botón)
+  └── scheduleUrl lleno  → ElevatedButton 'Ver horario de clases'
+```
+
+Al guardar perfil, `_clase` se sincroniza automáticamente con el código extraído de `_course` (`derivedClase`).
 
 ---
 
-## Services (Capa de Lógica)
+### 4. Eventos
 
-### AuthService
-**Ubicación**: `lib/core/services/auth_service.dart`
+**Archivos**: `event_screen.dart`, `event_service.dart`  
+**Modelo**: `class_event.dart` → `Event` + `EventStatus { active, inactive, pending, cancelled, completed }`
 
-Responsabilidades:
-- Registro y login con email/password
-- Gestión de sesión actual (Firebase Auth)
-- Lectura de tipo de usuario (`staff` o `user`)
-- Logout
+**Flujo usuario**:
+1. Ver eventos activos en tiempo real
+2. Apuntarse → `markUserAsAttendee()` (transacción Firestore: comprueba aforo antes de escribir)
+3. Desapuntarse → `removeUserAsAttendee()`
+4. Sugerir evento → estado `pending` hasta revisión staff
 
-Métodos públicos:
-- `register(email, password, displayName)`
-- `login(email, password)`
-- `logout()`
-- `getUserTypeById(uid)` - Retorna tipo para enrutamiento
-- `getUserDataById(uid)`
+**Flujo staff**:
+1. Crear evento directo (activo de inmediato)
+2. Aprobar / rechazar sugerencias
+3. Editar título, descripción, fecha, lugar, aforo, estado (activo ↔ inactivo)
+4. Eliminar evento
 
----
-
-### ChatService
-**Ubicación**: `lib/core/services/chat_service.dart`
-
-Responsabilidades:
-- Crear/obtener chats directos entre usuarios
-- Guardar mensajes
-- Streams en tiempo real para conversaciones
-
-Métodos públicos:
-- `ensureDirectChat(currentUserId, peerUid, peerName, peerAvatarUrl)`
-- `sendMessage(chatId, message)`
-- Getters para streams de chats
+**Transacción de aforo** — evita race conditions:
+```dart
+FirebaseFirestore.instance.runTransaction((tx) async {
+  final doc = await tx.get(eventRef);
+  final current = List<String>.from(doc['attendeeIds']);
+  if (current.length >= doc['maxAttendees']) throw 'Aforo completo';
+  if (current.contains(userId)) throw 'Ya apuntado';
+  tx.update(eventRef, {'attendeeIds': FieldValue.arrayUnion([userId])});
+});
+```
 
 ---
 
-### EventService
-**Ubicación**: `lib/core/services/event_service.dart`
+### 5. Notificaciones
 
-Responsabilidades:
-- CRUD de eventos
-- Gestión de asistentes (con transacciones)
-- Flujo de aprobación staff
+**Archivos**: `notification_service.dart`, `notifications_page.dart`
 
-Métodos públicos:
-- `createEvent()` - Crear evento (staff)
-- `createSuggestedEvent()` - Crear como sugerencia (usuario)
-- `markUserAsAttendee()` - **Con transacción** para evitar race conditions
-- `removeUserAsAttendee()`
-- `approveEvent()`, `rejectEvent()`
-- `activateEvent()`, `deactivateEvent()`
-- Streams para listar eventos (públicos, pendientes, por staff)
+**Tipos**: `like` · `match` · `message`
 
----
+```
+NotificationService.send(toUserId, type, fromUserId, fromName, ...)
+  └── Firestore: notifications/{docId}
 
-### ProfileService
-**Ubicación**: `lib/core/services/profile_service.dart`
+NotificationsPage
+  ├── StreamBuilder(streamForUser(uid))   → lista en tiempo real
+  ├── Dismissible por notificación        → deleteNotification(docId)
+  └── Botón delete_sweep                  → deleteAllForUser(uid) (batch)
+```
 
-Responsabilidades:
-- CRUD del perfil actual
-- Lectura de datos públicos
-- Actualización en tiempo real
-
-Métodos públicos:
-- `getCurrentUserProfile()`
-- `getUserProfileById(uid)`
-- `updateCurrentUserProfile()`
+Contador de no leídas: `unreadCountStream(uid)` — stream de Firestore con filtro `read == false`.
 
 ---
 
-## Rutas y Navegación
+### 6. Horarios de clase (Staff)
 
-**Archivo**: `lib/config/Routes/approutes.dart`
+**Archivos**: `schedule_service.dart`, `staff_schedule_page.dart`
 
-| Ruta | Pantalla | Tipo de usuario |
-|------|----------|-----------------|
-| `/splash` | Pantalla de carga | Todos |
-| `/login` | Login/Registro | No autenticado |
-| `/home` | Home con matching | Usuario normal |
-| `/homestaff` | Panel de staff | Staff |
-| `/chat` | Chat | Autenticado |
-| `/perfil` | Perfil | Autenticado |
-| `/eventos` | Listado de eventos | Todos |
-| `/ajustes` | Configuración | Autenticado |
+**Ciclos disponibles**: DAM, DAW, ASIX, SMX, AU, IDMN, HB, MP, EDI (con nombre completo en UI)
 
-**Enrutamiento por tipo de usuario**:
-- `PortalAuth` en `main.dart` comprueba sesión y tipo
-- Staff → `/homestaff`
-- Usuario normal → `/home`
-- Sin sesión → `/login`
+```
+Staff sube imagen
+  ├── SupabaseService.uploadImage('class-schedules/{className}.jpg')
+  └── Firestore: class_schedules/{className} {scheduleImageUrl, updatedAt}
+
+Staff elimina imagen
+  ├── SupabaseService.deleteImage('class-schedules/{className}.jpg')
+  └── Firestore: .update({scheduleImageUrl: FieldValue.delete()})
+
+Usuario consulta (StreamBuilder en Perfil)
+  └── watchScheduleImageUrl(_scheduleKey) → URL | null
+```
+
+---
+
+## Servicios — Referencia rápida
+
+| Servicio | Singleton | Responsabilidad principal |
+|---|---|---|
+| `AuthService` | factory | Registro, login, logout, lookup de usuario |
+| `ProfileService` | `.instance` | CRUD perfil, incremento de contadores (likes, amigos, actividades) |
+| `ChatService` | — | Crear/obtener chats, enviar mensajes, streams |
+| `EventService` | — | CRUD eventos, asistencia atómica, flujo de aprobación |
+| `NotificationService` | `.instance` | Enviar, leer, marcar, borrar notificaciones |
+| `ScheduleService` | `.instance` | Gestión de imágenes de horario por ciclo |
+| `SupabaseService` | `.instance` | Upload/delete de imágenes en Supabase Storage |
+| `InteractionService` | — | Registro likes/passes, detección de match mutuo |
+| `PresenceService` | `.instance` | Presencia online/offline en Firestore |
+| `TutorCodeService` | — | Generar/validar códigos de registro de 24 h |
+| `UserModerationService` | — | Bloqueo/desbloqueo de cuentas |
 
 ---
 
 ## Colecciones Firestore
 
-| Colección | Documentos | Propósito |
-|-----------|-----------|----------|
-| `users` | {uid: {...}} | Perfiles, datos públicos |
-| `interactions` | {id: {fromUserId, toUserId, type}} | Likes y passes (matching) |
-| `chats` | {chatId: {...}} | Conversaciones directas |
-| `messages` | {messages: {msgId: {...}}} | Mensajes dentro de chats |
-| `events` | {eventId: {...}} | Eventos públicos y sugerencias |
+| Colección | Documento | Campos clave |
+|---|---|---|
+| `users` | `{uid}` | displayName, email, photoURL, course, clase, gender, age, type, blockedBy[], likes, friends, activities, gallery[], interests[], interestsDetail, twitter, instagram, tiktok, spotify |
+| `interactions` | `{autoId}` | fromUserId, toUserId, type ('like'·'pass'), createdAt |
+| `chats` | `{chatId}` | participantIds[], lastMessage, updatedAt |
+| `messages` | `{chatId}/messages/{msgId}` | senderId, text, createdAt, read |
+| `events` | `{eventId}` | title, description, dateTime, location, maxAttendees, attendeeIds[], status, staffOrganizerId, suggestedByUserId |
+| `notifications` | `{autoId}` | toUserId, fromUserId, fromName, fromPhotoUrl, type, preview, read, createdAt |
+| `class_schedules` | `{className}` | className, scheduleImageUrl, updatedAt |
+| `support_messages` | `{autoId}` | fromEmail, subject, message, read, status, createdAt |
+| `tutor_codes` | `config` | code, generatedAt, expiresAt, generatedBy |
 
 ---
 
-## Mejoras Aplicadas para MVP
+## Rutas nombradas
 
-### Blindagem de datos y UX
-1. **Imágenes robustas**: loadingBuilder + errorBuilder en todos los Image.network()
-2. **Datos normalizados**: Edad validada, stats seguros, texto con fallbacks
-3. **Bio limitada**: maxLines con ellipsis para evitar desbordes
-
-### Eventos robustos
-1. **Validaciones completas**: título, descripción, fecha, maxAttendees
-2. **Transacciones atómicas**: Aforo seguro sin race conditions
-3. **Feedback claro**: SnackBars específicos para cada error
-
-### Documentación de errores
-1. **Carpeta `lib/core/doc/crashes/`**:
-   - `README.md`: Guía de reporte
-   - `CRASH_LOG_TEMPLATE.md`: Plantilla para nuevos crashes
-   - `RESOLVED_ISSUES.md`: Historial de bugs solucionados
-2. **Fácilmente extensible**: Añadir nueva entrada sin cambiar código
+| Ruta | Widget | Acceso |
+|---|---|---|
+| `/splash` | `PortalAuth` | Todos |
+| `/login` | `LoginPage` | No autenticado |
+| `/register` | `RegistroScreen` | No autenticado |
+| `/profile-setup` | `ProfileSetupPage` | Recién registrado |
+| `/home` | `HomePage` | `type == 'user'` |
+| `/homestaff` | `HomeStaffPage` | `type == 'staff'` |
+| `/settings` | `SettingsScreen` | Autenticado |
+| `/like` | `LikesPage` | `type == 'user'` |
 
 ---
 
-## Cómo Reportar Bugs o Crashes
+## Almacenamiento Supabase
 
-Ver `lib/core/doc/crashes/README.md` para instrucciones completas.
-
-**Resumen rápido**:
-1. Nota mental del bug (pantalla, acción, error)
-2. Abre `lib/core/doc/crashes/CRASH_LOG_TEMPLATE.md`
-3. Rellena los campos (o alguien lo hace después)
-4. Guarda como `CRASH_LOG_<FECHA>.md`
-5. Si está resuelto, añade a `RESOLVED_ISSUES.md`
+| Bucket / Ruta | Contenido |
+|---|---|
+| `profile-photos/{uid}.jpg` | Avatar de perfil |
+| `gallery/{uid}/photo_{ts}.jpg` | Fotos de galería del perfil |
+| `class-schedules/{className}.jpg` | Imagen del horario de clase |
 
 ---
 
-**Última actualización**: 2026-04-16  
-**Versión**: MVP  
-**Status**: Listo para presentación web
+## Presencia online
+
+`PresenceService` escucha `FirebaseAuth.authStateChanges()` en `main.dart`:
+- Login → `init()` → escribe `{online: true, lastSeen}` en `users/{uid}`
+- Logout / app close → `deactivate()` → escribe `{online: false, lastSeen: now}`
+
+---
+
+## Decisiones de diseño relevantes
+
+### Campos `clase` y `course` en el perfil
+- `course`: nombre completo del ciclo (ej. `'DAM - Desarrollo de Aplicaciones Multiplataforma'`). Es el campo que edita el usuario desde el dropdown.
+- `clase`: código corto del ciclo (ej. `'DAM'`). Derivado automáticamente de `course` al guardar. Se usa como clave en `class_schedules`.
+- Si `course` es null, se usa `clase` como fallback (compatibilidad con cuentas antiguas).
+
+### Swipe cards y normalización de datos
+- `_mapDocToProfile()` sanitiza edad, fotos y bio antes de construir la tarjeta.
+- Se excluyen usuarios `staff`, bloqueados y con interacciones previas.
+
+### Transacciones de aforo
+- `markUserAsAttendee()` usa `runTransaction()` para evitar que dos usuarios se apunten simultáneamente cuando queda una plaza.
+
+### Notificaciones
+- No se usa FCM (push nativo). Las notificaciones son documentos Firestore consultados en tiempo real desde `NotificationsPage` y el badge de la barra de navegación.
+
+---
+
+## Cómo reportar bugs
+
+Ver `lib/core/doc/crashes/README.md`.
+
+Resumen:
+1. Identifica pantalla, acción y error
+2. Copia `CRASH_LOG_TEMPLATE.md` → renombra como `CRASH_LOG_YYYYMMDD.md`
+3. Rellena los campos
+4. Si ya está resuelto, añade la entrada a `RESOLVED_ISSUES.md`

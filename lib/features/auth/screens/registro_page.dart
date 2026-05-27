@@ -653,6 +653,12 @@ class _RegistroScreenState extends State<RegistroScreen> {
             if (value.length < 8) {
               return 'La contraseña debe tener mínimo 8 caracteres';
             }
+            if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
+              return 'Debe contener al menos una letra';
+            }
+            if (!RegExp(r'[0-9]').hasMatch(value)) {
+              return 'Debe contener al menos un número';
+            }
             return null;
           },
         ),
@@ -840,8 +846,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     return Row(
       children: [
         Expanded(child: _buildSocialButton('Google')),
-        const SizedBox(width: 12),
-        Expanded(child: _buildSocialButton('Facebook')),
+        
       ],
     );
   }
