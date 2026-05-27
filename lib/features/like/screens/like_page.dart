@@ -103,7 +103,10 @@ class _LikesPageState extends State<LikesPage> {
                 children: [
                   Text(
                     'Sugerencias para ti',
-                    style: AppTextStyles.displaySmall,
+                    style: AppTextStyles.displaySmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -199,7 +202,9 @@ class _LikesPageState extends State<LikesPage> {
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(color: Colors.black.withOpacity(0.18)),
+              child: Container(
+                color: AppColors.primary.withOpacity(0.08),
+              ),
             ),
           ),
 
@@ -212,8 +217,8 @@ class _LikesPageState extends State<LikesPage> {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    AppColors.background.withOpacity(0.8),
-                    AppColors.background,
+                    Colors.black.withOpacity(0.55),
+                    Colors.black.withOpacity(0.85),
                   ],
                 ),
               ),

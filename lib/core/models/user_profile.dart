@@ -77,10 +77,11 @@ class UserProfile {
       }
     }
     final photoUrl = (data['photoURL'] as String?)?.trim();
-    final photos = <String>[
-      if (photoUrl != null && photoUrl.isNotEmpty) photoUrl,
-      ...gallery,
-    ];
+    // Solo mostramos las fotos de la galería ("Mis fotos") en la card.
+    // Si la galería está vacía, usamos la foto de perfil como fallback.
+    final photos = gallery.isNotEmpty
+        ? gallery
+        : <String>[if (photoUrl != null && photoUrl.isNotEmpty) photoUrl];
     final rawAge = data['age'];
     final parsedAge = rawAge is int ? rawAge : int.tryParse('$rawAge') ?? 0;
     return UserProfile(
@@ -109,4 +110,6 @@ class UserProfile {
       clase: asNullableString(data['clase']),
     );
   }
+
+  String? get displayName => null;
 }

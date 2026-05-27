@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,6 +20,7 @@ class _EventScreenState extends State<EventScreen> {
   final EventService _eventService = EventService();
   String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
   String _filterType = 'all';
+  bool _isStaff = false;
 
   // Controladores para el formulario
   late TextEditingController _titleController;
@@ -31,6 +33,7 @@ class _EventScreenState extends State<EventScreen> {
   @override
   void initState() {
     super.initState();
+    _loadUserType();
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
     _locationController = TextEditingController();
@@ -44,6 +47,46 @@ class _EventScreenState extends State<EventScreen> {
     _locationController.dispose();
     _maxAttendeesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUserType() async {
+    final uid = _currentUserId;
+    if (uid == null) return;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    if (!mounted) return;
+    setState(() {
+      _isStaff = (doc.data()?['type'] as String?) == 'staff';
+    });
+  }
+
+  Future<void> _deleteEvent(String eventId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar evento'),
+        content: const Text('¿Estás seguro de que quieres eliminar este evento? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _eventService.deleteEvent(eventId);
+      if (!mounted) return;
+      _showSnackBar('Evento eliminado correctamente');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('Error al eliminar: $e', isError: true);
+    }
   }
 
   void _toggleAttendance(String eventId) async {
@@ -479,7 +522,8 @@ class _EventScreenState extends State<EventScreen> {
                       onTap: () => _showEventDetails(event),
                       onAttendanceToggle: () => _toggleAttendance(event.id),
                       isUserAttending: isAttending,
-                      isStaffView: false,
+                      isStaffView: _isStaff,
+                      onDelete: _isStaff ? () => _deleteEvent(event.id) : null,
                     );
                   },
                 );

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:RockMeet/config/Theme/constants/text_styles.dart';
@@ -386,30 +387,30 @@ class _SwipeableCardState extends State<SwipeableCard>
                   ),
                 ),
 
-                // Badge NOPE
+                // Badge LIKE
                 Positioned(
                   left: 14,
                   top: 32,
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 90),
-                    opacity: nopeProgress,
+                    opacity: likeProgress,
                     child: Transform.rotate(
                       angle: -0.20,
-                      child: _buildBadge("NOPE", AppColors.error),
+                      child: _buildBadge("LIKE", AppColors.success),
                     ),
                   ),
                 ),
 
-                // Badge LIKE
+                // Badge NOPE
                 Positioned(
                   right: 14,
                   top: 32,
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 90),
-                    opacity: likeProgress,
+                    opacity: nopeProgress,
                     child: Transform.rotate(
                       angle: 0.20,
-                      child: _buildBadge("LIKE", AppColors.success),
+                      child: _buildBadge("NOPE", AppColors.error),
                     ),
                   ),
                 ),
@@ -628,13 +629,19 @@ class _SwipeableCardState extends State<SwipeableCard>
                     children: [
                       Text(
                         widget.profile.name,
-                        style: AppTextStyles.titleLarge,
+                        style: AppTextStyles.displayMedium.copyWith(
+                          color: Colors.lightBlue,
+                          fontWeight: FontWeight.w700,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        
                       ),
                       Text(
                         'Intereses y detalles',
-                        style: AppTextStyles.labelSmall,
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: Colors.black,
+                        ),
                       ),
                     ],
                   ),
@@ -652,6 +659,33 @@ class _SwipeableCardState extends State<SwipeableCard>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Género y Curso
+                    if (widget.profile.gender != null || widget.profile.course != null) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          if (widget.profile.gender != null)
+                            _buildInfoPill(
+                              icon: widget.profile.gender == 'Hombre'
+                                  ? Icons.male
+                                  : Icons.female,
+                              label: widget.profile.gender!,
+                              color: widget.profile.gender == 'Hombre'
+                                  ? const Color(0xFF42A5F5)
+                                  : const Color(0xFFEC407A),
+                            ),
+                          if (widget.profile.course != null)
+                            _buildInfoPill(
+                              icon: Icons.school_outlined,
+                              label: widget.profile.course!.split(' - ').first,
+                              color: AppColors.primary,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
                     if (bio != null && bio.isNotEmpty) ...[
                       Text('Bio', style: AppTextStyles.labelLarge),
                       const SizedBox(height: 6),
@@ -659,7 +693,8 @@ class _SwipeableCardState extends State<SwipeableCard>
                         bio,
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
-                          height: 1.5,
+                          height: 1.6,
+                          fontSize: 15,
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -717,6 +752,28 @@ class _SwipeableCardState extends State<SwipeableCard>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoPill({required IconData icon, required String label, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: AppTextStyles.labelMedium.copyWith(color: color, fontSize: 12),
+          ),
+        ],
       ),
     );
   }
@@ -818,34 +875,55 @@ class _SwipeableCardState extends State<SwipeableCard>
     );
   }
 
+  String _shortenUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !uri.hasScheme) return url.trim();
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segments.isEmpty) return uri.host;
+    if (segments.length >= 2 && segments[0] == 'user') return '@${segments[1]}';
+    return segments.last;
+  }
+
+  Future<void> _launchUrl(String raw) async {
+    final trimmed = raw.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null && uri.hasScheme && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   Widget _buildSocialLinks() {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        if (widget.profile.twitter != null)
+        if (widget.profile.twitter?.isNotEmpty == true)
           _buildSocialChip(
-            'X · ${widget.profile.twitter}',
+            'X · ${_shortenUrl(widget.profile.twitter!)}',
             Icons.alternate_email,
             const Color(0xFF1DA1F2),
+            url: widget.profile.twitter!,
           ),
-        if (widget.profile.instagram != null)
+        if (widget.profile.instagram?.isNotEmpty == true)
           _buildSocialChip(
-            'IG · ${widget.profile.instagram}',
+            'IG · ${_shortenUrl(widget.profile.instagram!)}',
             Icons.camera_alt_outlined,
             const Color(0xFFE1306C),
+            url: widget.profile.instagram!,
           ),
-        if (widget.profile.tiktok != null)
+        if (widget.profile.tiktok?.isNotEmpty == true)
           _buildSocialChip(
-            'TikTok · ${widget.profile.tiktok}',
+            'TikTok · ${_shortenUrl(widget.profile.tiktok!)}',
             Icons.music_note,
             Colors.white,
+            url: widget.profile.tiktok!,
           ),
-        if (widget.profile.spotify != null)
+        if (widget.profile.spotify?.isNotEmpty == true)
           _buildSocialChip(
-            'Spotify',
+            'Spotify · ${_shortenUrl(widget.profile.spotify!)}',
             Icons.music_note_rounded,
             const Color(0xFF1DB954),
+            url: widget.profile.spotify!,
           ),
       ],
     );
@@ -916,13 +994,21 @@ class _SwipeableCardState extends State<SwipeableCard>
     );
   }
 
-  Widget _buildSocialChip(String label, IconData icon, Color color) {
-    return Container(
+  Widget _buildSocialChip(String label, IconData icon, Color color, {String? url}) {
+    final parsedUri = Uri.tryParse(url?.trim() ?? '');
+    final hasLink = url != null &&
+        url.trim().isNotEmpty &&
+        parsedUri != null &&
+        parsedUri.hasScheme;
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4), width: 1),
+        border: Border.all(
+          color: hasLink ? color.withOpacity(0.7) : color.withOpacity(0.4),
+          width: hasLink ? 1.5 : 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -934,10 +1020,22 @@ class _SwipeableCardState extends State<SwipeableCard>
             style: AppTextStyles.labelMedium.copyWith(
               color: Colors.white.withOpacity(0.85),
               fontSize: 11,
+              decoration: hasLink ? TextDecoration.underline : null,
+              decorationColor: color,
             ),
           ),
+          if (hasLink) ...[
+            const SizedBox(width: 4),
+            Icon(Icons.open_in_new, size: 10, color: color.withOpacity(0.7)),
+          ],
         ],
       ),
+    );
+
+    if (!hasLink) return chip;
+    return GestureDetector(
+      onTap: () => _launchUrl(url),
+      child: chip,
     );
   }
 

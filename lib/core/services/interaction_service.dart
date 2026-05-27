@@ -6,15 +6,35 @@ class InteractionService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<Set<String>> loadInteractedUserIds(String userId) async {
+  /// Returns (likedUserIds, passTimestamps).
+  /// Likes are permanent exclusions; passes include the timestamp so the caller
+  /// can expire them after a configurable timeout.
+  Future<(Set<String>, Map<String, DateTime>)> loadInteractionData(
+    String userId,
+  ) async {
     final snapshot = await _firestore
         .collection('interactions')
         .where('fromUserId', isEqualTo: userId)
         .get();
-    return snapshot.docs
-        .map((doc) => doc.data()['toUserId'] as String?)
-        .whereType<String>()
-        .toSet();
+
+    final Set<String> likedIds = {};
+    final Map<String, DateTime> passTimestamps = {};
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final toUserId = data['toUserId'] as String?;
+      if (toUserId == null) continue;
+      final type = data['type'] as String?;
+      if (type == 'like') {
+        likedIds.add(toUserId);
+      } else if (type == 'pass') {
+        final ts = data['createdAt'];
+        passTimestamps[toUserId] =
+            ts is Timestamp ? ts.toDate() : DateTime.now();
+      }
+    }
+
+    return (likedIds, passTimestamps);
   }
 
   Future<void> save({

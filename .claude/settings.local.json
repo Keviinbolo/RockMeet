@@ -8,7 +8,14 @@
       "PowerShell(Get-Command flutter -ErrorAction SilentlyContinue)",
       "Bash(Select-String -Pattern \"error -\")",
       "Bash(findstr \"error -\")",
-      "PowerShell(flutter analyze *)"
+      "PowerShell(flutter analyze *)",
+      "Bash(Select-String \"error -\")",
+      "Bash(Select-Object -First 50)",
+      "Bash(xargs grep -l \"Firestore\\\\|collection\\('users'\\)\")",
+      "Bash(tasklist)",
+      "Bash(Get-ChildItem -Path \"Y:\\\\Works\\\\CFGS 2\\\\Projecto DAM\\\\RockMeet\\\\RockMeet\\\\lib\" -Recurse -Filter \"*.dart\")",
+      "Bash(xargs grep -l \"support_messages\")",
+      "Bash(flutter pub *)"
     ]
   }
 }

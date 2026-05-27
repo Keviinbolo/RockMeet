@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
 import 'package:RockMeet/features/profile/interest_screen.dart';
 import 'package:RockMeet/core/services/profile_service.dart';
@@ -47,7 +48,21 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isUploadingAvatar = false;
   bool _isUploadingGallery = false;
   String? _clase;
+  String? _course;
   List<Interest> _tempInterests = [];
+
+  static const _courseOptions = [
+    'DAM - Desarrollo de Aplicaciones Multiplataforma',
+    'DAW - Desarrollo de Aplicaciones Web',
+    'ASIX - Administración de Sistemas Informáticos en Red',
+    'SMX - Sistemas Microinformáticos y Redes',
+    'AU - Automoción',
+    'IDMN - Imagen para el Diagnóstico y Medicina Nuclear',
+    'HB - Higiene Bucodental',
+    'MP - Marketing y Publicidad',
+    'EDI - Educación Infantil',
+    'Otro',
+  ];
 
   List<Interest> _buildInterestCatalog() {
     return [
@@ -265,6 +280,16 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     }
 
+    // Sincroniza 'clase' con el código extraído de 'course' para que
+    // ambos campos siempre estén alineados en Firestore.
+    String? derivedClase;
+    if (_course != null) {
+      final code = _course!.split(' - ').first.trim();
+      if (ScheduleService.availableClasses.contains(code)) {
+        derivedClase = code;
+      }
+    }
+
     try {
       await ProfileService.instance.updateCurrentUserProfile(
         displayName: _nameController.text,
@@ -281,8 +306,10 @@ class _ProfilePageState extends State<ProfilePage> {
         interestsWithSubInterests: interestsWithSubInterests.isNotEmpty
             ? interestsWithSubInterests
             : null,
-        clase: _clase,
+        clase: derivedClase,   // código derivado de course (p.ej. 'DAM')
         updateClase: true,
+        course: _course,
+        updateCourse: true,
       );
 
       setState(() => _isEditing = false);
@@ -459,6 +486,7 @@ class _ProfilePageState extends State<ProfilePage> {
               _artistController.text = favoriteArtist;
             _tempAvatarUrl = avatarUrl;
             _clase = profile.clase;
+            _course = _normalizeCourse(profile.course);
             _tempImages = List.from(gallery);
             _tempInterests = _buildInterestsFromProfile(profile);
           }
@@ -474,7 +502,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const SizedBox(height: 16),
-
                         // Cabecera del perfil
                         Column(
                           children: [
@@ -565,7 +592,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       border: OutlineInputBorder(),
                                     ),
                                   )
-                                : Text(displayName),
+                                : Text(displayName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -613,7 +640,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Clase
+                        // Curso
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(16),
@@ -625,7 +652,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     Icon(Icons.school),
                                     SizedBox(width: 8),
                                     Text(
-                                      'Clase',
+                                      'Curso',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 16,
@@ -636,17 +663,18 @@ class _ProfilePageState extends State<ProfilePage> {
                                 const SizedBox(height: 12),
                                 if (_isEditing)
                                   DropdownButtonFormField<String?>(
-                                    value: _clase,
+                                    value: _course,
+                                    isExpanded: true,
                                     decoration: const InputDecoration(
                                       border: OutlineInputBorder(),
-                                      hintText: 'Selecciona tu clase',
+                                      hintText: 'Selecciona tu curso',
                                     ),
                                     items: [
                                       const DropdownMenuItem<String?>(
                                         value: null,
-                                        child: Text('Sin clase'),
+                                        child: Text('Sin asignar'),
                                       ),
-                                      ...ScheduleService.availableClasses.map(
+                                      ..._courseOptions.map(
                                         (c) => DropdownMenuItem<String?>(
                                           value: c,
                                           child: Text(c),
@@ -654,50 +682,54 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                     ],
                                     onChanged: (value) =>
-                                        setState(() => _clase = value),
+                                        setState(() => _course = value),
                                   )
-                                else ...[
+                                else
                                   Text(
-                                    _clase ?? 'Sin clase asignada',
+                                    _course ?? 'Sin curso asignado',
                                     style: TextStyle(
-                                      color: _clase == null
+                                      color: _course == null
                                           ? Colors.grey.shade500
                                           : null,
                                     ),
                                   ),
-                                  if (_clase != null)
-                                    StreamBuilder<String?>(
-                                      stream: ScheduleService.instance
-                                          .watchScheduleImageUrl(_clase!),
-                                      builder: (context, scheduleSnap) {
-                                        final scheduleUrl = scheduleSnap.data;
-                                        if (scheduleUrl == null) {
-                                          return const SizedBox.shrink();
-                                        }
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 12,
-                                          ),
-                                          child: SizedBox(
-                                            width: double.infinity,
-                                            child: ElevatedButton.icon(
-                                              onPressed: () =>
-                                                  _showScheduleImage(
-                                                    scheduleUrl,
-                                                    _clase!,
-                                                  ),
-                                              icon: const Icon(
-                                                Icons.calendar_month,
-                                              ),
-                                              label: const Text(
-                                                'Ver horario de clases',
-                                              ),
+                                // Horario de clase (solo si el curso tiene código en availableClasses)
+                                if (_scheduleKey != null)
+                                  StreamBuilder<String?>(
+                                    stream: ScheduleService.instance
+                                        .watchScheduleImageUrl(_scheduleKey!),
+                                    builder: (context, scheduleSnap) {
+                                      // Mientras carga, error o sin datos → nada
+                                      if (scheduleSnap.connectionState ==
+                                              ConnectionState.waiting ||
+                                          scheduleSnap.hasError) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      final scheduleUrl =
+                                          scheduleSnap.data?.trim() ?? '';
+                                      if (scheduleUrl.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 12),
+                                        child: SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => _showScheduleImage(
+                                              scheduleUrl,
+                                              _scheduleKey!,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.calendar_month,
+                                            ),
+                                            label: const Text(
+                                              'Ver horario de clases',
                                             ),
                                           ),
-                                        );
-                                      },
-                                    ),
-                                ],
+                                        ),
+                                      );
+                                    },
+                                  ),
                               ],
                             ),
                           ),
@@ -915,31 +947,32 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Sobre mí
-                        InfoSection(
-                          icon: Icons.chat,
-                          title: 'Sobre mí',
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  _isEditing
-                                      ? TextFormField(
-                                          controller: _bioController,
-                                          maxLines: 3,
-                                          decoration: const InputDecoration(
-                                            border: OutlineInputBorder(),
-                                          ),
-                                        )
-                                      : Text(bio),
-                                ],
+                        // Sobre mí — solo visible si hay bio o se está editando
+                        if (bio.isNotEmpty || _isEditing)
+                          InfoSection(
+                            icon: Icons.chat,
+                            title: 'Sobre mí',
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    _isEditing
+                                        ? TextFormField(
+                                            controller: _bioController,
+                                            maxLines: 3,
+                                            decoration: const InputDecoration(
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          )
+                                        : Text(bio),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
                         const SizedBox(height: 24),
 
                         // Canción favorita
@@ -993,7 +1026,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         const SizedBox(height: 24),
 
-                        // Intereses
+                        // Intereses — solo visible si hay alguno o se está editando
+                        if (_tempInterests.any((i) => i.selected) || _isEditing)
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -1129,10 +1163,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Redes Sociales
-                        InfoSection(
-                          icon: Icons.public,
-                          title: 'Redes Sociales',
+                        // Redes Sociales — solo visible si al menos una está rellena o editando
+                        if (_isEditing ||
+                            twitter.isNotEmpty ||
+                            instagram.isNotEmpty ||
+                            tiktok.isNotEmpty ||
+                            spotify.isNotEmpty)
+                          InfoSection(
+                            icon: Icons.public,
+                            title: 'Redes Sociales',
                           children: [
                             _buildSocialRow(
                               icon: Icons.tag,
@@ -1140,6 +1179,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               value: twitter,
                               controller: _twitterController,
                               color: const Color(0xFF1DA1F2),
+                              hint: 'Enlace de tu perfil'
                             ),
                             _buildSocialRow(
                               icon: Icons.camera_alt_outlined,
@@ -1147,16 +1187,18 @@ class _ProfilePageState extends State<ProfilePage> {
                               value: instagram,
                               controller: _instagramController,
                               color: const Color(0xFFE1306C),
+                              hint: 'Enlace de tu perfil'
                             ),
                             _buildSocialRow(
                               icon: Icons.music_note,
                               label: 'TikTok',
                               value: tiktok,
                               controller: _tiktokController,
-                              color: Colors.white,
+                              color: Colors.yellow.shade700,
+                              hint: 'Enlace de tu perfil'
                             ),
                             _buildSocialRow(
-                              icon: Icons.music_note_rounded,
+                              icon: Icons.library_music,
                               label: 'Spotify',
                               value: spotify,
                               controller: _spotifyController,
@@ -1190,6 +1232,46 @@ class _ProfilePageState extends State<ProfilePage> {
         },
       ),
     );
+  }
+
+  String? _normalizeCourse(String? raw) {
+    if (raw == null) return null;
+    if (_courseOptions.contains(raw)) return raw;
+    final match = _courseOptions.firstWhere(
+      (opt) => opt.startsWith('${raw.trim()} ') || opt == raw.trim(),
+      orElse: () => '',
+    );
+    return match.isEmpty ? null : match;
+  }
+
+  /// Devuelve el código de ciclo (p.ej. 'DAM') que se usa para buscar
+  /// el horario. Primero intenta extraerlo de [_course] (campo actualizado);
+  /// si no hay curso, usa [_clase] como compatibilidad con cuentas antiguas.
+  String? get _scheduleKey {
+    // Prioridad: código extraído del curso completo ('DAM - Desarrollo...')
+    if (_course != null) {
+      final code = _course!.split(' - ').first.trim();
+      if (ScheduleService.availableClasses.contains(code)) return code;
+    }
+    // Compatibilidad: cuentas antiguas que solo tienen el campo 'clase'
+    final claseCode = _clase?.trim() ?? '';
+    if (claseCode.isNotEmpty &&
+        ScheduleService.availableClasses.contains(claseCode)) {
+      return claseCode;
+    }
+    return null;
+  }
+
+  String _shortenUrl(String url) {
+    final trimmed = url.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || !uri.hasScheme) return trimmed;
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segments.isEmpty) return uri.host;
+    // open.spotify.com/user/username → @username
+    if (segments.length >= 2 && segments[0] == 'user') return '@${segments[1]}';
+    // cualquier otra URL → último segmento del path
+    return segments.last;
   }
 
   Widget _buildSocialRow({
@@ -1232,11 +1314,23 @@ class _ProfilePageState extends State<ProfilePage> {
                           hintText: hint,
                         ),
                       )
-                    : Text(
-                        value,
-                        style: TextStyle(color: Colors.grey.shade400),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    : GestureDetector(
+                        onTap: () async {
+                          final uri = Uri.tryParse(value.trim());
+                          if (uri != null && uri.hasScheme && await canLaunchUrl(uri)) {
+                            launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: Text(
+                          _shortenUrl(value),
+                          style: TextStyle(
+                            color: color,
+                            decoration: TextDecoration.underline,
+                            decorationColor: color,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
               ],
             ),

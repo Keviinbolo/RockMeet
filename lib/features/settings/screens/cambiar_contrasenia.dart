@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:RockMeet/core/widgets/settings_header.dart';
 
@@ -18,6 +19,7 @@ class _CambiarContraseniaScreenState extends State<CambiarContraseniaScreen> {
   bool _mostrarContraseniaActual = false;
   bool _mostrarNuevaContrasenia = false;
   bool _mostrarConfirmarContrasenia = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -131,15 +133,24 @@ class _CambiarContraseniaScreenState extends State<CambiarContraseniaScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: _cambiarContrasenia,
-                  child: Text(
-                    'Cambiar Contraseña',
-                    style: GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  onPressed: _isLoading ? null : _cambiarContrasenia,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Cambiar Contraseña',
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 16),
                 OutlinedButton(
@@ -237,41 +248,63 @@ class _CambiarContraseniaScreenState extends State<CambiarContraseniaScreen> {
     );
   }
 
-  void _cambiarContrasenia() {
+  Future<void> _cambiarContrasenia() async {
     final contraseniaActual = _contraseniaActualController.text;
     final nuevaContrasenia = _nuevaContraseniaController.text;
     final confirmarContrasenia = _confirmarContraseniaController.text;
 
-    // Validaciones
     if (contraseniaActual.isEmpty || nuevaContrasenia.isEmpty || confirmarContrasenia.isEmpty) {
       _mostrarError('Por favor completa todos los campos');
       return;
     }
-
     if (nuevaContrasenia.length < 8) {
       _mostrarError('La nueva contraseña debe tener al menos 8 caracteres');
       return;
     }
-
     if (nuevaContrasenia != confirmarContrasenia) {
       _mostrarError('Las contraseñas no coinciden');
       return;
     }
-
     if (contraseniaActual == nuevaContrasenia) {
       _mostrarError('La nueva contraseña debe ser diferente a la actual');
       return;
     }
 
-    // Si todas las validaciones pasan
-    _mostrarExito();
-    _contraseniaActualController.clear();
-    _nuevaContraseniaController.clear();
-    _confirmarContraseniaController.clear();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) {
+      _mostrarError('No hay sesión activa');
+      return;
+    }
 
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context);
-    });
+    setState(() => _isLoading = true);
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: contraseniaActual,
+      );
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(nuevaContrasenia);
+
+      _contraseniaActualController.clear();
+      _nuevaContraseniaController.clear();
+      _confirmarContraseniaController.clear();
+
+      if (!mounted) return;
+      _mostrarExito();
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) Navigator.pop(context);
+      });
+    } on FirebaseAuthException catch (e) {
+      final mensaje = switch (e.code) {
+        'wrong-password' || 'invalid-credential' => 'La contraseña actual es incorrecta',
+        'too-many-requests' => 'Demasiados intentos. Intenta más tarde',
+        'requires-recent-login' => 'Sesión expirada. Cierra sesión y vuelve a entrar',
+        _ => 'Error: ${e.message}',
+      };
+      if (mounted) _mostrarError(mensaje);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   void _mostrarError(String mensaje) {

@@ -1,20 +1,22 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
-import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 import 'package:RockMeet/core/models/user_profile.dart';
 import 'package:RockMeet/core/services/chat_service.dart';
 import 'package:RockMeet/core/services/interaction_service.dart';
+import 'package:RockMeet/core/services/notification_service.dart';
+import 'package:RockMeet/core/services/supabase_service.dart';
 import 'package:RockMeet/core/services/profile_service.dart';
 import 'package:RockMeet/core/widgets/match_animation_widget.dart';
 import 'package:RockMeet/features/chat/screens/chat_page.dart';
 import 'package:RockMeet/features/events/screens/event_screen.dart';
 import 'package:RockMeet/features/home/widgets/swipeable_card.dart';
 import 'package:RockMeet/features/like/screens/like_page.dart';
+import 'package:RockMeet/features/notifications/notifications_page.dart';
 import 'package:RockMeet/features/profile/screens/Perfil.dart';
 import 'package:RockMeet/features/settings/screens/ajustes.dart';
 
@@ -39,19 +41,30 @@ class _HomePageState extends State<HomePage> {
   final List<QueryDocumentSnapshot<Map<String, dynamic>>> _profileDocs = [];
   List<UserProfile> _visibleProfiles = [];
   bool _isLoadingInitialInteractions = true;
-  Set<String> _interactedUserIds = {};
+  Set<String> _likedUserIds = {};
+  Map<String, DateTime> _passTimestamps = {};
+  Timer? _passExpiryTimer;
+  static const Duration _passTimeout = Duration(minutes: 15);
   String? _pendingChatPeerUid;
   String? _pendingChatPeerName;
   String? _pendingChatPeerAvatarUrl;
   UserProfile? _currentUserProfile;
-  static const String _fallbackPhotoUrl =
-      'https://images.unsplash.com/photo-1521119989659-a83eee488004?q=80&w=1080';
 
   @override
   void initState() {
     super.initState();
     _initInteractionsAndLoadProfiles();
     _loadCurrentUserProfile();
+    _passExpiryTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => _checkPassExpiry(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _passExpiryTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCurrentUserProfile() async {
@@ -64,11 +77,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _initInteractionsAndLoadProfiles() async {
+    await SupabaseService.instance.loadFallbackUrls();
+
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId != null) {
       try {
-        _interactedUserIds =
-            await InteractionService.instance.loadInteractedUserIds(currentUserId);
+        final (likedIds, passTs) =
+            await InteractionService.instance.loadInteractionData(currentUserId);
+        _likedUserIds = likedIds;
+        _passTimestamps = passTs;
       } catch (e) {
         print('Error loading initial interactions: $e');
       }
@@ -77,6 +94,31 @@ class _HomePageState extends State<HomePage> {
     if (mounted) {
       setState(() {
         _isLoadingInitialInteractions = false;
+      });
+      _loadMoreProfiles(reset: true);
+    }
+  }
+
+  bool _isUserExcluded(String uid) {
+    if (_likedUserIds.contains(uid)) return true;
+    final passedAt = _passTimestamps[uid];
+    if (passedAt == null) return false;
+    return DateTime.now().difference(passedAt) < _passTimeout;
+  }
+
+  void _checkPassExpiry() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    final expired = _passTimestamps.entries
+        .where((e) => now.difference(e.value) >= _passTimeout)
+        .map((e) => e.key)
+        .toList();
+
+    if (expired.isNotEmpty) {
+      setState(() {
+        for (final id in expired) {
+          _passTimestamps.remove(id);
+        }
       });
       _loadMoreProfiles(reset: true);
     }
@@ -140,7 +182,12 @@ class _HomePageState extends State<HomePage> {
           ? displayName
           : 'Usuario',
       age: safeAge,
-      photos: photos.isNotEmpty ? photos : <String>[_fallbackPhotoUrl],
+      photos: photos.isNotEmpty
+          ? photos
+          : [
+              if (SupabaseService.instance.randomFallbackUrl != null)
+                SupabaseService.instance.randomFallbackUrl!,
+            ],
       bio: (bio != null && bio.isNotEmpty) ? bio : null,
       interests: interests.isNotEmpty ? interests : null,
       interestsDetail: interestsDetailMap.isNotEmpty ? interestsDetailMap : null,
@@ -178,11 +225,9 @@ class _HomePageState extends State<HomePage> {
       final snapshot = await query.get();
       final docs = snapshot.docs;
       final visibleDocs = docs
-          .where((doc) {
-            final data = doc.data();
-            return (data['type'] as String?) != 'staff';
-          })
-          .toList(growable: false);
+          .where((doc) => (doc.data()['type'] as String?) != 'staff')
+          .toList()
+        ..shuffle();
 
       if (!mounted) return;
       setState(() {
@@ -191,8 +236,7 @@ class _HomePageState extends State<HomePage> {
         } else {
           final knownIds = _profileDocs.map((doc) => doc.id).toSet();
           for (final doc in visibleDocs) {
-            if (!knownIds.contains(doc.id) &&
-                !_interactedUserIds.contains(doc.id)) {
+            if (!knownIds.contains(doc.id) && !_isUserExcluded(doc.id)) {
               _profileDocs.add(doc);
             }
           }
@@ -228,7 +272,11 @@ class _HomePageState extends State<HomePage> {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    _interactedUserIds.add(profile.uid);
+    if (type == 'like') {
+      _likedUserIds.add(profile.uid);
+    } else {
+      _passTimestamps[profile.uid] = DateTime.now();
+    }
     await InteractionService.instance.save(
       fromUserId: currentUser.uid,
       toUserId: profile.uid,
@@ -387,7 +435,8 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
 
       setState(() {
-        _interactedUserIds.clear();
+        _likedUserIds.clear();
+        _passTimestamps.clear();
         _pendingChatPeerUid = null;
         _pendingChatPeerName = null;
         _pendingChatPeerAvatarUrl = null;
@@ -449,6 +498,18 @@ class _HomePageState extends State<HomePage> {
         .incrementLikesCountForUser(currentProfile.uid)
         .catchError((e) => print("Error incrementando likes: $e"));
 
+    // Notificación de like
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final myName = currentUser?.displayName ?? '';
+    final myPhoto = _currentUserProfile?.photos?.firstOrNull ?? currentUser?.photoURL ?? '';
+    NotificationService.instance.send(
+      toUserId: currentProfile.uid,
+      type: 'like',
+      fromUserId: currentUser?.uid ?? '',
+      fromName: myName,
+      fromPhotoUrl: myPhoto,
+    ).catchError((_) {});
+
     final isMutualLike = await _isMutualLike(currentProfile);
 
     if (isMutualLike) {
@@ -464,6 +525,21 @@ class _HomePageState extends State<HomePage> {
       ProfileService.instance
           .incrementFriendsCountForUser(currentProfile.uid)
           .catchError((e) => print("Error incrementando amigos del otro: $e"));
+      // Notificaciones de match para ambos
+      NotificationService.instance.send(
+        toUserId: currentProfile.uid,
+        type: 'match',
+        fromUserId: currentUser?.uid ?? '',
+        fromName: myName,
+        fromPhotoUrl: myPhoto,
+      ).catchError((_) {});
+      NotificationService.instance.send(
+        toUserId: currentUser?.uid ?? '',
+        type: 'match',
+        fromUserId: currentProfile.uid,
+        fromName: currentProfile.displayName ?? '',
+        fromPhotoUrl: currentProfile.photos?.firstOrNull ?? '',
+      ).catchError((_) {});
       _showMatchModal(currentProfile, profilesLength);
     } else {
       _nextProfile(profilesLength);
@@ -480,18 +556,28 @@ class _HomePageState extends State<HomePage> {
 
   void _showMatchModal(UserProfile currentProfile, int profilesLength) {
     if (profilesLength == 0) return;
+    final fallback = SupabaseService.instance.randomFallbackUrl ?? '';
     final imageForModal = currentProfile.photos
-        ?.map((url) => url.trim())
-        .firstWhere((url) => url.isNotEmpty, orElse: () => _fallbackPhotoUrl);
+            ?.map((url) => url.trim())
+            .firstWhere((url) => url.isNotEmpty, orElse: () => fallback) ??
+        fallback;
 
-    // MEJORA: Usar showGeneralDialog para que la animación ocupe toda la pantalla correctamente
+    final currentUserImage =
+        FirebaseAuth.instance.currentUser?.photoURL ??
+        SupabaseService.instance.randomFallbackUrl ??
+        '';
+
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
       barrierLabel: "Match",
       pageBuilder: (context, anim1, anim2) {
         return MatchModal(
-          profile: {'name': currentProfile.name, 'image': imageForModal},
+          profile: {
+            'name': currentProfile.name,
+            'image': imageForModal,
+            'currentUserImage': currentUserImage,
+          },
           onSendMessage: () {
             // El botón del modal ya invoca Navigator.pop; aquí­ solo cambiamos de pestaña
             setState(() {
@@ -539,6 +625,7 @@ class _HomePageState extends State<HomePage> {
                     color: AppColors.textPrimary,
                     tooltip: 'Reiniciar perfiles',
                   ),
+                  _NotificationBell(uid: FirebaseAuth.instance.currentUser?.uid),
                   IconButton(
                     onPressed: () => Navigator.push(
                       context,
@@ -604,12 +691,11 @@ class _HomePageState extends State<HomePage> {
 
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
-    // Filter locally based on current session's interacted users
     final docs = _profileDocs
         .where((doc) {
           return (currentUserId == null || doc.id != currentUserId) &&
               (doc.data()['type'] as String?) != 'staff' &&
-              !_interactedUserIds.contains(doc.id);
+              !_isUserExcluded(doc.id);
         })
         .toList(growable: false);
 
@@ -724,6 +810,64 @@ class _HomePageState extends State<HomePage> {
         BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Eventos'),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
       ],
+    );
+  }
+}
+
+class _NotificationBell extends StatelessWidget {
+  final String? uid;
+  const _NotificationBell({required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    if (uid == null) {
+      return IconButton(
+        icon: const Icon(Icons.notifications_none),
+        color: AppColors.textPrimary,
+        onPressed: null,
+      );
+    }
+    return StreamBuilder<int>(
+      stream: NotificationService.instance.unreadCountStream(uid!),
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_none),
+              color: AppColors.textPrimary,
+              tooltip: 'Notificaciones',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsPage()),
+              ),
+            ),
+            if (count > 0)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

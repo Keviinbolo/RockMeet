@@ -34,6 +34,8 @@ class ProfileService {
     Map<String, List<String>>? interestsWithSubInterests,
     String? clase,
     bool updateClase = false,
+    String? course,
+    bool updateCourse = false,
   }) async {
     final uid = currentUserId;
     if (uid == null) {
@@ -57,6 +59,7 @@ class ProfileService {
     if (interests != null) updates['interests'] = interests;
     if (interestsWithSubInterests != null) updates['interestsDetail'] = interestsWithSubInterests;
     if (updateClase) updates['clase'] = clase;
+    if (updateCourse) updates['course'] = course;
 
     await _firestore.collection('users').doc(uid).set(updates, SetOptions(merge: true));
 

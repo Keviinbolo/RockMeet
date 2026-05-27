@@ -10,6 +10,7 @@ class EventCard extends StatelessWidget {
   final VoidCallback? onAttendanceToggle;
   final bool isUserAttending;
   final bool isStaffView;
+  final VoidCallback? onDelete;
 
   const EventCard({
     super.key,
@@ -18,6 +19,7 @@ class EventCard extends StatelessWidget {
     this.onAttendanceToggle,
     this.isUserAttending = false,
     this.isStaffView = false,
+    this.onDelete,
   });
 
   IconData _getEventIcon() {
@@ -178,10 +180,10 @@ class EventCard extends StatelessWidget {
                       ),
                     ),
 
-                  // Información para staff
+                  // Información y acciones para staff
                   if (isStaffView)
-                    Wrap(
-                      spacing: 8,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Chip(
                           label: Text(
@@ -197,6 +199,13 @@ class EventCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                        if (onDelete != null)
+                          IconButton(
+                            onPressed: onDelete,
+                            icon: const Icon(Icons.delete_outline),
+                            color: Colors.red,
+                            tooltip: 'Eliminar evento',
+                          ),
                       ],
                     ),
                 ],

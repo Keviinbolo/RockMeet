@@ -1,12 +1,12 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:RockMeet/config/Theme/constants/text_styles.dart';
 import 'package:RockMeet/core/services/profile_service.dart';
+import 'package:RockMeet/core/services/supabase_service.dart';
 
 // ─── Interest data ────────────────────────────────────────────────────────────
 
@@ -61,13 +61,18 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
   bool _isSaving = false;
 
   // Step 1 – Photo
-  File? _photoFile;
+  XFile? _photoXFile;
+  Uint8List? _photoBytes;
   bool _uploadingPhoto = false;
+  final List<XFile?> _galleryXFiles = [null, null, null];
+  final List<Uint8List?> _galleryBytes = [null, null, null];
+  bool _uploadingGallery = false;
 
   // Step 2 – Bio & socials
   final _bioController = TextEditingController();
   final _twitterController = TextEditingController();
   final _instagramController = TextEditingController();
+  final _tiktokController = TextEditingController();
   final _spotifyController = TextEditingController();
 
   // Step 3 – Favorite song
@@ -94,6 +99,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
     _bioController.dispose();
     _twitterController.dispose();
     _instagramController.dispose();
+    _tiktokController.dispose();
     _spotifyController.dispose();
     _songController.dispose();
     _artistController.dispose();
@@ -103,6 +109,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
   // ─── Navigation ─────────────────────────────────────────────────────────────
 
   void _next() {
+    if (_currentStep == 0 && _photoXFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes añadir una foto de perfil JPG para continuar'),
+        ),
+      );
+      return;
+    }
     if (_currentStep < _totalSteps - 1) {
       setState(() => _currentStep++);
       _pageController.animateToPage(
@@ -128,29 +142,82 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
 
   // ─── Photo picker ────────────────────────────────────────────────────────────
 
+  bool _isJpeg(XFile file) {
+    final ext = file.name.split('.').last.toLowerCase();
+    return ext == 'jpg' || ext == 'jpeg' || (file.mimeType ?? '').contains('jpeg');
+  }
+
+  void _showJpegError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Solo se aceptan imágenes en formato JPG/JPEG')),
+    );
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, imageQuality: 80);
-    if (picked != null && mounted) {
-      setState(() => _photoFile = File(picked.path));
+    final picked = await picker.pickImage(source: source, imageQuality: 85);
+    if (picked == null) return;
+    if (!_isJpeg(picked)) {
+      if (mounted) _showJpegError();
+      return;
     }
+    final bytes = await picked.readAsBytes();
+    if (mounted) setState(() {
+      _photoXFile = picked;
+      _photoBytes = bytes;
+    });
   }
 
   Future<String?> _uploadPhoto() async {
-    if (_photoFile == null) return null;
+    final bytes = _photoBytes;
+    if (bytes == null) return null;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
-
     setState(() => _uploadingPhoto = true);
     try {
-      final ref = FirebaseStorage.instance.ref('users/$uid/profile.jpg');
-      await ref.putFile(_photoFile!);
-      return await ref.getDownloadURL();
+      return await SupabaseService.instance.uploadImage(
+        path: '$uid/profile.jpg',
+        bytes: bytes,
+      );
     } catch (_) {
       return null;
     } finally {
       if (mounted) setState(() => _uploadingPhoto = false);
     }
+  }
+
+  Future<void> _pickGalleryImage(int index) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked == null) return;
+    if (!_isJpeg(picked)) {
+      if (mounted) _showJpegError();
+      return;
+    }
+    final bytes = await picked.readAsBytes();
+    if (mounted) setState(() {
+      _galleryXFiles[index] = picked;
+      _galleryBytes[index] = bytes;
+    });
+  }
+
+  Future<List<String>> _uploadGalleryPhotos(String uid) async {
+    final urls = <String>[];
+    setState(() => _uploadingGallery = true);
+    try {
+      for (int i = 0; i < _galleryBytes.length; i++) {
+        final bytes = _galleryBytes[i];
+        if (bytes == null) continue;
+        final url = await SupabaseService.instance.uploadImage(
+          path: '$uid/gallery_$i.jpg',
+          bytes: bytes,
+        );
+        urls.add(url);
+      }
+    } catch (_) {} finally {
+      if (mounted) setState(() => _uploadingGallery = false);
+    }
+    return urls;
   }
 
   // ─── Finish & save ───────────────────────────────────────────────────────────
@@ -160,8 +227,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
     setState(() => _isSaving = true);
 
     try {
-      // Upload photo if selected
+      // Upload profile photo if selected
       final photoURL = await _uploadPhoto();
+
+      // Upload gallery photos
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      final galleryUrls = await _uploadGalleryPhotos(uid);
 
       // Build interest maps
       final selectedInterests = _interests
@@ -178,6 +249,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
       String? bio = _bioController.text.trim().isEmpty ? null : _bioController.text.trim();
       String? twitter = _twitterController.text.trim().isEmpty ? null : _twitterController.text.trim();
       String? instagram = _instagramController.text.trim().isEmpty ? null : _instagramController.text.trim();
+      String? tiktok = _tiktokController.text.trim().isEmpty ? null : _tiktokController.text.trim();
       String? spotify = _spotifyController.text.trim().isEmpty ? null : _spotifyController.text.trim();
       String? song = _songController.text.trim().isEmpty ? null : _songController.text.trim();
       String? artist = _artistController.text.trim().isEmpty ? null : _artistController.text.trim();
@@ -187,11 +259,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
         bio: bio,
         twitter: twitter,
         instagram: instagram,
+        tiktok: tiktok,
         spotify: spotify,
         favoriteSong: song,
         favoriteArtist: artist,
         interests: selectedInterests.isNotEmpty ? selectedInterests : null,
         interestsWithSubInterests: interestsDetail.isNotEmpty ? interestsDetail : null,
+        gallery: galleryUrls.isNotEmpty ? galleryUrls : null,
       );
 
       await ProfileService.instance.markProfileComplete();
@@ -291,7 +365,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
           const SizedBox(height: 12),
           Text(
             labels[_currentStep],
-            style: AppTextStyles.headlineSmall,
+            style: AppTextStyles.headlineSmall.copyWith(color: AppColors.textPrimary),
           ),
         ],
       ),
@@ -306,8 +380,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
       child: Row(
         children: [
-          // Skip (not last step)
-          if (!isLast)
+          // Skip (not on photo step or last step)
+          if (!isLast && _currentStep != 0)
             TextButton(
               onPressed: _next,
               child: Text(
@@ -355,93 +429,215 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Text(
-            'Pon una foto para que otros te reconozcan',
-            style: AppTextStyles.bodyMedium
-                .copyWith(color: AppColors.textSecondary),
+            'Añade tu foto de perfil (obligatorio) y hasta 3 fotos para tu galería',
+            style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 40),
-          // Avatar
-          GestureDetector(
-            onTap: () => _pickImage(ImageSource.gallery),
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.surface,
-                    border: Border.all(
-                      color: AppColors.primary.withOpacity(0.5),
-                      width: 2.5,
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.info_outline, size: 14, color: AppColors.primary),
+              const SizedBox(width: 4),
+              Text(
+                'Solo se aceptan imágenes en formato JPG',
+                style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Foto de perfil
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Foto de perfil', style: AppTextStyles.labelLarge),
+              const SizedBox(width: 4),
+              Text(
+                '*',
+                style: AppTextStyles.labelLarge.copyWith(color: Colors.red),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: GestureDetector(
+              onTap: () => _pickImage(ImageSource.gallery),
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.surface,
+                      border: Border.all(
+                        color: _photoXFile == null
+                            ? Colors.red.withOpacity(0.6)
+                            : AppColors.primary.withOpacity(0.5),
+                        width: _photoXFile == null ? 2 : 2.5,
+                      ),
+                      image: _photoBytes != null
+                          ? DecorationImage(
+                              image: MemoryImage(_photoBytes!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
-                    image: _photoFile != null
-                        ? DecorationImage(
-                            image: FileImage(_photoFile!),
-                            fit: BoxFit.cover,
+                    child: _photoXFile == null
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.person, size: 48, color: AppColors.textHint),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Toca para añadir',
+                                style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.textSecondary),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           )
                         : null,
                   ),
-                  child: _photoFile == null
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.person,
-                                size: 56, color: AppColors.textHint),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Toca para\nañadir foto',
-                              style: AppTextStyles.labelSmall.copyWith(
-                                  color: AppColors.textSecondary),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        )
-                      : null,
-                ),
-                // Edit badge
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.background, width: 2),
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.background, width: 2),
+                    ),
+                    child: const Icon(Icons.edit, size: 14, color: Colors.white),
                   ),
-                  child: const Icon(Icons.edit, size: 16, color: Colors.white),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildPickerButton(
+                  icon: Icons.photo_library_outlined,
+                  label: 'Galería',
+                  onTap: () => _pickImage(ImageSource.gallery),
+                ),
+                const SizedBox(width: 12),
+                _buildPickerButton(
+                  icon: Icons.camera_alt_outlined,
+                  label: 'Cámara',
+                  onTap: () => _pickImage(ImageSource.camera),
                 ),
               ],
             ),
           ),
+
           const SizedBox(height: 32),
+          Divider(color: AppColors.border),
+          const SizedBox(height: 20),
+
+          // Galería de fotos
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildPickerButton(
-                icon: Icons.photo_library_outlined,
-                label: 'Galería',
-                onTap: () => _pickImage(ImageSource.gallery),
-              ),
-              const SizedBox(width: 16),
-              _buildPickerButton(
-                icon: Icons.camera_alt_outlined,
-                label: 'Cámara',
-                onTap: () => _pickImage(ImageSource.camera),
+              Text('Mis fotos', style: AppTextStyles.labelLarge),
+              const SizedBox(width: 8),
+              Text(
+                '(hasta 3)',
+                style: AppTextStyles.labelSmall.copyWith(color: AppColors.textHint),
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 4),
           Text(
-            'Puedes cambiarla después desde tu perfil',
-            style:
-                AppTextStyles.labelSmall.copyWith(color: AppColors.textHint),
+            'Estas fotos se mostrarán en tu tarjeta al explorar',
+            style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (i) => _buildGallerySlot(i)),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Puedes cambiarlas después desde tu perfil',
+            style: AppTextStyles.labelSmall.copyWith(color: AppColors.textHint),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGallerySlot(int index) {
+    final bytes = _galleryBytes[index];
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _pickGalleryImage(index),
+        child: Container(
+          margin: EdgeInsets.only(right: index < 2 ? 10 : 0),
+          height: 110,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: bytes != null
+                  ? AppColors.primary.withOpacity(0.5)
+                  : AppColors.border,
+              width: bytes != null ? 2 : 1.5,
+            ),
+            image: bytes != null
+                ? DecorationImage(
+                    image: MemoryImage(bytes),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: bytes == null
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_photo_alternate_outlined,
+                        size: 28, color: AppColors.primary.withOpacity(0.6)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Añadir',
+                      style: AppTextStyles.labelSmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
+                )
+              : Stack(
+                  children: [
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => setState(() {
+                          _galleryXFiles[index] = null;
+                          _galleryBytes[index] = null;
+                        }),
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close,
+                              size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -465,7 +661,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
           children: [
             Icon(icon, size: 18, color: AppColors.primary),
             const SizedBox(width: 8),
-            Text(label, style: AppTextStyles.labelMedium),
+            Text(label, style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary)),
           ],
         ),
       ),
@@ -483,8 +679,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
           const SizedBox(height: 8),
           Text(
             'Cuéntanos un poco sobre ti y cómo encontrarte',
-            style: AppTextStyles.bodyMedium
-                .copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 28),
           _buildSectionLabel('Bio'),
@@ -500,7 +695,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
           const SizedBox(height: 8),
           _buildSocialField(
             controller: _twitterController,
-            hint: '@usuario',
+            hint: '@usuario/Twitter',
             icon: Icons.alternate_email,
             label: 'Twitter / X',
             iconColor: const Color(0xFF1DA1F2),
@@ -508,10 +703,18 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
           const SizedBox(height: 12),
           _buildSocialField(
             controller: _instagramController,
-            hint: '@usuario',
+            hint: '@usuario/Instagram',
             icon: Icons.camera_alt_outlined,
             label: 'Instagram',
             iconColor: const Color(0xFFE1306C),
+          ),
+          const SizedBox(height: 12),
+          _buildSocialField(
+            controller: _tiktokController,
+            hint: '@usuario/TikTok',
+            icon: Icons.music_video_outlined,
+            label: 'TikTok',
+            iconColor: const Color(0xFF010101),
           ),
           const SizedBox(height: 12),
           _buildSocialField(
@@ -543,7 +746,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
-      style: AppTextStyles.bodyMedium,
+      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle:
@@ -592,7 +795,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
           child: TextField(
             controller: controller,
             keyboardType: keyboardType ?? TextInputType.text,
-            style: AppTextStyles.bodyMedium,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: AppTextStyles.bodyMedium
@@ -633,7 +836,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
           const SizedBox(height: 8),
           Text(
             '¿Cuál es tu canción favorita ahora mismo?',
-            style: AppTextStyles.bodyMedium
+            style: AppTextStyles.bodyLarge
                 .copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 28),
@@ -746,7 +949,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
                 Expanded(
                   child: Text(
                     'Esto aparecerá en tu perfil. Puedes actualizar tu canción en cualquier momento desde ajustes.',
-                    style: AppTextStyles.labelSmall.copyWith(
+                    style: AppTextStyles.labelLarge.copyWith(
                       color: AppColors.textSecondary,
                       height: 1.5,
                     ),
@@ -770,7 +973,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
           child: Text(
             'Elige tus intereses para conectar con personas afines',
-            style: AppTextStyles.bodyMedium
+            style: AppTextStyles.bodyLarge
                 .copyWith(color: AppColors.textSecondary),
           ),
         ),
@@ -812,7 +1015,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(interest.label, style: AppTextStyles.bodyMedium),
+                  Text(interest.label, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary)),
                   if (interest.selectedSubs.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(
@@ -828,7 +1031,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage>
             ),
             Text(
               interest.selected ? 'Seleccionado' : 'Toca para elegir',
-              style: AppTextStyles.labelSmall.copyWith(
+              style: AppTextStyles.labelMedium.copyWith(
                 color: interest.selected
                     ? AppColors.primary
                     : AppColors.textSecondary,

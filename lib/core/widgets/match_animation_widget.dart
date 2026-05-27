@@ -58,7 +58,7 @@ class MatchModal extends StatelessWidget {
                         colors: AppColors.gradientPrimary,
                       ).createShader(bounds),
                       child: Text(
-                        '¡Es un Match!',
+                        '¡Tienes un nuevo amigo!',
                         textAlign: TextAlign.center,
                         style: AppTextStyles.displayLarge.copyWith(
                           fontSize: 48,
@@ -78,15 +78,15 @@ class MatchModal extends StatelessWidget {
                       // Tu Foto (Izquierda)
                       BounceInLeft(
                         delay: const Duration(milliseconds: 400),
-                        child: const _ProfileAvatar(
+                        child: _ProfileAvatar(
                           imageUrl:
-                              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop',
+                              profile['currentUserImage'],
                         ),
                       ),
 
                       const SizedBox(width: 10),
 
-                      // Corazón Central con Brillo
+                      //  Central con Brillo
                       ZoomIn(
                         delay: const Duration(milliseconds: 600),
                         child: Container(
@@ -127,7 +127,7 @@ class MatchModal extends StatelessWidget {
                   FadeInUp(
                     delay: const Duration(milliseconds: 800),
                     child: Text(
-                      '¡A ${profile['name']} también le gustas!',
+                      '¡A ${profile['name']} también le agradas!',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.bodyLarge.copyWith(
                         fontSize: 20,

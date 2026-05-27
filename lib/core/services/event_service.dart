@@ -268,6 +268,17 @@ class EventService {
     }
   }
 
+  Future<void> deleteEvent(String eventId) async {
+    final doc = await _firestore.collection('events').doc(eventId).get();
+    if (doc.exists) {
+      final attendeeIds = List<String>.from(doc.data()?['attendeeIds'] ?? []);
+      await Future.wait(
+        attendeeIds.map((uid) => ProfileService.instance.decrementActivitiesCountForUser(uid)),
+      );
+    }
+    await _firestore.collection('events').doc(eventId).delete();
+  }
+
   // Helper privado para convertir documento a Event
   Event _eventFromMap(Map<String, dynamic> data, String docId) {
     return Event(

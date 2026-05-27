@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:RockMeet/config/Theme/app_theme.dart';
 import 'package:RockMeet/config/Theme/constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:RockMeet/core/services/auth_service.dart';
 import 'package:RockMeet/core/services/event_service.dart';
+import 'package:RockMeet/core/services/tutor_code_service.dart';
 import 'package:RockMeet/features/home/screens/staff_reports_page.dart';
 import 'package:RockMeet/features/home/screens/staff_user_management_page.dart';
 import 'package:RockMeet/core/models/class_event.dart';
@@ -526,6 +529,23 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
         const SizedBox(height: 16),
         _buildOptionButton(
           context,
+          icon: Icons.vpn_key,
+          title: 'Código de Acceso al Registro',
+          onTap: () => _showTutorCodeDialog(context),
+        ),
+        const SizedBox(height: 12),
+        _buildOptionButton(
+          context,
+          icon: Icons.support_agent,
+          title: 'Mensajes de Soporte',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const _SupportMessagesPage()),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildOptionButton(
+          context,
           icon: Icons.people,
           title: 'Gestionar Usuarios',
           onTap: () {
@@ -588,6 +608,196 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
           onTap: () => _showLogoutConfirmationDialog(context),
         ),
       ],
+    );
+  }
+
+  void _showTutorCodeDialog(BuildContext context) {
+    final staffId = _staffId;
+    if (staffId == null) {
+      _showSnackBar('Debes iniciar sesión');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.vpn_key, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Código de Acceso',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              content: StreamBuilder(
+                stream: TutorCodeService().watchCode(),
+                builder: (context, snapshot) {
+                  final data =
+                      snapshot.data?.data() as Map<String, dynamic>?;
+                  final info = TutorCodeService().parseCodeInfo(data);
+                  final hasCode = info != null;
+                  final isExpired = info?.isExpired ?? false;
+                  final codeColor = isExpired ? Colors.red : AppColors.primary;
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Comparte este código con los alumnos para que puedan registrarse. Caduca a las 24 horas.',
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      if (!hasCode)
+                        Text(
+                          'Aún no hay código generado.',
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                        )
+                      else ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: codeColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: codeColor.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    info.code,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 8,
+                                      color: isExpired
+                                          ? Colors.grey
+                                          : AppColors.primary,
+                                      decoration: isExpired
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                    ),
+                                  ),
+                                  if (!isExpired) ...[
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      tooltip: 'Copiar código',
+                                      icon: const Icon(Icons.copy, size: 20),
+                                      color: AppColors.primary,
+                                      onPressed: () {
+                                        Clipboard.setData(
+                                          ClipboardData(text: info.code),
+                                        );
+                                        Navigator.pop(context);
+                                        _showSnackBar(
+                                          'Código copiado al portapapeles',
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    isExpired
+                                        ? Icons.timer_off
+                                        : Icons.timer_outlined,
+                                    size: 14,
+                                    color: isExpired
+                                        ? Colors.red
+                                        : Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    info.remainingLabel,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isExpired
+                                          ? Colors.red
+                                          : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.refresh),
+                          label: Text(
+                            !hasCode ? 'Generar código' : 'Generar nuevo código',
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () async {
+                            final newCode = await TutorCodeService()
+                                .generateCode(staffId);
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+                            _showSnackBar('Nuevo código generado: $newCode');
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cerrar',
+                    style: GoogleFonts.outfit(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -949,6 +1159,345 @@ class _HomeStaffPageState extends State<HomeStaffPage> {
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+
+// Página de mensajes de soporte
+class _SupportMessagesPage extends StatelessWidget {
+  const _SupportMessagesPage();
+
+  static const _statusWorking = 'working';
+  static const _statusResolved = 'resolved';
+
+  Color _borderColor(String? status, bool read) {
+    return switch (status) {
+      _statusWorking => Colors.orange,
+      _statusResolved => Colors.green,
+      _ => read ? AppColors.border : AppColors.primary.withOpacity(0.5),
+    };
+  }
+
+  Widget _statusChip(String? status) {
+    if (status == _statusWorking) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          'Trabajando en ello',
+          style: GoogleFonts.outfit(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.orange,
+          ),
+        ),
+      );
+    }
+    if (status == _statusResolved) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          'Resuelto',
+          style: GoogleFonts.outfit(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.green,
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  void _setStatus(String docId, String status) {
+    FirebaseFirestore.instance
+        .collection('support_messages')
+        .doc(docId)
+        .update({'status': status, 'read': true});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mensajes de Soporte'),
+        elevation: 0,
+      ),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('support_messages')
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox, size: 56, color: Colors.grey.shade400),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No hay mensajes aún',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final data = docs[index].data();
+              final docId = docs[index].id;
+              final email = data['fromEmail'] as String? ?? '—';
+              final subject = data['subject'] as String? ?? '(sin asunto)';
+              final message = data['message'] as String? ?? '';
+              final read = data['read'] as bool? ?? false;
+              final status = data['status'] as String?;
+              final ts = data['createdAt'] as Timestamp?;
+              final date = ts != null
+                  ? '${ts.toDate().day.toString().padLeft(2, '0')}/'
+                    '${ts.toDate().month.toString().padLeft(2, '0')}/'
+                    '${ts.toDate().year}  '
+                    '${ts.toDate().hour.toString().padLeft(2, '0')}:'
+                    '${ts.toDate().minute.toString().padLeft(2, '0')}'
+                  : '';
+
+              return GestureDetector(
+                onTap: () {
+                  if (!read) {
+                    FirebaseFirestore.instance
+                        .collection('support_messages')
+                        .doc(docId)
+                        .update({'read': true});
+                  }
+                  _showMessageDetail(context, email, subject, message, date, isDark);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surface : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _borderColor(status, read),
+                      width: (read && status == null) ? 1 : 1.8,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Cabecera: punto no leído + asunto + fecha
+                      Row(
+                        children: [
+                          if (!read)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          Expanded(
+                            child: Text(
+                              subject,
+                              style: GoogleFonts.outfit(
+                                fontSize: 15,
+                                fontWeight: read ? FontWeight.w500 : FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            date,
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      // Email + chip de estado
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              email,
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          _statusChip(status),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        message,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 12),
+                      // Botones de estado
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: status == _statusWorking
+                                  ? null
+                                  : () => _setStatus(docId, _statusWorking),
+                              icon: const Icon(Icons.build_circle_outlined, size: 16),
+                              label: const Text('Trabajando'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.orange,
+                                side: BorderSide(
+                                  color: status == _statusWorking
+                                      ? Colors.orange.withOpacity(0.3)
+                                      : Colors.orange,
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                textStyle: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: status == _statusResolved
+                                  ? null
+                                  : () => _setStatus(docId, _statusResolved),
+                              icon: const Icon(Icons.check_circle_outline, size: 16),
+                              label: const Text('Resuelto'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: status == _statusResolved
+                                    ? Colors.green.withOpacity(0.4)
+                                    : Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                textStyle: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _showMessageDetail(
+    BuildContext context,
+    String email,
+    String subject,
+    String message,
+    String date,
+    bool isDark,
+  ) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          subject,
+          style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.email, size: 14),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    email,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (date.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                date,
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+            const Divider(height: 20),
+            Text(
+              message,
+              style: GoogleFonts.outfit(fontSize: 14, height: 1.6),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cerrar',
+              style: GoogleFonts.outfit(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1541,19 +2090,11 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed:
-                            event.status == EventStatus.active ||
-                                event.status == EventStatus.inactive
-                            ? () => _showDeleteConfirmation(event)
-                            : null,
-                        icon: const Icon(Icons.delete),
-                        label: const Text('Cancelar'),
+                        onPressed: () => _showDeleteConfirmation(event),
+                        icon: const Icon(Icons.delete_forever),
+                        label: const Text('Eliminar'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              event.status == EventStatus.active ||
-                                  event.status == EventStatus.inactive
-                              ? Colors.red
-                              : null,
+                          backgroundColor: Colors.red,
                         ),
                       ),
                     ),
@@ -1798,11 +2339,11 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
             : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          '¿Cancelar evento?',
+          '¿Eliminar evento?',
           style: AppTheme.eventTitle.copyWith(color: AppColors.error),
         ),
         content: Text(
-          'Esta acción no se puede deshacer. ¿Deseas cancelar el evento "${event.title}"?',
+          'Esta acción no se puede deshacer. El evento "${event.title}" se eliminará permanentemente.',
           style: AppTheme.eventDescription,
         ),
         actions: [
@@ -1816,14 +2357,19 @@ class _StaffEventsPageState extends State<_StaffEventsPage> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              widget.eventService.cancelEvent(event.id);
-
+            onPressed: () async {
               Navigator.pop(context);
-              _showSnackBar('Evento cancelado');
+              try {
+                await widget.eventService.deleteEvent(event.id);
+                if (!mounted) return;
+                _showSnackBar('Evento eliminado correctamente');
+              } catch (e) {
+                if (!mounted) return;
+                _showSnackBar('Error al eliminar el evento');
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Sí, Cancelar'),
+            child: const Text('Sí, Eliminar'),
           ),
         ],
       ),
